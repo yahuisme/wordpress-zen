@@ -1,0 +1,48 @@
+/*
+Theme Name: WordPress Zen Theme
+Theme URI: https://github.com/qwer-xyz/wordpress-zen
+Author: qwer-xyz
+Author URI: https://github.com/qwer-xyz
+Description: A minimal WordPress theme focused on typography, calm spacing, and immersive reading.
+Version: 1.0.0
+License: GNU General Public License v3
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
+Text Domain: zen
+Tags: one-column, accessibility-ready, blog, custom-menu, dark-mode
+*/
+
+/*
+ * WordPress compatibility styles. Most theme styling is compiled from
+ * src/input.css into assets/css/style.css.
+ */
+
+.screen-reader-text {
+    border: 0;
+    clip: rect(1px, 1px, 1px, 1px);
+    -webkit-clip-path: inset(50%);
+    clip-path: inset(50%);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+    word-wrap: normal !important;
+}
+
+.children {
+    margin-left: 0;
+    padding-left: 0;
+}
+
+@media (min-width: 768px) {
+    .children {
+        margin-left: 2rem;
+        border-left: 1px solid #e5e7eb;
+        padding-left: 1rem;
+    }
+
+    .dark .children {
+        border-color: #374151;
+    }
+}
