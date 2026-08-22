@@ -1,0 +1,38 @@
+name: Release Theme
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(grep -m1 '^Version:' style.css | sed 's/^Version:[[:space:]]*//')"
+          if [ -z "$VERSION" ]; then
+            echo "::error::无法从 style.css 读取版本号"
+            exit 1
+          fi
+          echo "Theme version: $VERSION"
+
+          git archive --format=zip --prefix=zen/ HEAD -o zen.zip
+
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION 已存在，跳过。"
+          else
+            gh release create "v$VERSION" zen.zip \
+              --title "WordPress Zen Theme v$VERSION" \
+              --target main \
+              --notes "WordPress Zen Theme v$VERSION（下载 zen.zip，在「外观 → 主题」上传安装）"
+            echo "已发布 WordPress Zen Theme v$VERSION。"
+          fi
