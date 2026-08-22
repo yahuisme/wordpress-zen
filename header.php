@@ -6,7 +6,7 @@
     <script>
         (function() {
             var storageKey = 'zen-theme-mode';
-            var mode = 'auto';
+            var mode = '<?php echo esc_js(zen_get_option('zen_theme_mode_default')); ?>';
             try {
                 var storedMode = window.localStorage && window.localStorage.getItem(storageKey);
                 if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'auto') {
@@ -61,7 +61,9 @@
 <a href="#main-content" class="skip-link">跳至主要内容</a>
 
 <!-- Reading Progress Bar -->
+<?php if (zen_get_option('zen_show_reading_progress')) : ?>
 <div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 h-1 bg-gray-900 dark:bg-white z-50 transition-all duration-100 ease-out w-0"></div>
+<?php endif; ?>
 
 <!-- Header -->
 <header role="banner" class="zen-site-header w-full transition-colors backdrop-blur-md sticky top-0 z-40">

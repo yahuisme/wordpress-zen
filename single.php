@@ -2,6 +2,8 @@
 
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
+    <?php if (zen_get_option('zen_show_toc')) : ?>
+
     <!-- 
         1. PC端侧边栏目录 (Large Screen Sidebar TOC)
         显示条件: 屏幕宽度 >= xl (1280px)
@@ -69,6 +71,8 @@
             </nav>
         </div>
     </aside>
+
+    <?php endif; ?>
 
     <header class="mb-10 text-center">
         <div class="text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-4 flex items-center justify-center gap-2">

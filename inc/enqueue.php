@@ -24,6 +24,10 @@ function zen_scripts() {
         true
     );
 
+    wp_localize_script('zen-main', 'zenSettings', array(
+        'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
+    ));
+
     $compiled_css = get_template_directory() . '/assets/css/style.css';
     if (file_exists($compiled_css)) {
         wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), filemtime($compiled_css));
