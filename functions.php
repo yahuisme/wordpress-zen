@@ -2,6 +2,7 @@
 if (!defined('ABSPATH')) exit;
 
 $zen_includes = array(
+    'inc/options.php',
     'inc/setup.php',
     'inc/enqueue.php',
     'inc/template-tags.php',
