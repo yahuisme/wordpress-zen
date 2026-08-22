@@ -247,7 +247,7 @@ GitHub Actions（`.github/workflows/release.yml`）会在推送到 `main` 后：
 
 1. 从 `style.css` 读取版本号；
 2. 用 `git archive` 打包 `zen.zip`（顶层 `zen/` 目录）；
-3. 创建名为 `WordPress Zen Theme vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`）并上传 `zen.zip`。
+3. 创建名为 `Zen Theme vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`）并上传 `zen.zip`。
 
 版本号未变化（该 tag 已存在）时跳过，不重复发布。发布包即仓库全部跟踪文件；本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，运行时无需任何构建步骤。
 
