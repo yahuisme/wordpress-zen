@@ -80,6 +80,14 @@
             }
             ?>
             <?php zen_posted_on_link(); ?>
+
+            <?php if (zen_get_option('zen_show_reading_count')) : ?>
+                <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">/</span>
+                <span class="flex items-center gap-1">
+                    <i class="ph ph-eye text-sm" aria-hidden="true"></i>
+                    <?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?> 阅读
+                </span>
+            <?php endif; ?>
         </div>
         <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight serif">
             <?php the_title(); ?>

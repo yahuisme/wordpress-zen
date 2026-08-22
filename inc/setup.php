@@ -42,6 +42,6 @@ remove_action('wp_head', 'print_emoji_detection_script', 7);
 remove_action('wp_print_styles', 'print_emoji_styles');
 
 function zen_custom_excerpt_length($length) {
-    return 120;
+    return (int) zen_get_option('zen_excerpt_length');
 }
 add_filter('excerpt_length', 'zen_custom_excerpt_length', 999);
