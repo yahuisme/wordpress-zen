@@ -25,6 +25,18 @@ jobs:
           fi
           echo "Theme version: $VERSION"
 
+          NOTES_FILE="release-notes.md"
+          awk -v version="$VERSION" '
+            $0 == "## " version { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' .github/CHANGELOG.md | sed '/^[[:space:]]*$/d' > "$NOTES_FILE"
+
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "::error::无法从 .github/CHANGELOG.md 读取版本 $VERSION 的更新内容"
+            exit 1
+          fi
+
           git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github'
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
@@ -33,6 +45,6 @@ jobs:
             gh release create "v$VERSION" zen.zip \
               --title "Zen Theme v$VERSION" \
               --target main \
-              --notes "Zen Theme v$VERSION（下载 zen.zip，在「外观 → 主题」上传安装）"
+              --notes-file "$NOTES_FILE"
             echo "已发布 Zen Theme v$VERSION。"
           fi
