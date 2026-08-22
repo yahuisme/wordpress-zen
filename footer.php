@@ -40,9 +40,11 @@
 </div>
 
 <!-- Back to Top -->
+<?php if (zen_get_option('zen_show_back_to_top')) : ?>
 <button id="back-to-top" class="zen-back-to-top zen-icon-btn fixed bottom-8 right-8 w-10 h-10 rounded-full flex items-center justify-center opacity-0 pointer-events-none translate-y-4 z-50 focus:outline-none" aria-label="返回顶部">
     <i class="ph ph-arrow-up text-xl" aria-hidden="true"></i>
 </button>
+<?php endif; ?>
 
 <?php wp_footer(); ?>
 </body>

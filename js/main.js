@@ -11,14 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
         light: { icon: 'ph-sun', label: '浅色模式' },
         dark: { icon: 'ph-moon', label: '深色模式' },
     };
-    let themeMode = 'auto';
+    const themeDefaultMode = (window.zenSettings && window.zenSettings.theme_mode_default && themeModes.includes(window.zenSettings.theme_mode_default)) ? window.zenSettings.theme_mode_default : 'auto';
+    let themeMode = themeDefaultMode;
 
     const getStoredThemeMode = () => {
         try {
             const storedMode = window.localStorage.getItem(themeStorageKey);
-            return themeModes.includes(storedMode) ? storedMode : 'auto';
+            return themeModes.includes(storedMode) ? storedMode : themeDefaultMode;
         } catch (error) {
-            return 'auto';
+            return themeDefaultMode;
         }
     };
 

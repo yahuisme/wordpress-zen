@@ -13,10 +13,14 @@ if (!defined('ABSPATH')) exit;
  */
 function zen_get_option($key) {
     $defaults = array(
-        'zen_show_reading_count'  => 1,
-        'zen_excerpt_length'      => 100,
-        'zen_footer_text'         => '',
-        'zen_show_footer_credits' => 1,
+        'zen_show_reading_count'   => 1,
+        'zen_excerpt_length'       => 100,
+        'zen_show_toc'             => 1,
+        'zen_show_reading_progress'=> 1,
+        'zen_theme_mode_default'   => 'auto',
+        'zen_show_back_to_top'     => 1,
+        'zen_footer_text'          => '',
+        'zen_show_footer_credits'  => 1,
     );
 
     return get_option($key, isset($defaults[$key]) ? $defaults[$key] : '');
@@ -34,6 +38,22 @@ function zen_register_options() {
     register_setting('zen_options', 'zen_excerpt_length', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_excerpt_length',
+    ));
+    register_setting('zen_options', 'zen_show_toc', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
+    register_setting('zen_options', 'zen_show_reading_progress', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
+    register_setting('zen_options', 'zen_theme_mode_default', array(
+        'type'              => 'string',
+        'sanitize_callback' => 'zen_sanitize_theme_mode',
+    ));
+    register_setting('zen_options', 'zen_show_back_to_top', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
     ));
     register_setting('zen_options', 'zen_footer_text', array(
         'type'              => 'string',
@@ -60,6 +80,10 @@ function zen_sanitize_excerpt_length($value) {
     return min($value, 300);
 }
 
+function zen_sanitize_theme_mode($value) {
+    return in_array($value, array('auto', 'light', 'dark'), true) ? $value : 'auto';
+}
+
 function zen_options_menu() {
     add_theme_page(
         __('主题设置', 'zen'),
@@ -80,6 +104,8 @@ function zen_options_page_html() {
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <form method="post" action="options.php">
             <?php settings_fields('zen_options'); ?>
+
+            <h2 class="title"><?php esc_html_e('阅读', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><?php esc_html_e('阅读数量', 'zen'); ?></th>
@@ -99,6 +125,55 @@ function zen_options_page_html() {
                     </td>
                 </tr>
                 <tr>
+                    <th scope="row"><?php esc_html_e('文章目录', 'zen'); ?></th>
+                    <td>
+                        <input type="hidden" name="zen_show_toc" value="0">
+                        <label for="zen_show_toc">
+                            <input type="checkbox" name="zen_show_toc" id="zen_show_toc" value="1" <?php checked(1, zen_get_option('zen_show_toc')); ?>>
+                            <?php esc_html_e('在文章页显示目录（侧边栏 / 移动端抽屉）', 'zen'); ?>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('阅读进度条', 'zen'); ?></th>
+                    <td>
+                        <input type="hidden" name="zen_show_reading_progress" value="0">
+                        <label for="zen_show_reading_progress">
+                            <input type="checkbox" name="zen_show_reading_progress" id="zen_show_reading_progress" value="1" <?php checked(1, zen_get_option('zen_show_reading_progress')); ?>>
+                            <?php esc_html_e('在页面顶部显示阅读进度条', 'zen'); ?>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 class="title"><?php esc_html_e('外观', 'zen'); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="zen_theme_mode_default"><?php esc_html_e('深色模式默认值', 'zen'); ?></label></th>
+                    <td>
+                        <select name="zen_theme_mode_default" id="zen_theme_mode_default">
+                            <option value="auto" <?php selected('auto', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('跟随系统', 'zen'); ?></option>
+                            <option value="light" <?php selected('light', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('浅色', 'zen'); ?></option>
+                            <option value="dark" <?php selected('dark', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('深色', 'zen'); ?></option>
+                        </select>
+                        <p class="description"><?php esc_html_e('访客首次访问时使用的主题模式；用户手动切换后会记住其个人选择。', 'zen'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('返回顶部按钮', 'zen'); ?></th>
+                    <td>
+                        <input type="hidden" name="zen_show_back_to_top" value="0">
+                        <label for="zen_show_back_to_top">
+                            <input type="checkbox" name="zen_show_back_to_top" id="zen_show_back_to_top" value="1" <?php checked(1, zen_get_option('zen_show_back_to_top')); ?>>
+                            <?php esc_html_e('显示右下角返回顶部按钮', 'zen'); ?>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 class="title"><?php esc_html_e('页脚', 'zen'); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚内容', 'zen'); ?></label></th>
                     <td>
                         <textarea name="zen_footer_text" id="zen_footer_text" rows="3" class="large-text code"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
@@ -116,6 +191,7 @@ function zen_options_page_html() {
                     </td>
                 </tr>
             </table>
+
             <?php submit_button(__('保存设置', 'zen')); ?>
         </form>
     </div>
