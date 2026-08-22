@@ -25,7 +25,7 @@ jobs:
           fi
           echo "Theme version: $VERSION"
 
-          git archive --format=zip --prefix=zen/ HEAD -o zen.zip
+          git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github'
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
             echo "Release v$VERSION 已存在，跳过。"
