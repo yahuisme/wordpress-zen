@@ -14,7 +14,7 @@
         <?php if (zen_get_option('zen_show_footer_credits')) : ?>
         <div class="flex items-center gap-4">
             <!-- A11y: aria-label starts with visible text -->
-            <a href="https://ryanz.de/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
+            <a href="https://github.com/yahuisme/wordpress-zen" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
             <span class="inline-block w-1 h-1 bg-gray-300 rounded-full" aria-hidden="true"></span>
             <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
             <span class="inline-block w-1 h-1 bg-gray-300 rounded-full" aria-hidden="true"></span>
