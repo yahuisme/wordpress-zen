@@ -27,6 +27,7 @@
 </footer>
 
 <!-- Lightbox -->
+<?php if (zen_get_option('zen_show_lightbox')) : ?>
 <div id="lightbox" 
      role="dialog" 
      aria-modal="true" 
@@ -38,6 +39,7 @@
         &times;
     </button>
 </div>
+<?php endif; ?>
 
 <!-- Back to Top -->
 <?php if (zen_get_option('zen_show_back_to_top')) : ?>

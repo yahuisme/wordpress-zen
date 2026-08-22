@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const themeDefaultMode = (window.zenSettings && window.zenSettings.theme_mode_default && themeModes.includes(window.zenSettings.theme_mode_default)) ? window.zenSettings.theme_mode_default : 'auto';
     let themeMode = themeDefaultMode;
+    const zenSearchShortcut = !!(window.zenSettings && window.zenSettings.search_shortcut);
 
     const getStoredThemeMode = () => {
         try {
@@ -90,55 +91,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. Lightbox (A11y: Focus Management & ARIA) ---
     const lightbox = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const closeBtn = document.getElementById('lightbox-close');
-    const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
-    let lastFocusedElement;
 
-    images.forEach(img => {
-        img.classList.add('cursor-zoom-in');
-        img.setAttribute('tabindex', '0');
-        img.setAttribute('role', 'button');
-        img.setAttribute('aria-label', '点击查看大图');
+    if (lightbox) {
+        const lightboxImg = document.getElementById('lightbox-img');
+        const closeBtn = document.getElementById('lightbox-close');
+        const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
+        let lastFocusedElement;
 
-        const openLightbox = (e) => {
-            if (img.parentElement.tagName === 'A') return;
-            e.preventDefault();
-            lastFocusedElement = document.activeElement;
+        images.forEach(img => {
+            img.classList.add('cursor-zoom-in');
+            img.setAttribute('tabindex', '0');
+            img.setAttribute('role', 'button');
+            img.setAttribute('aria-label', '点击查看大图');
 
-            lightboxImg.src = img.src;
-            lightboxImg.alt = img.alt || '放大图片';
-            if (img.srcset) lightboxImg.srcset = img.srcset;
-            if (lightbox) {
+            const openLightbox = (e) => {
+                if (img.parentElement.tagName === 'A') return;
+                e.preventDefault();
+                lastFocusedElement = document.activeElement;
+
+                lightboxImg.src = img.src;
+                lightboxImg.alt = img.alt || '放大图片';
+                if (img.srcset) lightboxImg.srcset = img.srcset;
                 lightbox.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 setTimeout(() => closeBtn.focus(), 100);
+            };
+
+            img.addEventListener('click', openLightbox);
+            img.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    openLightbox(e);
+                }
+            });
+        });
+
+        const closeLightbox = () => {
+            if (!lightbox.classList.contains('hidden')) {
+                lightbox.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                if (lastFocusedElement) lastFocusedElement.focus();
             }
         };
 
-        img.addEventListener('click', openLightbox);
-        img.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                openLightbox(e);
-            }
+        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) closeLightbox();
         });
-    });
-
-    const closeLightbox = () => {
-        if (lightbox && !lightbox.classList.contains('hidden')) {
-            lightbox.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-            if (lastFocusedElement) lastFocusedElement.focus();
-        }
-    };
-
-    if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
-    if (lightbox) lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) closeLightbox();
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeLightbox();
-    });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+        });
+    }
 
     // --- 3. TOC 目录 (Universal Logic) ---
     const article = document.getElementById('post-content');
@@ -527,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Escape' && !searchModal.classList.contains('hidden')) {
                 closeSearch();
             }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            if (zenSearchShortcut && (e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
                 if (searchModal.classList.contains('hidden')) openSearch(); else closeSearch();
             }
