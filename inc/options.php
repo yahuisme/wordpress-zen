@@ -15,10 +15,14 @@ function zen_get_option($key) {
     $defaults = array(
         'zen_show_reading_count'   => 1,
         'zen_excerpt_length'       => 100,
+        'zen_show_tags'            => 1,
+        'zen_show_highlight'       => 1,
         'zen_show_toc'             => 1,
         'zen_show_reading_progress'=> 1,
         'zen_theme_mode_default'   => 'auto',
         'zen_show_back_to_top'     => 1,
+        'zen_show_lightbox'        => 1,
+        'zen_show_search_shortcut' => 1,
         'zen_footer_text'          => '',
         'zen_show_footer_credits'  => 1,
     );
@@ -39,6 +43,14 @@ function zen_register_options() {
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_excerpt_length',
     ));
+    register_setting('zen_options', 'zen_show_tags', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
+    register_setting('zen_options', 'zen_show_highlight', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
     register_setting('zen_options', 'zen_show_toc', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_checkbox',
@@ -52,6 +64,14 @@ function zen_register_options() {
         'sanitize_callback' => 'zen_sanitize_theme_mode',
     ));
     register_setting('zen_options', 'zen_show_back_to_top', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
+    register_setting('zen_options', 'zen_show_lightbox', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_checkbox',
+    ));
+    register_setting('zen_options', 'zen_show_search_shortcut', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_checkbox',
     ));
@@ -95,6 +115,21 @@ function zen_options_menu() {
 }
 add_action('admin_menu', 'zen_options_menu');
 
+function zen_checkbox_field($key, $label, $desc) {
+    ?>
+    <tr>
+        <th scope="row"><?php echo esc_html($label); ?></th>
+        <td>
+            <input type="hidden" name="<?php echo esc_attr($key); ?>" value="0">
+            <label for="<?php echo esc_attr($key); ?>">
+                <input type="checkbox" name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" value="1" <?php checked(1, zen_get_option($key)); ?>>
+                <?php echo esc_html($desc); ?>
+            </label>
+        </td>
+    </tr>
+    <?php
+}
+
 function zen_options_page_html() {
     if (!current_user_can('manage_options')) {
         return;
@@ -105,18 +140,9 @@ function zen_options_page_html() {
         <form method="post" action="options.php">
             <?php settings_fields('zen_options'); ?>
 
-            <h2 class="title"><?php esc_html_e('阅读', 'zen'); ?></h2>
+            <h2 class="title"><?php esc_html_e('文章', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
-                <tr>
-                    <th scope="row"><?php esc_html_e('阅读数量', 'zen'); ?></th>
-                    <td>
-                        <input type="hidden" name="zen_show_reading_count" value="0">
-                        <label for="zen_show_reading_count">
-                            <input type="checkbox" name="zen_show_reading_count" id="zen_show_reading_count" value="1" <?php checked(1, zen_get_option('zen_show_reading_count')); ?>>
-                            <?php esc_html_e('在文章页显示阅读数量', 'zen'); ?>
-                        </label>
-                    </td>
-                </tr>
+                <?php zen_checkbox_field('zen_show_reading_count', __('阅读数量', 'zen'), __('在文章页显示阅读数量', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要字数', 'zen'); ?></label></th>
                     <td>
@@ -124,30 +150,14 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('文章列表中每篇摘要显示的字数（1–300）。', 'zen'); ?></p>
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row"><?php esc_html_e('文章目录', 'zen'); ?></th>
-                    <td>
-                        <input type="hidden" name="zen_show_toc" value="0">
-                        <label for="zen_show_toc">
-                            <input type="checkbox" name="zen_show_toc" id="zen_show_toc" value="1" <?php checked(1, zen_get_option('zen_show_toc')); ?>>
-                            <?php esc_html_e('在文章页显示目录（侧边栏 / 移动端抽屉）', 'zen'); ?>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><?php esc_html_e('阅读进度条', 'zen'); ?></th>
-                    <td>
-                        <input type="hidden" name="zen_show_reading_progress" value="0">
-                        <label for="zen_show_reading_progress">
-                            <input type="checkbox" name="zen_show_reading_progress" id="zen_show_reading_progress" value="1" <?php checked(1, zen_get_option('zen_show_reading_progress')); ?>>
-                            <?php esc_html_e('在页面顶部显示阅读进度条', 'zen'); ?>
-                        </label>
-                    </td>
-                </tr>
+                <?php zen_checkbox_field('zen_show_tags', __('标签区', 'zen'), __('在文章页底部显示标签区', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示文章目录（侧边栏 / 移动端抽屉）', 'zen')); ?>
             </table>
 
-            <h2 class="title"><?php esc_html_e('外观', 'zen'); ?></h2>
+            <h2 class="title"><?php esc_html_e('界面', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
+                <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_theme_mode_default"><?php esc_html_e('深色模式默认值', 'zen'); ?></label></th>
                     <td>
@@ -159,16 +169,9 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('访客首次访问时使用的主题模式；用户手动切换后会记住其个人选择。', 'zen'); ?></p>
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row"><?php esc_html_e('返回顶部按钮', 'zen'); ?></th>
-                    <td>
-                        <input type="hidden" name="zen_show_back_to_top" value="0">
-                        <label for="zen_show_back_to_top">
-                            <input type="checkbox" name="zen_show_back_to_top" id="zen_show_back_to_top" value="1" <?php checked(1, zen_get_option('zen_show_back_to_top')); ?>>
-                            <?php esc_html_e('显示右下角返回顶部按钮', 'zen'); ?>
-                        </label>
-                    </td>
-                </tr>
+                <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部按钮', 'zen'), __('显示右下角返回顶部按钮', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('启用图片灯箱（点击图片放大查看）', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_search_shortcut', __('搜索快捷键', 'zen'), __('启用搜索快捷键（Ctrl/⌘ + K）', 'zen')); ?>
             </table>
 
             <h2 class="title"><?php esc_html_e('页脚', 'zen'); ?></h2>
@@ -180,16 +183,7 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('显示在页脚版权下方的自定义内容，支持少量 HTML（如链接）。留空则只显示默认版权。', 'zen'); ?></p>
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row"><?php esc_html_e('页脚署名', 'zen'); ?></th>
-                    <td>
-                        <input type="hidden" name="zen_show_footer_credits" value="0">
-                        <label for="zen_show_footer_credits">
-                            <input type="checkbox" name="zen_show_footer_credits" id="zen_show_footer_credits" value="1" <?php checked(1, zen_get_option('zen_show_footer_credits')); ?>>
-                            <?php esc_html_e('显示「Theme By RyanZ / Powered By WordPress / RSS」链接', 'zen'); ?>
-                        </label>
-                    </td>
-                </tr>
+                <?php zen_checkbox_field('zen_show_footer_credits', __('页脚署名', 'zen'), __('显示「Theme By RyanZ / Powered By WordPress / RSS」链接', 'zen')); ?>
             </table>
 
             <?php submit_button(__('保存设置', 'zen')); ?>

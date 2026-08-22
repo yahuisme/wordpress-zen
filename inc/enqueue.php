@@ -10,7 +10,7 @@ function zen_scripts() {
     wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Serif+SC:wght@200..900&display=swap', array(), null);
     wp_enqueue_script('phosphor-icons', get_template_directory_uri() . '/assets/js/phosphor-icons.js', array(), $ver, false);
 
-    if (is_singular()) {
+    if (is_singular() && zen_get_option('zen_show_highlight')) {
         wp_enqueue_style('highlight-css', get_template_directory_uri() . '/assets/css/github-dark.min.css', array(), $ver);
         wp_enqueue_script('highlight-js', get_template_directory_uri() . '/assets/js/highlight.min.js', array(), $ver, true);
     }
@@ -26,6 +26,7 @@ function zen_scripts() {
 
     wp_localize_script('zen-main', 'zenSettings', array(
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
+        'search_shortcut'    => (int) zen_get_option('zen_show_search_shortcut'),
     ));
 
     $compiled_css = get_template_directory() . '/assets/css/style.css';

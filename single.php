@@ -102,6 +102,7 @@
         <?php the_content(); ?>
     </article>
 
+        <?php if (zen_get_option('zen_show_tags')) : ?>
         <div class="zen-post-taxonomy mt-12 pt-7 border-t border-gray-100 dark:border-gray-800">
             <div class="zen-taxonomy-row">
                 <span class="zen-meta-label">
@@ -122,6 +123,7 @@
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
     <?php 
     if (comments_open() || get_comments_number()) :
