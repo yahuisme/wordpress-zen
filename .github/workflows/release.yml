@@ -31,8 +31,8 @@ jobs:
             echo "Release v$VERSION 已存在，跳过。"
           else
             gh release create "v$VERSION" zen.zip \
-              --title "WordPress Zen Theme v$VERSION" \
+              --title "Zen Theme v$VERSION" \
               --target main \
-              --notes "WordPress Zen Theme v$VERSION（下载 zen.zip，在「外观 → 主题」上传安装）"
-            echo "已发布 WordPress Zen Theme v$VERSION。"
+              --notes "Zen Theme v$VERSION（下载 zen.zip，在「外观 → 主题」上传安装）"
+            echo "已发布 Zen Theme v$VERSION。"
           fi
