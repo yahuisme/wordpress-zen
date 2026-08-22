@@ -44,7 +44,7 @@ function zen_comment_callback($comment, $args, $depth) {
                         <div class="zen-comment-meta">
                             <a href="<?php echo esc_url(get_comment_link($comment)); ?>" class="zen-ui-link text-xs text-gray-500 dark:text-gray-400">
                                 <time datetime="<?php echo esc_attr(get_comment_time('c')); ?>">
-                                    <?php printf(esc_html__('%1$s前', 'zen'), esc_html(human_time_diff(get_comment_time('U'), current_time('timestamp')))); ?>
+                                    <?php printf(esc_html__('%1$s前', 'zen'), esc_html(human_time_diff(get_comment_time('U'), current_time('timestamp', true)))); ?>
                                 </time>
                             </a>
                             <?php echo zen_kses_link($reply_link); ?>
