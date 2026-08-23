@@ -265,7 +265,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚内容', 'zen'); ?></label></th>
                     <td>
-                        <textarea name="zen_footer_text" id="zen_footer_text" rows="3" class="large-text code"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
+                        <textarea name="zen_footer_text" id="zen_footer_text" rows="3" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('显示在页脚版权下方的自定义内容，支持少量 HTML（如链接）。留空则只显示默认版权。', 'zen'); ?></p>
                     </td>
                 </tr>

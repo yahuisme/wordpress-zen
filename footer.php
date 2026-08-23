@@ -4,25 +4,32 @@
     <div class="max-w-zen mx-auto px-4 sm:px-6 py-6 md:h-20 md:py-0 flex flex-col md:flex-row items-center justify-between text-xs text-gray-600 dark:text-gray-400 gap-y-3">
         <div class="text-center md:text-left">
             <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?>. 保留所有权利.</div>
-            <?php
-            $zen_footer_text = zen_get_option('zen_footer_text');
-            if ($zen_footer_text !== '') {
-                echo '<div class="mt-1">' . wp_kses_post($zen_footer_text) . '</div>';
-            }
-            ?>
         </div>
-        <?php if (zen_get_option('zen_show_footer_theme_by') || zen_get_option('zen_show_footer_wordpress') || zen_get_option('zen_show_footer_rss')) : ?>
-        <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <?php if (zen_get_option('zen_show_footer_theme_by')) : ?>
-            <a href="https://github.com/yahuisme/wordpress-zen" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
+        <?php
+        $zen_footer_text = zen_get_option('zen_footer_text');
+        $zen_show_footer_links = zen_get_option('zen_show_footer_theme_by') || zen_get_option('zen_show_footer_wordpress') || zen_get_option('zen_show_footer_rss');
+        if ($zen_footer_text !== '' || $zen_show_footer_links) :
+        ?>
+        <div class="zen-footer-links flex flex-col items-center gap-y-2">
+            <?php if ($zen_footer_text !== '') : ?>
+            <div class="zen-footer-row flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+                <?php echo wp_kses_post($zen_footer_text); ?>
+            </div>
             <?php endif; ?>
-            <?php if (zen_get_option('zen_show_footer_wordpress')) : ?>
-            <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
-            <?php endif; ?>
-            <?php if (zen_get_option('zen_show_footer_rss')) : ?>
-            <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="订阅 RSS">
-                <i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS
-            </a>
+            <?php if ($zen_show_footer_links) : ?>
+            <div class="zen-footer-row flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+                <?php if (zen_get_option('zen_show_footer_theme_by')) : ?>
+                <a href="https://github.com/yahuisme/wordpress-zen" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
+                <?php endif; ?>
+                <?php if (zen_get_option('zen_show_footer_wordpress')) : ?>
+                <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
+                <?php endif; ?>
+                <?php if (zen_get_option('zen_show_footer_rss')) : ?>
+                <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="订阅 RSS">
+                    <i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS
+                </a>
+                <?php endif; ?>
+            </div>
             <?php endif; ?>
         </div>
         <?php endif; ?>
