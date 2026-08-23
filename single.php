@@ -98,7 +98,7 @@
                 <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">/</span>
                 <span class="flex items-center gap-1">
                     <i class="ph ph-clock text-sm" aria-hidden="true"></i>
-                    <?php echo esc_html(zen_get_reading_time()); ?> 分钟阅读
+                    阅读时间 <?php echo esc_html(zen_get_reading_time()); ?> 分钟
                 </span>
             <?php endif; ?>
 
