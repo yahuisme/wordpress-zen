@@ -11,16 +11,19 @@
             }
             ?>
         </div>
-        <?php if (zen_get_option('zen_show_footer_credits')) : ?>
-        <div class="flex items-center gap-4">
-            <!-- A11y: aria-label starts with visible text -->
+        <?php if (zen_get_option('zen_show_footer_theme_by') || zen_get_option('zen_show_footer_wordpress') || zen_get_option('zen_show_footer_rss')) : ?>
+        <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <?php if (zen_get_option('zen_show_footer_theme_by')) : ?>
             <a href="https://github.com/yahuisme/wordpress-zen" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
-            <span class="inline-block w-1 h-1 bg-gray-300 rounded-full" aria-hidden="true"></span>
+            <?php endif; ?>
+            <?php if (zen_get_option('zen_show_footer_wordpress')) : ?>
             <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
-            <span class="inline-block w-1 h-1 bg-gray-300 rounded-full" aria-hidden="true"></span>
+            <?php endif; ?>
+            <?php if (zen_get_option('zen_show_footer_rss')) : ?>
             <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="订阅 RSS">
                 <i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS
             </a>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </div>

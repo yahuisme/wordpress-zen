@@ -9,7 +9,7 @@
         显示条件: 屏幕宽度 >= xl (1280px)
         布局: 固定定位，位于内容右侧
     -->
-    <aside id="toc-container" class="hidden xl:block fixed top-32 w-56 opacity-0 transition-opacity duration-500" style="left: calc(50% + 28rem + 2rem);" aria-label="文章目录">
+    <aside id="toc-container" class="zen-desktop-toc hidden xl:block fixed top-32 w-56 opacity-0 transition-opacity duration-500" style="left: calc(50% + 28rem + 2rem);" aria-label="文章目录">
         <div class="relative">
             <h4 class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4 pl-3">
                 目录
@@ -31,7 +31,7 @@
         动画: 使用 Tailwind 实现弹性过渡 (Bezier Curve)
     -->
     <button id="floating-toc-btn" 
-            class="xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-50 
+            class="zen-mobile-toc xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-50
                    zen-floating-toc-btn p-3 rounded-l-lg 
                    shadow-lg hover:shadow-xl dark:shadow-none dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]
                    border-y border-l border-gray-200 dark:border-gray-700 
@@ -53,6 +53,7 @@
     
     <aside id="drawer-toc" 
            class="zen-toc-drawer fixed top-0 right-0 w-80 h-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" 
+           style="width: min(20rem, 100vw);"
            role="dialog" 
            aria-modal="true" 
            aria-labelledby="drawer-toc-title"
@@ -92,6 +93,7 @@
                     <?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?> 阅读
                 </span>
             <?php endif; ?>
+
         </div>
         <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight serif">
             <?php the_title(); ?>
@@ -101,6 +103,23 @@
     <article id="post-content" class="prose prose-lg prose-zinc dark:prose-invert mx-auto focus:outline-none entry-content">
         <?php the_content(); ?>
     </article>
+
+    <?php if (zen_get_option('zen_show_updated_date') || zen_get_option('zen_show_reading_time')) : ?>
+    <div class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400" aria-label="文章信息">
+        <?php if (zen_get_option('zen_show_updated_date')) : ?>
+        <span class="flex items-center gap-1">
+            <i class="ph ph-clock-counter-clockwise text-sm" aria-hidden="true"></i>
+            最后更新：<?php echo esc_html(get_the_modified_date()); ?>
+        </span>
+        <?php endif; ?>
+        <?php if (zen_get_option('zen_show_reading_time')) : ?>
+        <span class="flex items-center gap-1">
+            <i class="ph ph-clock text-sm" aria-hidden="true"></i>
+            预计阅读：<?php echo esc_html(zen_get_reading_time()); ?> 分钟
+        </span>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
         <?php if (zen_get_option('zen_show_tags')) : ?>
         <div class="zen-post-taxonomy mt-12 pt-7 border-t border-gray-100 dark:border-gray-800">
@@ -123,6 +142,45 @@
                 </div>
             </div>
         </div>
+        <?php endif; ?>
+
+        <?php if (zen_get_option('zen_show_copyright') && zen_get_option('zen_copyright_license') !== 'none') : ?>
+        <?php
+        $zen_license = zen_get_option('zen_copyright_license');
+        $zen_licenses = array(
+            'all-rights-reserved' => array('保留所有权利', ''),
+            'cc-by-4.0'          => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans'),
+            'cc-by-sa-4.0'       => array('CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans'),
+            'cc-by-nc-sa-4.0'    => array('CC BY-NC-SA 4.0', 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans'),
+        );
+        $zen_license_info = isset($zen_licenses[$zen_license]) ? $zen_licenses[$zen_license] : $zen_licenses['cc-by-nc-sa-4.0'];
+        ?>
+        <aside class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-600 dark:text-gray-400 leading-relaxed" aria-label="文章版权信息">
+            <div>本文作者：<?php echo esc_html(get_the_author()); ?></div>
+            <div>本文链接：<a href="<?php echo esc_url(get_permalink()); ?>" class="zen-ui-link break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;"><?php echo esc_html(get_permalink()); ?></a></div>
+            <div>版权声明：除特别声明外，本站文章<?php if ($zen_license_info[1]) : ?>采用 <a href="<?php echo esc_url($zen_license_info[1]); ?>" target="_blank" rel="license noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white"><?php echo esc_html($zen_license_info[0]); ?></a> 许可协议。<?php else : ?><?php echo esc_html($zen_license_info[0]); ?>。<?php endif; ?></div>
+        </aside>
+        <?php endif; ?>
+
+        <?php if (zen_get_option('zen_show_post_navigation')) : ?>
+        <nav class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-3 sm:flex-row sm:justify-between text-sm" aria-label="文章导航">
+            <div class="min-w-0 flex-1">
+                <?php
+                $previous_post = get_previous_post();
+                if ($previous_post) {
+                    echo '<a href="' . esc_url(get_permalink($previous_post)) . '" class="zen-ui-link block break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;">上一篇：' . esc_html(get_the_title($previous_post)) . '</a>';
+                }
+                ?>
+            </div>
+            <div class="min-w-0 flex-1" style="text-align: right;">
+                <?php
+                $next_post = get_next_post();
+                if ($next_post) {
+                    echo '<a href="' . esc_url(get_permalink($next_post)) . '" class="zen-ui-link block break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;">下一篇：' . esc_html(get_the_title($next_post)) . '</a>';
+                }
+                ?>
+            </div>
+        </nav>
         <?php endif; ?>
 
     <?php 

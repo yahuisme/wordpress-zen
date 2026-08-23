@@ -77,8 +77,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const trapFocus = (container) => {
+        container.addEventListener('keydown', (event) => {
+            if (event.key !== 'Tab') return;
+
+            const focusable = Array.from(container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (!first || !last) {
+                event.preventDefault();
+            } else if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+    };
+
     // --- 1. 代码高亮 ---
-    const wpCodeBlocks = document.querySelectorAll('pre.wp-block-code');
+    const wpCodeBlocks = document.querySelectorAll('.entry-content pre, pre.wp-block-code');
     wpCodeBlocks.forEach(block => {
         const code = block.querySelector('code');
         if (code) {
@@ -86,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (className.startsWith('language-')) code.classList.add(className);
             });
         }
-        if (typeof hljs !== 'undefined' && code) hljs.highlightElement(code);
+        if (typeof hljs !== 'undefined' && code && !code.dataset.highlighted) hljs.highlightElement(code);
     });
 
     // --- 2. Lightbox (A11y: Focus Management & ARIA) ---
@@ -97,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeBtn = document.getElementById('lightbox-close');
         const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
         let lastFocusedElement;
+        trapFocus(lightbox);
 
         images.forEach(img => {
             img.classList.add('cursor-zoom-in');
@@ -111,9 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 lightboxImg.src = img.src;
                 lightboxImg.alt = img.alt || '放大图片';
-                if (img.srcset) lightboxImg.srcset = img.srcset;
+                if (img.srcset) {
+                    lightboxImg.srcset = img.srcset;
+                } else {
+                    lightboxImg.removeAttribute('srcset');
+                }
                 lightbox.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+                setBackgroundModalState(true);
                 setTimeout(() => closeBtn.focus(), 100);
             };
 
@@ -128,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeLightbox = () => {
             if (!lightbox.classList.contains('hidden')) {
                 lightbox.classList.add('hidden');
-                document.body.style.overflow = 'auto';
+                setBackgroundModalState(false);
                 if (lastFocusedElement) lastFocusedElement.focus();
             }
         };
@@ -283,8 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFocusBeforeDrawer;
 
     if (floatingTocBtn && drawerToc && tocOverlay) {
+        trapFocus(drawerToc);
 
         const openDrawer = () => {
+            if (!drawerToc.hasAttribute('inert')) return;
             lastFocusBeforeDrawer = document.activeElement;
             tocOverlay.classList.remove('hidden');
             requestAnimationFrame(() => {
@@ -309,7 +336,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setTimeout(() => {
                 tocOverlay.classList.add('hidden');
-                document.body.style.overflow = '';
+                const lightboxOpen = document.getElementById('lightbox') && !document.getElementById('lightbox').classList.contains('hidden');
+                const searchOpen = document.getElementById('search-modal') && !document.getElementById('search-modal').classList.contains('hidden');
+                if (lightboxOpen || searchOpen) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
                 // A11y Cleanup
                 floatingTocBtn.setAttribute('aria-expanded', 'false');
                 drawerToc.setAttribute('inert', '');
@@ -330,25 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Focus Trap Logic for Drawer
         drawerToc.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') {
-                const focusableElements = drawerToc.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                const firstElement = focusableElements[0];
-                const lastElement = focusableElements[focusableElements.length - 1];
-
-                if (e.shiftKey) { // Shift + Tab
-                    if (document.activeElement === firstElement) {
-                        e.preventDefault();
-                        lastElement.focus();
-                    }
-                } else { // Tab
-                    if (document.activeElement === lastElement) {
-                        e.preventDefault();
-                        firstElement.focus();
-                    }
-                }
-            } else if (e.key === 'Escape') {
+            if (e.key === 'Escape') {
                 closeDrawer();
             }
         });
@@ -359,16 +375,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenu = document.getElementById('mobile-menu');
 
     if (mobileMenuBtn && mobileMenu) {
+        const closeMobileMenu = (restoreFocus = true) => {
+            mobileMenu.classList.add('hidden');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+            if (restoreFocus) mobileMenuBtn.focus();
+        };
+
+        trapFocus(mobileMenu);
+
         mobileMenuBtn.addEventListener('click', () => {
             const isHidden = mobileMenu.classList.contains('hidden');
             if (isHidden) {
                 mobileMenu.classList.remove('hidden');
                 mobileMenuBtn.setAttribute('aria-expanded', 'true');
                 mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
+                const firstLink = mobileMenu.querySelector('a');
+                if (firstLink) firstLink.focus();
             } else {
-                mobileMenu.classList.add('hidden');
-                mobileMenuBtn.setAttribute('aria-expanded', 'false');
-                mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+                closeMobileMenu();
+            }
+        });
+
+        mobileMenu.addEventListener('click', (event) => {
+            if (event.target.closest('a')) closeMobileMenu(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+                closeMobileMenu();
             }
         });
     }
@@ -491,8 +526,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     let lastActiveElementBeforeSearch;
     let searchCloseTimer;
+    let modalOpenCount = 0;
+
+    const setBackgroundModalState = (isOpen) => {
+        modalOpenCount = isOpen ? modalOpenCount + 1 : Math.max(0, modalOpenCount - 1);
+        const applyInert = modalOpenCount > 0;
+        const activeModalIds = new Set(['lightbox', 'search-modal']);
+
+        document.body.style.overflow = applyInert ? 'hidden' : '';
+
+        Array.from(document.body.children).forEach((node) => {
+            if (activeModalIds.has(node.id)) {
+                return;
+            }
+
+            if (applyInert) {
+                node.setAttribute('inert', '');
+                node.setAttribute('aria-hidden', 'true');
+            } else {
+                node.removeAttribute('inert');
+                node.removeAttribute('aria-hidden');
+            }
+        });
+    };
 
     if (searchToggle && searchModal && searchInput) {
+        trapFocus(searchModal);
         const openSearch = () => {
             if (searchCloseTimer) clearTimeout(searchCloseTimer);
             lastActiveElementBeforeSearch = document.activeElement;
@@ -501,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchModal.classList.remove('opacity-0');
                 searchModal.classList.add('is-open');
             });
-            document.body.style.overflow = 'hidden';
+            setBackgroundModalState(true);
             searchToggle.setAttribute('aria-expanded', 'true');
             setTimeout(() => searchInput.focus(), 180);
         };
@@ -513,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchModal.classList.add('opacity-0');
             searchCloseTimer = setTimeout(() => {
                 searchModal.classList.add('hidden');
-                document.body.style.overflow = '';
+                setBackgroundModalState(false);
                 if (lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
