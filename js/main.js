@@ -306,19 +306,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const tocOverlay = document.getElementById('toc-overlay');
     const drawerClose = document.getElementById('drawer-toc-close');
     let lastFocusBeforeDrawer;
+    let drawerCloseTimer;
 
     if (floatingTocBtn && drawerToc && tocOverlay) {
         trapFocus(drawerToc);
 
         const openDrawer = () => {
             if (!drawerToc.hasAttribute('inert')) return;
+            if (drawerCloseTimer) {
+                clearTimeout(drawerCloseTimer);
+                drawerCloseTimer = null;
+            }
             lastFocusBeforeDrawer = document.activeElement;
             tocOverlay.classList.remove('hidden');
             requestAnimationFrame(() => {
                 tocOverlay.classList.remove('opacity-0');
                 drawerToc.classList.remove('translate-x-full');
             });
-            document.body.style.overflow = 'hidden';
+            setBackgroundModalState(true);
 
             // A11y
             floatingTocBtn.setAttribute('aria-expanded', 'true');
@@ -331,22 +336,19 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const closeDrawer = () => {
+            if (drawerToc.hasAttribute('inert') || drawerCloseTimer) return;
             tocOverlay.classList.add('opacity-0');
             drawerToc.classList.add('translate-x-full');
 
-            setTimeout(() => {
+            drawerCloseTimer = setTimeout(() => {
                 tocOverlay.classList.add('hidden');
-                const lightboxOpen = document.getElementById('lightbox') && !document.getElementById('lightbox').classList.contains('hidden');
-                const searchOpen = document.getElementById('search-modal') && !document.getElementById('search-modal').classList.contains('hidden');
-                if (lightboxOpen || searchOpen) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
+                setBackgroundModalState(false);
                 // A11y Cleanup
                 floatingTocBtn.setAttribute('aria-expanded', 'false');
                 drawerToc.setAttribute('inert', '');
-                if (lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus();
+                const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden)');
+                if (!anotherModalOpen && lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus();
+                drawerCloseTimer = null;
             }, 300);
         };
 
@@ -573,7 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
             searchCloseTimer = setTimeout(() => {
                 searchModal.classList.add('hidden');
                 setBackgroundModalState(false);
-                if (lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
+                const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])');
+                if (!anotherModalOpen && lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
         };

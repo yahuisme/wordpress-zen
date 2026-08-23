@@ -142,6 +142,20 @@ function zen_register_options() {
 }
 add_action('admin_init', 'zen_register_options');
 
+function zen_migrate_footer_credits() {
+    $legacy = get_option('zen_show_footer_credits', null);
+    if ($legacy === null) {
+        return;
+    }
+
+    foreach (array('zen_show_footer_theme_by', 'zen_show_footer_wordpress', 'zen_show_footer_rss') as $key) {
+        if (get_option($key, null) === null) {
+            update_option($key, empty($legacy) ? 0 : 1);
+        }
+    }
+}
+add_action('admin_init', 'zen_migrate_footer_credits', 1);
+
 function zen_sanitize_checkbox($value) {
     return empty($value) ? 0 : 1;
 }
@@ -266,7 +280,7 @@ function zen_options_page_html() {
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚内容', 'zen'); ?></label></th>
                     <td>
                         <textarea name="zen_footer_text" id="zen_footer_text" rows="3" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
-                        <p class="description"><?php esc_html_e('显示在页脚版权下方的自定义内容，支持少量 HTML（如链接）。留空则只显示默认版权。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('显示在右侧页脚信息上方的自定义内容，支持少量 HTML（如链接）。留空则不显示。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>
