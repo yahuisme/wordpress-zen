@@ -26,7 +26,7 @@ $zen_highlight_title = ! empty($args['highlight_title']);
         ?>
     </div>
 
-    <h2 id="post-title-<?php the_ID(); ?>" class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
+    <h2 id="post-title-<?php the_ID(); ?>" class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
         <a href="<?php the_permalink(); ?>" class="hover:underline decoration-1 underline-offset-4 decoration-gray-400 transition-colors">
             <?php
             if ($zen_highlight_title) {
