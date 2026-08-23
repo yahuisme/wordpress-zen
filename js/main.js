@@ -97,7 +97,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- 1. 代码高亮 ---
+    // --- 1. 代码高亮 + 一键复制 ---
+    const copyTextToClipboard = (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+        return new Promise((resolve, reject) => {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                resolve();
+            } catch (error) {
+                reject(error);
+            } finally {
+                textarea.remove();
+            }
+        });
+    };
+
     const wpCodeBlocks = document.querySelectorAll('.entry-content pre, pre.wp-block-code');
     wpCodeBlocks.forEach(block => {
         const code = block.querySelector('code');
@@ -107,6 +130,43 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         if (typeof hljs !== 'undefined' && code && !code.dataset.highlighted) hljs.highlightElement(code);
+
+        if (code && !block.querySelector('.zen-code-copy')) {
+            block.classList.add('zen-code-block');
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.className = 'zen-code-copy';
+            copyBtn.setAttribute('aria-label', '复制代码');
+            const copyIcon = document.createElement('i');
+            copyIcon.className = 'ph ph-copy';
+            copyIcon.setAttribute('aria-hidden', 'true');
+            const copyLabel = document.createElement('span');
+            copyLabel.textContent = '复制';
+            copyBtn.appendChild(copyIcon);
+            copyBtn.appendChild(copyLabel);
+
+            copyBtn.addEventListener('click', () => {
+                copyTextToClipboard(code.textContent).then(() => {
+                    copyIcon.className = 'ph ph-check';
+                    copyLabel.textContent = '已复制';
+                    copyBtn.classList.add('is-copied');
+                    copyBtn.setAttribute('aria-label', '已复制');
+                    setTimeout(() => {
+                        copyIcon.className = 'ph ph-copy';
+                        copyLabel.textContent = '复制';
+                        copyBtn.classList.remove('is-copied');
+                        copyBtn.setAttribute('aria-label', '复制代码');
+                    }, 1600);
+                }).catch(() => {
+                    copyLabel.textContent = '复制失败';
+                    setTimeout(() => {
+                        copyLabel.textContent = '复制';
+                    }, 1600);
+                });
+            });
+
+            block.appendChild(copyBtn);
+        }
     });
 
     // --- 2. Lightbox (A11y: Focus Management & ARIA) ---
