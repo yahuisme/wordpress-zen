@@ -37,6 +37,12 @@ jobs:
             exit 1
           fi
 
+          {
+            printf '更新内容\n\n'
+            cat "$NOTES_FILE"
+          } > "$NOTES_FILE.tmp"
+          mv "$NOTES_FILE.tmp" "$NOTES_FILE"
+
           git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github'
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
