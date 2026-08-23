@@ -236,16 +236,8 @@ function zen_options_page_html() {
                 <?php zen_checkbox_field('zen_show_tags', __('标签区', 'zen'), __('在文章页底部显示标签区', 'zen')); ?>
                 <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
                 <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示文章目录（侧边栏 / 移动端抽屉）', 'zen')); ?>
-            </table>
-
-            <h2 class="title"><?php esc_html_e('文章信息', 'zen'); ?></h2>
-            <table class="form-table" role="presentation">
                 <?php zen_checkbox_field('zen_show_updated_date', __('最后更新时间', 'zen'), __('显示最后更新时间', 'zen')); ?>
                 <?php zen_checkbox_field('zen_show_reading_time', __('预计阅读时间', 'zen'), __('显示预计阅读时间', 'zen')); ?>
-            </table>
-
-            <h2 class="title"><?php esc_html_e('文章导航', 'zen'); ?></h2>
-            <table class="form-table" role="presentation">
                 <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇文章', 'zen'), __('显示上一篇 / 下一篇文章', 'zen')); ?>
             </table>
 
@@ -277,13 +269,22 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('显示在页脚版权下方的自定义内容，支持少量 HTML（如链接）。留空则只显示默认版权。', 'zen'); ?></p>
                     </td>
                 </tr>
-            </table>
-
-            <h2 class="title"><?php esc_html_e('页脚信息', 'zen'); ?></h2>
-            <table class="form-table" role="presentation">
-                <?php zen_checkbox_field('zen_show_footer_theme_by', __('Theme By RyanZ', 'zen'), __('显示 Theme By RyanZ', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_footer_wordpress', __('Powered By WordPress', 'zen'), __('显示 Powered By WordPress', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_footer_rss', __('RSS', 'zen'), __('显示 RSS', 'zen')); ?>
+                <tr>
+                    <th scope="row"><?php esc_html_e('页脚信息', 'zen'); ?></th>
+                    <td>
+                        <?php foreach (array(
+                            'zen_show_footer_theme_by'  => __('Theme By RyanZ', 'zen'),
+                            'zen_show_footer_wordpress' => __('Powered By WordPress', 'zen'),
+                            'zen_show_footer_rss'       => __('RSS', 'zen'),
+                        ) as $key => $label) : ?>
+                            <input type="hidden" name="<?php echo esc_attr($key); ?>" value="0">
+                            <label for="<?php echo esc_attr($key); ?>" style="display: inline-flex; align-items: center; margin-right: 1.5rem;">
+                                <input type="checkbox" name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" value="1" <?php checked(1, zen_get_option($key)); ?>>
+                                <?php echo esc_html($label); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </td>
+                </tr>
             </table>
 
             <h2 class="title"><?php esc_html_e('高级', 'zen'); ?></h2>

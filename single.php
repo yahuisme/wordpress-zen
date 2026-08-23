@@ -94,6 +94,14 @@
                 </span>
             <?php endif; ?>
 
+            <?php if (zen_get_option('zen_show_reading_time')) : ?>
+                <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">/</span>
+                <span class="flex items-center gap-1">
+                    <i class="ph ph-clock text-sm" aria-hidden="true"></i>
+                    <?php echo esc_html(zen_get_reading_time()); ?> 分钟阅读
+                </span>
+            <?php endif; ?>
+
         </div>
         <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight serif">
             <?php the_title(); ?>
@@ -104,20 +112,12 @@
         <?php the_content(); ?>
     </article>
 
-    <?php if (zen_get_option('zen_show_updated_date') || zen_get_option('zen_show_reading_time')) : ?>
+    <?php if (zen_get_option('zen_show_updated_date')) : ?>
     <div class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400" aria-label="文章信息">
-        <?php if (zen_get_option('zen_show_updated_date')) : ?>
         <span class="flex items-center gap-1">
             <i class="ph ph-clock-counter-clockwise text-sm" aria-hidden="true"></i>
             最后更新：<?php echo esc_html(get_the_modified_date()); ?>
         </span>
-        <?php endif; ?>
-        <?php if (zen_get_option('zen_show_reading_time')) : ?>
-        <span class="flex items-center gap-1">
-            <i class="ph ph-clock text-sm" aria-hidden="true"></i>
-            预计阅读：<?php echo esc_html(zen_get_reading_time()); ?> 分钟
-        </span>
-        <?php endif; ?>
     </div>
     <?php endif; ?>
 
