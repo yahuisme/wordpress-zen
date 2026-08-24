@@ -3,7 +3,7 @@
 <head>
     <meta charset="<?php echo esc_attr(get_bloginfo('charset')); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
+    <script data-rocket-exclude="true">
         (function() {
             var storageKey = 'zen-theme-mode';
             var mode = '<?php echo esc_js(zen_get_option('zen_theme_mode_default')); ?>';
