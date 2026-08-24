@@ -103,9 +103,8 @@
 
             <div class="zen-header-tools">
                 <!-- Theme Toggle Button -->
-                <button id="theme-toggle"
+                <button id="theme-toggle" type="button"
                         class="zen-theme-toggle zen-header-tool zen-icon-btn"
-                        type="button"
                         aria-label="切换主题"
                         title="跟随系统">
                     <i class="ph ph-circle-half text-xl md:text-lg" aria-hidden="true"></i>
@@ -113,7 +112,7 @@
                 </button>
 
                 <!-- Search Toggle Button -->
-                <button id="search-toggle"
+                <button id="search-toggle" type="button"
                         class="zen-header-tool zen-icon-btn"
                         aria-label="搜索"
                         aria-expanded="false"
@@ -122,7 +121,7 @@
                 </button>
 
                 <!-- Mobile Menu Button -->
-                <button id="mobile-menu-btn"
+                <button id="mobile-menu-btn" type="button"
                         class="zen-header-tool zen-icon-btn md:hidden"
                         aria-expanded="false"
                         aria-controls="mobile-menu">
@@ -134,7 +133,7 @@
     </div>
 
     <!-- Mobile Menu Overlay -->
-    <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute top-20 left-0 w-full p-4 shadow-lg animate-fade-in z-40">
+    <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute top-20 left-0 w-full p-4 shadow-lg animate-fade-in z-40" aria-hidden="true">
         <nav aria-label="移动端菜单" class="flex flex-col gap-4 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
             <?php
             wp_nav_menu(array(

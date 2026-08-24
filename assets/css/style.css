@@ -8,6 +8,8 @@
 @media (hover:none){.zen-code-copy{opacity:1}}
 .zen-home-title{font-size:1.3rem}
 @media (min-width:768px){.zen-home-title{font-size:1.6rem}}
+.zen-lightbox-panel{background-color:#f8fafc}
+.dark .zen-lightbox-panel{background-color:#202b36}
 .zen-lightbox{background:rgba(15,23,42,.58);backdrop-filter:blur(10px);padding:clamp(1rem,4vw,3rem)}
 .zen-lightbox-panel{display:flex;align-items:center;justify-content:center;max-width:min(92vw,72rem);max-height:86vh}
 .zen-lightbox-image{display:block;width:auto;height:auto;max-width:92vw;max-height:86vh;border-radius:.5rem;box-shadow:0 12px 36px rgba(0,0,0,.18)}
@@ -15,3 +17,6 @@
 .zen-lightbox-close:hover{border-color:var(--zen-text);background:var(--zen-surface);color:var(--zen-text);transform:scale(1.04)}
 .zen-lightbox-close:focus-visible{outline:2px solid var(--zen-text);outline-offset:3px}
 @media (max-width:640px){.zen-lightbox-panel{max-width:100vw;max-height:82vh}.zen-lightbox-image{max-width:92vw;max-height:82vh}.zen-lightbox-close{top:.4rem;right:.4rem;width:2rem;height:2rem}}
+@supports (height:100dvh){.zen-toc-drawer{height:100dvh}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.zen-lightbox{background:rgba(15,23,42,.94)}.zen-search-modal{background:#f8fafc}.dark .zen-search-modal{background:#18212b}}
+@media (prefers-reduced-motion:reduce){.zen-lightbox-close,.zen-lightbox-panel{transition:none!important}.zen-lightbox-close:hover{transform:none}}

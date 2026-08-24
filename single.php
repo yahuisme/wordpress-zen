@@ -30,7 +30,7 @@
         位置: 屏幕右侧边缘，垂直居中
         动画: 使用 Tailwind 实现弹性过渡 (Bezier Curve)
     -->
-    <button id="floating-toc-btn" 
+    <button id="floating-toc-btn" type="button"
             class="zen-mobile-toc xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-50
                    zen-floating-toc-btn p-3 rounded-l-lg 
                    shadow-lg hover:shadow-xl dark:shadow-none dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]
@@ -53,7 +53,7 @@
     
     <aside id="drawer-toc" 
            class="zen-toc-drawer fixed top-0 right-0 w-80 h-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" 
-           style="width: min(20rem, 100vw);"
+           style="width: min(20rem, 100vw); height: 100vh;"
            role="dialog" 
            aria-modal="true" 
            aria-labelledby="drawer-toc-title"
@@ -61,7 +61,7 @@
         
         <div class="zen-toc-drawer-header flex items-center justify-between p-6">
             <h3 id="drawer-toc-title" class="text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">目录</h3>
-            <button id="drawer-toc-close" class="zen-icon-btn text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500" aria-label="关闭目录">
+            <button id="drawer-toc-close" type="button" class="zen-icon-btn text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500" aria-label="关闭目录">
                 <i class="ph ph-x text-xl"></i>
             </button>
         </div>

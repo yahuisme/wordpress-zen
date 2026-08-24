@@ -42,7 +42,8 @@ function zen_json_ld() {
             );
         }
 
-        echo '<script type="application/ld+json">' . wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+        $json_options = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+        echo '<script type="application/ld+json">' . wp_json_encode($payload, $json_options) . '</script>';
     }
 }
 add_action('wp_head', 'zen_json_ld');

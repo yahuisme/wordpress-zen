@@ -43,7 +43,21 @@ jobs:
           } > "$NOTES_FILE.tmp"
           mv "$NOTES_FILE.tmp" "$NOTES_FILE"
 
-          git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github'
+          git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github' ':(exclude)AGENTS.md'
+
+          python - "$VERSION" <<'PY'
+          import sys, zipfile, re
+          version = sys.argv[1]
+          with zipfile.ZipFile('zen.zip') as archive:
+              names = set(archive.namelist())
+              required = {'zen/style.css', 'zen/functions.php', 'zen/index.php'}
+              if not required.issubset(names) or 'zen/AGENTS.md' in names or any(name.startswith('zen/.github/') for name in names):
+                  raise SystemExit('发布包结构校验失败')
+              style = archive.read('zen/style.css').decode('utf-8')
+              match = re.search(r'^Version:\s*(\S+)', style, re.MULTILINE)
+              if not match or match.group(1) != version:
+                  raise SystemExit('发布包版本校验失败')
+          PY
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
             gh release upload "v$VERSION" zen.zip --clobber
@@ -51,7 +65,7 @@ jobs:
           else
             gh release create "v$VERSION" zen.zip \
               --title "Zen Theme v$VERSION" \
-              --target main \
+              --target "${{ github.sha }}" \
               --notes-file "$NOTES_FILE"
             echo "已发布 Zen Theme v$VERSION。"
           fi
