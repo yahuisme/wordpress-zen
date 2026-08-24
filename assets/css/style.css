@@ -6,8 +6,8 @@
 .zen-code-copy.is-copied{color:var(--zen-text);border-color:color-mix(in srgb,var(--zen-text) 34%,var(--zen-border))}
 @media (hover:hover){.zen-code-copy{opacity:0}.zen-code-block:hover .zen-code-copy,.zen-code-copy:focus-visible{opacity:1}}
 @media (hover:none){.zen-code-copy{opacity:1}}
-.zen-home-title{font-size:1.35rem}
-@media (min-width:768px){.zen-home-title{font-size:1.7rem}}
+.zen-home-title{font-size:1.3rem}
+@media (min-width:768px){.zen-home-title{font-size:1.6rem}}
 .zen-lightbox{background:rgba(15,23,42,.58);backdrop-filter:blur(10px);padding:clamp(1rem,4vw,3rem)}
 .zen-lightbox-panel{display:flex;align-items:center;justify-content:center;max-width:min(92vw,72rem);max-height:86vh}
 .zen-lightbox-image{display:block;width:auto;height:auto;max-width:92vw;max-height:86vh;border-radius:.5rem;box-shadow:0 12px 36px rgba(0,0,0,.18)}
