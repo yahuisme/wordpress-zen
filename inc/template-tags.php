@@ -34,8 +34,15 @@ function zen_highlight_search_terms($text, $query = '') {
         return esc_html($text);
     }
 
+    $terms = array_filter($terms, function ($term) {
+        return function_exists('mb_strlen') ? mb_strlen($term) <= 100 : strlen($term) <= 300;
+    });
+    $terms = array_slice($terms, 0, 20);
+
     usort($terms, function ($a, $b) {
-        return strlen($b) <=> strlen($a);
+        $a_length = function_exists('mb_strlen') ? mb_strlen($a) : strlen($a);
+        $b_length = function_exists('mb_strlen') ? mb_strlen($b) : strlen($b);
+        return $b_length <=> $a_length;
     });
 
     $terms = array_map(function ($term) {

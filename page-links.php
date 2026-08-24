@@ -27,12 +27,13 @@ get_header(); ?>
             foreach ($bookmarks as $bookmark) {
                 ?>
                 <?php
-                $link_target = $bookmark->link_target ? $bookmark->link_target : '_blank';
+                $allowed_targets = array('_blank', '_self', '_parent', '_top');
+                $link_target = in_array($bookmark->link_target, $allowed_targets, true) ? $bookmark->link_target : '_blank';
                 $fallback_initial = function_exists('mb_substr') ? mb_substr($bookmark->link_name, 0, 1) : substr($bookmark->link_name, 0, 1);
                 ?>
                 <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="noopener noreferrer" class="zen-link-card group flex items-center p-4 rounded-lg transition-all">
                     <?php if ($bookmark->link_image) : ?>
-                        <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="<?php echo esc_attr($bookmark->link_name); ?>" class="w-14 h-14 rounded-full object-cover mr-4 grayscale group-hover:grayscale-0 transition-all duration-300">
+                        <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="<?php echo esc_attr($bookmark->link_name); ?>" width="56" height="56" loading="lazy" decoding="async" class="w-14 h-14 rounded-full object-cover mr-4 grayscale group-hover:grayscale-0 transition-all duration-300">
                     <?php else : ?>
                         <div class="zen-link-avatar w-14 h-14 rounded-full flex items-center justify-center text-xl font-serif mr-4">
                             <?php echo esc_html($fallback_initial); ?>

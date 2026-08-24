@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     lightboxImg.removeAttribute('srcset');
                 }
                 lightbox.classList.remove('hidden');
-                setBackgroundModalState(true);
+                setBackgroundModalState();
                 setTimeout(() => closeBtn.focus(), 100);
             };
 
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeLightbox = () => {
             if (!lightbox.classList.contains('hidden')) {
                 lightbox.classList.add('hidden');
-                setBackgroundModalState(false);
+                setBackgroundModalState();
                 if (lastFocusedElement) lastFocusedElement.focus();
             }
         };
@@ -277,10 +277,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tocContainer) tocContainer.classList.remove('opacity-0');
             if (floatingTocBtn) floatingTocBtn.classList.remove('hidden');
 
+            const usedIds = new Set();
             const tocItems = Array.from(headers).map((header, index) => {
-                if (!header.id) header.id = 'section-' + index;
+                const baseId = header.id || 'section-' + index;
+                let headingId = baseId;
+                let suffix = 2;
+                while (usedIds.has(headingId)) headingId = baseId + '-' + suffix++;
+                header.id = headingId;
+                usedIds.add(headingId);
                 return {
-                    id: header.id,
+                    id: headingId,
                     level: header.tagName.toLowerCase(),
                     text: header.textContent.trim() || `章节 ${index + 1}`,
                 };
@@ -322,6 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
             fillTocNav(drawerTocNav);
 
             // 4. Scroll Spy (滚动监听)
+            if (typeof IntersectionObserver === 'undefined') {
+                if (tocContainer) tocContainer.classList.remove('opacity-0');
+            } else {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -353,6 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             headers.forEach(header => observer.observe(header));
             const commentsSection = document.getElementById('comments');
             if (commentsSection) observer.observe(commentsSection);
+            }
 
         } else {
             // 没有标题，隐藏容器
@@ -383,11 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 tocOverlay.classList.remove('opacity-0');
                 drawerToc.classList.remove('translate-x-full');
             });
-            setBackgroundModalState(true);
-
             // A11y
             floatingTocBtn.setAttribute('aria-expanded', 'true');
             drawerToc.removeAttribute('inert');
+            setBackgroundModalState();
 
             // Focus trap: move focus to close button
             setTimeout(() => {
@@ -402,10 +411,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             drawerCloseTimer = setTimeout(() => {
                 tocOverlay.classList.add('hidden');
-                setBackgroundModalState(false);
                 // A11y Cleanup
                 floatingTocBtn.setAttribute('aria-expanded', 'false');
                 drawerToc.setAttribute('inert', '');
+                setBackgroundModalState();
                 const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden)');
                 if (!anotherModalOpen && lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus();
                 drawerCloseTimer = null;
@@ -449,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileMenuBtn.addEventListener('click', () => {
             const isHidden = mobileMenu.classList.contains('hidden');
             if (isHidden) {
+                if (drawerToc && !drawerToc.hasAttribute('inert')) return;
                 mobileMenu.classList.remove('hidden');
                 mobileMenuBtn.setAttribute('aria-expanded', 'true');
                 mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
@@ -525,9 +535,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btn.addEventListener('click', () => {
             if (audio.paused) {
-                audio.play();
-                btn.innerHTML = '<i class="ph ph-pause text-lg" aria-hidden="true"></i>';
-                btn.setAttribute('aria-label', '暂停音频');
+                audio.play().then(() => {
+                    btn.innerHTML = '<i class="ph ph-pause text-lg" aria-hidden="true"></i>';
+                    btn.setAttribute('aria-label', '暂停音频');
+                }).catch(() => {
+                    btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
+                    btn.setAttribute('aria-label', '播放音频');
+                });
             } else {
                 audio.pause();
                 btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
@@ -545,7 +559,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const rect = progressContainer.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
-            audio.currentTime = (clickX / rect.width) * audio.duration;
+            const ratio = Math.min(1, Math.max(0, clickX / rect.width));
+            audio.currentTime = ratio * audio.duration;
         });
 
         progressContainer.addEventListener('keydown', (e) => {
@@ -588,17 +603,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     let lastActiveElementBeforeSearch;
     let searchCloseTimer;
-    let modalOpenCount = 0;
-
-    const setBackgroundModalState = (isOpen) => {
-        modalOpenCount = isOpen ? modalOpenCount + 1 : Math.max(0, modalOpenCount - 1);
-        const applyInert = modalOpenCount > 0;
-        const activeModalIds = new Set(['lightbox', 'search-modal']);
+    const setBackgroundModalState = () => {
+        const applyInert = Boolean(document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden), #drawer-toc:not([inert])'));
+        const activeModalIds = new Set(['lightbox', 'search-modal', 'drawer-toc']);
 
         document.body.style.overflow = applyInert ? 'hidden' : '';
 
         Array.from(document.body.children).forEach((node) => {
-            if (activeModalIds.has(node.id)) {
+            if (activeModalIds.has(node.id) || Array.from(activeModalIds).some((id) => {
+                const modal = document.getElementById(id);
+                return modal && node.contains(modal);
+            })) {
                 return;
             }
 
@@ -622,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchModal.classList.remove('opacity-0');
                 searchModal.classList.add('is-open');
             });
-            setBackgroundModalState(true);
+            setBackgroundModalState();
             searchToggle.setAttribute('aria-expanded', 'true');
             setTimeout(() => searchInput.focus(), 180);
         };
@@ -634,14 +649,23 @@ document.addEventListener('DOMContentLoaded', () => {
             searchModal.classList.add('opacity-0');
             searchCloseTimer = setTimeout(() => {
                 searchModal.classList.add('hidden');
-                setBackgroundModalState(false);
+                setBackgroundModalState();
                 const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])');
                 if (!anotherModalOpen && lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
         };
 
-        searchToggle.addEventListener('click', openSearch);
+        searchToggle.addEventListener('click', () => {
+            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                mobileMenu.classList.add('hidden');
+                if (mobileMenuBtn) {
+                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
+                    mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+                }
+            }
+            openSearch();
+        });
         if (searchClose) searchClose.addEventListener('click', closeSearch);
         searchModal.addEventListener('click', (e) => {
             if (e.target === searchModal || e.target.closest('[data-search-dismiss="true"]')) closeSearch();

@@ -47,12 +47,14 @@
      role="dialog" 
      aria-modal="true" 
      aria-label="图片查看器" 
-     class="zen-lightbox fixed inset-0 z-[100] backdrop-blur-sm hidden flex items-center justify-center p-4 cursor-zoom-out"
+     class="zen-lightbox fixed inset-0 z-[100] hidden flex items-center justify-center p-4 cursor-zoom-out"
      tabindex="-1">
-    <img id="lightbox-img" src="" alt="" class="max-w-full max-h-screen object-contain shadow-2xl rounded-sm">
-    <button id="lightbox-close" class="zen-icon-btn absolute top-4 right-4 text-gray-500 hover:text-gray-900 dark:hover:text-white text-3xl focus:outline-none focus:ring-2 focus:ring-blue-500 rounded" aria-label="关闭图片">
-        &times;
-    </button>
+    <div class="zen-lightbox-panel relative cursor-default">
+        <img id="lightbox-img" src="" alt="" class="zen-lightbox-image object-contain">
+        <button id="lightbox-close" class="zen-lightbox-close zen-icon-btn flex items-center justify-center" type="button" aria-label="关闭图片">
+            <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+    </div>
 </div>
 <?php endif; ?>
 

@@ -15,6 +15,10 @@ function zen_json_ld() {
             'headline' => get_the_title(),
             'datePublished' => get_the_date('c'),
             'dateModified' => get_the_modified_date('c'),
+            'mainEntityOfPage' => array(
+                '@type' => 'WebPage',
+                '@id' => get_permalink(),
+            ),
             'author' => array(
                 '@type' => 'Person',
                 'name' => get_the_author_meta('display_name', $author_id),
@@ -22,16 +26,20 @@ function zen_json_ld() {
             'publisher' => array(
                 '@type' => 'Organization',
                 'name' => get_bloginfo('name'),
-                'logo' => array(
-                    '@type' => 'ImageObject',
-                    'url' => get_avatar_url(get_option('admin_email')),
-                ),
             ),
             'description' => get_the_excerpt(),
         );
 
         if (has_post_thumbnail()) {
             $payload['image'] = get_the_post_thumbnail_url($post, 'full');
+        }
+
+        $site_icon = get_site_icon_url(512);
+        if ($site_icon) {
+            $payload['publisher']['logo'] = array(
+                '@type' => 'ImageObject',
+                'url' => $site_icon,
+            );
         }
 
         echo '<script type="application/ld+json">' . wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';

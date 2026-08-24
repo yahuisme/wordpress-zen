@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Package and publish release
         env:
@@ -46,7 +46,8 @@ jobs:
           git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github'
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo "Release v$VERSION 已存在，跳过。"
+            gh release upload "v$VERSION" zen.zip --clobber
+            echo "Release v$VERSION 已存在，已替换 zen.zip。"
           else
             gh release create "v$VERSION" zen.zip \
               --title "Zen Theme v$VERSION" \

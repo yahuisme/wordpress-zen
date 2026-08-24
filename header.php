@@ -36,11 +36,11 @@
                 $post = get_post();
                 $excerpt = wp_trim_words($post->post_content, 30);
             }
-            echo esc_attr(strip_tags($excerpt)); 
+            echo esc_attr(wp_html_excerpt(wp_strip_all_tags($excerpt), 160, '…'));
         } elseif ( is_category() || is_tag() ) {
-            echo esc_attr(strip_tags(term_description()));
+            echo esc_attr(wp_html_excerpt(wp_strip_all_tags(term_description()), 160, '…'));
         } elseif ( is_search() ) {
-            echo esc_attr('关于“' . get_search_query(false) . '”的搜索结果 - ' . get_bloginfo('name'));
+            echo esc_attr(wp_html_excerpt('关于“' . get_search_query(false) . '”的搜索结果 - ' . get_bloginfo('name'), 160, '…'));
         } else {
             $name = get_bloginfo('name');
             $description = get_bloginfo('description');
