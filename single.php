@@ -121,6 +121,24 @@
     </div>
     <?php endif; ?>
 
+        <?php if (zen_get_option('zen_show_copyright') && zen_get_option('zen_copyright_license') !== 'none') : ?>
+        <?php
+        $zen_license = zen_get_option('zen_copyright_license');
+        $zen_licenses = array(
+            'all-rights-reserved' => array('保留所有权利', ''),
+            'cc-by-4.0'          => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans'),
+            'cc-by-sa-4.0'       => array('CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans'),
+            'cc-by-nc-sa-4.0'    => array('CC BY-NC-SA 4.0', 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans'),
+        );
+        $zen_license_info = isset($zen_licenses[$zen_license]) ? $zen_licenses[$zen_license] : $zen_licenses['cc-by-nc-sa-4.0'];
+        ?>
+        <aside class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-600 dark:text-gray-400 leading-relaxed" aria-label="文章版权信息">
+            <div>本文作者：<?php echo esc_html(get_the_author()); ?></div>
+            <div>本文链接：<a href="<?php echo esc_url(get_permalink()); ?>" class="zen-ui-link break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;"><?php echo esc_html(get_permalink()); ?></a></div>
+            <div>版权声明：除特别声明外，本站文章<?php if ($zen_license_info[1]) : ?>采用 <a href="<?php echo esc_url($zen_license_info[1]); ?>" target="_blank" rel="license noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white"><?php echo esc_html($zen_license_info[0]); ?></a> 许可协议。<?php else : ?><?php echo esc_html($zen_license_info[0]); ?>。<?php endif; ?></div>
+        </aside>
+        <?php endif; ?>
+
         <?php if (zen_get_option('zen_show_tags')) : ?>
         <div class="zen-post-taxonomy mt-12 pt-7 border-t border-gray-100 dark:border-gray-800">
             <div class="zen-taxonomy-row">
@@ -142,24 +160,6 @@
                 </div>
             </div>
         </div>
-        <?php endif; ?>
-
-        <?php if (zen_get_option('zen_show_copyright') && zen_get_option('zen_copyright_license') !== 'none') : ?>
-        <?php
-        $zen_license = zen_get_option('zen_copyright_license');
-        $zen_licenses = array(
-            'all-rights-reserved' => array('保留所有权利', ''),
-            'cc-by-4.0'          => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans'),
-            'cc-by-sa-4.0'       => array('CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans'),
-            'cc-by-nc-sa-4.0'    => array('CC BY-NC-SA 4.0', 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans'),
-        );
-        $zen_license_info = isset($zen_licenses[$zen_license]) ? $zen_licenses[$zen_license] : $zen_licenses['cc-by-nc-sa-4.0'];
-        ?>
-        <aside class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-600 dark:text-gray-400 leading-relaxed" aria-label="文章版权信息">
-            <div>本文作者：<?php echo esc_html(get_the_author()); ?></div>
-            <div>本文链接：<a href="<?php echo esc_url(get_permalink()); ?>" class="zen-ui-link break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;"><?php echo esc_html(get_permalink()); ?></a></div>
-            <div>版权声明：除特别声明外，本站文章<?php if ($zen_license_info[1]) : ?>采用 <a href="<?php echo esc_url($zen_license_info[1]); ?>" target="_blank" rel="license noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white"><?php echo esc_html($zen_license_info[0]); ?></a> 许可协议。<?php else : ?><?php echo esc_html($zen_license_info[0]); ?>。<?php endif; ?></div>
-        </aside>
         <?php endif; ?>
 
         <?php if (zen_get_option('zen_show_post_navigation')) : ?>

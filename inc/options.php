@@ -233,11 +233,22 @@ function zen_options_page_html() {
     }
     ?>
     <div class="wrap">
+        <style>
+            .zen-options-section-title {
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                padding-bottom: .5rem;
+                border-bottom: 1px solid #dcdcde;
+                font-size: 1.25rem;
+                line-height: 1.4;
+                font-weight: 600;
+            }
+        </style>
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <form method="post" action="options.php">
             <?php settings_fields('zen_options'); ?>
 
-            <h2 class="title"><?php esc_html_e('文章', 'zen'); ?></h2>
+            <h2 class="title zen-options-section-title"><?php esc_html_e('文章', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <?php zen_checkbox_field('zen_show_reading_count', __('阅读量', 'zen'), __('在文章页显示阅读量', 'zen')); ?>
                 <tr>
@@ -255,7 +266,7 @@ function zen_options_page_html() {
                 <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇文章', 'zen'), __('显示上一篇 / 下一篇文章', 'zen')); ?>
             </table>
 
-            <h2 class="title"><?php esc_html_e('界面', 'zen'); ?></h2>
+            <h2 class="title zen-options-section-title"><?php esc_html_e('界面', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
                 <tr>
@@ -274,7 +285,7 @@ function zen_options_page_html() {
                 <?php zen_checkbox_field('zen_show_search_shortcut', __('搜索快捷键', 'zen'), __('启用搜索快捷键（Ctrl/⌘ + K）', 'zen')); ?>
             </table>
 
-            <h2 class="title"><?php esc_html_e('页脚', 'zen'); ?></h2>
+            <h2 class="title zen-options-section-title"><?php esc_html_e('页脚', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚内容', 'zen'); ?></label></th>
@@ -301,7 +312,7 @@ function zen_options_page_html() {
                 </tr>
             </table>
 
-            <h2 class="title"><?php esc_html_e('高级', 'zen'); ?></h2>
+            <h2 class="title zen-options-section-title"><?php esc_html_e('高级', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <?php zen_checkbox_field('zen_show_copyright', __('文章版权信息', 'zen'), __('在文章底部显示版权信息', 'zen')); ?>
                 <tr>
