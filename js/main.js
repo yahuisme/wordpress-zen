@@ -34,32 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const prefersDark = colorSchemeQuery ? colorSchemeQuery.matches : false;
         const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
         const meta = themeMeta[mode] || themeMeta.auto;
-        const themeVariables = isDark ? {
-            '--zen-bg': '#18212b',
-            '--zen-bg-soft': '#1d2833',
-            '--zen-surface': '#202b36',
-            '--zen-surface-elevated': 'rgba(32,43,54,.88)',
-            '--zen-border': '#334454',
-            '--zen-border-soft': '#2b3a47',
-            '--zen-text': '#dbe5ec',
-            '--zen-muted': '#9fb0bf',
-            '--zen-shadow': 'rgba(6,12,18,.26)'
-        } : {
-            '--zen-bg': '#f6f9fb',
-            '--zen-bg-soft': '#f1f6f8',
-            '--zen-surface': '#fbfcfa',
-            '--zen-surface-elevated': 'hsla(90,25%,98%,.86)',
-            '--zen-border': '#dce5ea',
-            '--zen-border-soft': '#e6edf1',
-            '--zen-text': '#172033',
-            '--zen-muted': '#64748b',
-            '--zen-shadow': 'rgba(43,65,82,.08)'
-        };
-
-        Object.entries(themeVariables).forEach(([name, value]) => {
-            document.documentElement.style.setProperty(name, value);
-        });
-
         document.documentElement.classList.toggle('dark', isDark);
         document.documentElement.dataset.themeMode = mode;
         document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
