@@ -41,7 +41,7 @@ get_header(); ?>
                     <?php endif; ?>
                     
                     <div class="flex-grow min-w-0">
-                        <h3 class="font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <h3 class="font-bold text-gray-900 dark:text-white truncate group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
                             <?php echo esc_html($bookmark->link_name); ?>
                         </h3>
                         <p class="text-sm text-gray-500 truncate"><?php echo esc_html($bookmark->link_description); ?></p>

@@ -43,7 +43,7 @@ $zen_title_classes = is_home() ? 'text-xl md:text-2xl zen-home-title' : 'text-xl
         <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '...')); ?>
     </div>
 
-    <a href="<?php the_permalink(); ?>" class="zen-action-link text-sm tracking-wide dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
+    <a href="<?php the_permalink(); ?>" class="zen-action-link text-sm tracking-wide dark:text-white">
         阅读更多
         <span class="screen-reader-text">关于 <?php the_title_attribute(); ?></span>
         <i class="ph ph-arrow-right ml-1.5 transform transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true"></i>

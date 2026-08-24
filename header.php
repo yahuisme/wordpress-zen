@@ -88,12 +88,12 @@
         <div class="zen-header-actions flex items-center">
             
             <!-- Desktop Navigation -->
-            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center text-sm font-medium text-gray-600 dark:text-gray-400">
+            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center text-base font-medium text-gray-600 dark:text-gray-400">
                 <?php
                 wp_nav_menu(array(
                     'theme_location' => 'primary',
                     'container'      => false,
-                    'menu_class'     => 'flex items-center gap-5 list-none m-0 p-0',
+                    'menu_class'     => 'flex items-center gap-5 list-none m-0 p-0 zen-primary-menu',
                     'items_wrap'     => '<ul id="%1$s" class="%2$s">%3$s</ul>',
                     'fallback_cb'    => false,
                     'depth'          => 1,
