@@ -37,9 +37,3 @@ WordPress 左侧菜单 —— 外观 —— 主题设置。可简单自定义外
 ## 开源许可
 
 本项目以 GPL-3.0 发布。详见 [LICENSE](LICENSE)。
-
-## 发布说明
-
-推送到 `main` 会运行发布工作流。工作流从 `style.css` 读取版本号；对应的 `vX.Y.Z` Release 不存在时创建新 Release，已存在时仅替换其中的 `zen.zip`。
-
-小幅增量修复不需要修改版本号，工作流会自动替换既有 Release 的 `zen.zip`。明显的新功能或版本发布才增加版本号并创建新的 Release。
