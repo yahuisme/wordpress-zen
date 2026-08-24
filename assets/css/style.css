@@ -6,7 +6,9 @@
 .zen-code-copy.is-copied{color:var(--zen-text);border-color:color-mix(in srgb,var(--zen-text) 34%,var(--zen-border))}
 @media (hover:hover){.zen-code-copy{opacity:0}.zen-code-block:hover .zen-code-copy,.zen-code-copy:focus-visible{opacity:1}}
 @media (hover:none){.zen-code-copy{opacity:1}}
-.zen-lightbox{background:rgba(15,23,42,.58);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:clamp(1rem,4vw,3rem)}
+.zen-home-title{font-size:1.35rem}
+@media (min-width:768px){.zen-home-title{font-size:1.7rem}}
+.zen-lightbox{background:rgba(15,23,42,.58);backdrop-filter:blur(10px);padding:clamp(1rem,4vw,3rem)}
 .zen-lightbox-panel{display:flex;align-items:center;justify-content:center;max-width:min(92vw,72rem);max-height:86vh}
 .zen-lightbox-image{display:block;width:auto;height:auto;max-width:92vw;max-height:86vh;border-radius:.5rem;box-shadow:0 12px 36px rgba(0,0,0,.18)}
 .zen-lightbox-close{position:fixed;top:1rem;right:1rem;z-index:1;width:2.25rem;height:2.25rem;border:1px solid var(--zen-border);border-radius:9999px;background:color-mix(in srgb,var(--zen-surface) 88%,transparent);color:var(--zen-muted);box-shadow:0 8px 24px var(--zen-shadow);font-size:1rem;transition:color .2s ease,background-color .2s ease,border-color .2s ease,transform .2s ease}
