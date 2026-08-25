@@ -7,7 +7,17 @@ if (!defined('ABSPATH')) exit;
 function zen_scripts() {
     $ver = '1.1.26';
 
-    wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Serif+SC:wght@200..900&display=swap', array(), null);
+    $font_family = zen_get_option('zen_font_family');
+    $font_query  = $font_family === 'space-grotesk'
+        ? 'family=Space+Grotesk:wght@300..700'
+        : 'family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900';
+    $font_stack  = $font_family === 'space-grotesk'
+        ? '"Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif'
+        : 'Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif';
+    $heading_stack = $font_family === 'space-grotesk'
+        ? $font_stack
+        : '"Noto Serif SC", "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+    wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query . '&family=Noto+Sans+SC:wght@100..900&family=Noto+Serif+SC:wght@200..900&display=swap', array(), null);
     wp_enqueue_script('phosphor-icons', get_template_directory_uri() . '/assets/js/phosphor-icons.js', array(), $ver, false);
 
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
@@ -33,6 +43,7 @@ function zen_scripts() {
     $compiled_css = get_template_directory() . '/assets/css/style.css';
     if (file_exists($compiled_css)) {
         wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), filemtime($compiled_css));
+        wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }');
     }
 
     if (is_singular() && comments_open() && get_option('thread_comments')) {

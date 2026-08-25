@@ -23,6 +23,7 @@ function zen_get_option($key) {
         'zen_show_post_navigation' => 1,
         'zen_show_reading_progress'=> 1,
         'zen_theme_mode_default'   => 'auto',
+        'zen_font_family'          => 'inter',
         'zen_show_back_to_top'     => 1,
         'zen_show_lightbox'        => 1,
         'zen_show_search_shortcut' => 1,
@@ -99,6 +100,10 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_theme_mode',
     ));
+    register_setting('zen_options', 'zen_font_family', array(
+        'type'              => 'string',
+        'sanitize_callback' => 'zen_sanitize_font_family',
+    ));
     register_setting('zen_options', 'zen_show_back_to_top', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_checkbox',
@@ -172,6 +177,10 @@ function zen_sanitize_excerpt_length($value) {
 
 function zen_sanitize_theme_mode($value) {
     return in_array($value, array('auto', 'light', 'dark'), true) ? $value : 'auto';
+}
+
+function zen_sanitize_font_family($value) {
+    return in_array($value, array('inter', 'space-grotesk'), true) ? $value : 'inter';
 }
 
 function zen_sanitize_copyright_license($value) {
@@ -278,6 +287,16 @@ function zen_options_page_html() {
                             <option value="dark" <?php selected('dark', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('深色', 'zen'); ?></option>
                         </select>
                         <p class="description"><?php esc_html_e('访客首次访问时使用的主题模式；用户手动切换后会记住其个人选择。', 'zen'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="zen_font_family"><?php esc_html_e('界面字体', 'zen'); ?></label></th>
+                    <td>
+                        <select name="zen_font_family" id="zen_font_family">
+                            <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
+                            <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
+                        </select>
+                        <p class="description"><?php esc_html_e('选择网站使用的主要无衬线字体；字体通过 Google Fonts 在线加载。文章标题仍使用 Noto Serif SC。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部按钮', 'zen'), __('显示右下角返回顶部按钮', 'zen')); ?>

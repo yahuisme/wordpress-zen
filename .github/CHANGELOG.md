@@ -7,8 +7,9 @@
 
 ## 1.0.9
 
-- 修复自定义页脚文字链接缺少悬停和键盘焦点反馈的问题。
-- 修复手机浏览器跟随系统夜间模式时首次打开页面短暂显示浅色的问题。
+- 新增界面字体选择，可在 Inter 与 Space Grotesk 之间切换。
+- 为两种字体方案加入 Noto Sans SC 中文字体，并优化跨平台中文回退链。
+- Inter 模式使用 Noto Serif SC 作为文章标题字体；Space Grotesk 模式使用 Space Grotesk 与 Noto Sans SC 作为文章标题字体。
 
 ## 1.0.8
 
