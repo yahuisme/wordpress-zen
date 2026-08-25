@@ -17,6 +17,7 @@ function zen_scripts() {
     $heading_stack = $font_family === 'space-grotesk'
         ? $font_stack
         : '"Noto Serif SC", "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+    $heading_weight = $font_family === 'space-grotesk' ? ' body h1, body h2, body h3 { font-weight: 600 !important; }' : '';
     $font_query .= '&family=Noto+Sans+SC:wght@100..900';
 
     if ($font_family !== 'space-grotesk') {
@@ -50,7 +51,7 @@ function zen_scripts() {
     $compiled_css = get_template_directory() . '/assets/css/style.css';
     if (file_exists($compiled_css)) {
         wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), filemtime($compiled_css));
-        wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }');
+        wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }' . $heading_weight);
     }
 
     if (is_singular() && comments_open() && get_option('thread_comments')) {
