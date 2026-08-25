@@ -17,7 +17,14 @@ function zen_scripts() {
     $heading_stack = $font_family === 'space-grotesk'
         ? $font_stack
         : '"Noto Serif SC", "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
-    wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query . '&family=Noto+Sans+SC:wght@100..900&family=Noto+Serif+SC:wght@200..900&display=swap', array(), null);
+    $font_query .= '&family=Noto+Sans+SC:wght@100..900';
+
+    if ($font_family !== 'space-grotesk') {
+        $font_query .= '&family=Noto+Serif+SC:wght@200..900';
+    }
+
+    $font_query .= '&display=swap';
+    wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query, array(), null);
     wp_enqueue_script('phosphor-icons', get_template_directory_uri() . '/assets/js/phosphor-icons.js', array(), $ver, false);
 
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {

@@ -296,7 +296,7 @@ function zen_options_page_html() {
                             <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
                             <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
                         </select>
-                        <p class="description"><?php esc_html_e('选择网站使用的主要无衬线字体；字体通过 Google Fonts 在线加载。文章标题仍使用 Noto Serif SC。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('Inter 模式使用 Noto Serif SC 作为文章标题字体；Space Grotesk 模式使用 Space Grotesk 与 Noto Sans SC 作为文章标题字体。字体通过 Google Fonts 在线加载。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部按钮', 'zen'), __('显示右下角返回顶部按钮', 'zen')); ?>
