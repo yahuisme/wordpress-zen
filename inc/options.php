@@ -12,44 +12,31 @@ if (!defined('ABSPATH')) exit;
  * Read a theme option with a default.
  */
 function zen_get_option($key) {
-    $defaults = array(
-        'zen_show_reading_count'   => 1,
-        'zen_excerpt_length'       => 100,
-        'zen_show_tags'            => 1,
-        'zen_show_highlight'       => 1,
-        'zen_show_toc'             => 1,
-        'zen_show_updated_date'    => 1,
-        'zen_show_reading_time'    => 1,
-        'zen_show_post_navigation' => 1,
-        'zen_show_reading_progress'=> 1,
-        'zen_theme_mode_default'   => 'auto',
-        'zen_font_family'          => 'inter',
-        'zen_show_back_to_top'     => 1,
-        'zen_show_lightbox'        => 1,
-        'zen_show_search_shortcut' => 1,
-        'zen_footer_text'          => '',
-        'zen_show_footer_credits'  => 1,
-        'zen_show_footer_theme_by' => 1,
-        'zen_show_footer_wordpress'=> 1,
-        'zen_show_footer_rss'      => 1,
-        'zen_show_copyright'       => 0,
-        'zen_copyright_license'    => 'cc-by-nc-sa-4.0',
-    );
+    static $defaults;
 
-    $footer_credit_keys = array(
-        'zen_show_footer_theme_by',
-        'zen_show_footer_wordpress',
-        'zen_show_footer_rss',
-    );
-
-    if (in_array($key, $footer_credit_keys, true)) {
-        $value = get_option($key, null);
-
-        if ($value === null) {
-            return zen_get_option('zen_show_footer_credits');
-        }
-
-        return $value;
+    if ($defaults === null) {
+        $defaults = array(
+            'zen_show_reading_count'   => 1,
+            'zen_excerpt_length'       => 100,
+            'zen_show_tags'            => 1,
+            'zen_show_highlight'       => 1,
+            'zen_show_toc'             => 1,
+            'zen_show_updated_date'    => 1,
+            'zen_show_reading_time'    => 1,
+            'zen_show_post_navigation' => 1,
+            'zen_show_reading_progress'=> 1,
+            'zen_theme_mode_default'   => 'auto',
+            'zen_font_family'          => 'inter',
+            'zen_show_back_to_top'     => 1,
+            'zen_show_lightbox'        => 1,
+            'zen_show_search_shortcut' => 1,
+            'zen_footer_text'          => '',
+            'zen_show_footer_theme_by' => 1,
+            'zen_show_footer_wordpress'=> 1,
+            'zen_show_footer_rss'      => 1,
+            'zen_show_copyright'       => 0,
+            'zen_copyright_license'    => 'cc-by-nc-sa-4.0',
+        );
     }
 
     return get_option($key, isset($defaults[$key]) ? $defaults[$key] : '');
@@ -60,41 +47,34 @@ function zen_get_option($key) {
  * ---------------------------------------------------------------------- */
 
 function zen_register_options() {
-    register_setting('zen_options', 'zen_show_reading_count', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
+    $checkbox_options = array(
+        'zen_show_reading_count',
+        'zen_show_tags',
+        'zen_show_highlight',
+        'zen_show_toc',
+        'zen_show_updated_date',
+        'zen_show_reading_time',
+        'zen_show_post_navigation',
+        'zen_show_reading_progress',
+        'zen_show_back_to_top',
+        'zen_show_lightbox',
+        'zen_show_search_shortcut',
+        'zen_show_footer_theme_by',
+        'zen_show_footer_wordpress',
+        'zen_show_footer_rss',
+        'zen_show_copyright',
+    );
+
+    foreach ($checkbox_options as $key) {
+        register_setting('zen_options', $key, array(
+            'type'              => 'integer',
+            'sanitize_callback' => 'zen_sanitize_checkbox',
+        ));
+    }
+
     register_setting('zen_options', 'zen_excerpt_length', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_excerpt_length',
-    ));
-    register_setting('zen_options', 'zen_show_tags', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_highlight', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_toc', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_updated_date', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_reading_time', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_post_navigation', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_reading_progress', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
     ));
     register_setting('zen_options', 'zen_theme_mode_default', array(
         'type'              => 'string',
@@ -104,41 +84,9 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_font_family',
     ));
-    register_setting('zen_options', 'zen_show_back_to_top', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_lightbox', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_search_shortcut', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
     register_setting('zen_options', 'zen_footer_text', array(
         'type'              => 'string',
         'sanitize_callback' => 'wp_kses_post',
-    ));
-    register_setting('zen_options', 'zen_show_footer_credits', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_footer_theme_by', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_footer_wordpress', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_footer_rss', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
-    ));
-    register_setting('zen_options', 'zen_show_copyright', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_checkbox',
     ));
     register_setting('zen_options', 'zen_copyright_license', array(
         'type'              => 'string',
@@ -146,20 +94,6 @@ function zen_register_options() {
     ));
 }
 add_action('admin_init', 'zen_register_options');
-
-function zen_migrate_footer_credits() {
-    $legacy = get_option('zen_show_footer_credits', null);
-    if ($legacy === null) {
-        return;
-    }
-
-    foreach (array('zen_show_footer_theme_by', 'zen_show_footer_wordpress', 'zen_show_footer_rss') as $key) {
-        if (get_option($key, null) === null) {
-            update_option($key, empty($legacy) ? 0 : 1);
-        }
-    }
-}
-add_action('admin_init', 'zen_migrate_footer_credits', 1);
 
 function zen_sanitize_checkbox($value) {
     return empty($value) ? 0 : 1;
@@ -360,7 +294,7 @@ function zen_options_page_html() {
  * ---------------------------------------------------------------------- */
 
 function zen_track_post_view() {
-    if (!is_singular('post') || is_preview() || is_feed()) {
+    if (!zen_get_option('zen_show_reading_count') || !is_singular('post') || is_preview() || is_feed()) {
         return;
     }
 

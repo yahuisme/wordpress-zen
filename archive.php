@@ -32,9 +32,10 @@
         ?>
     </h1>
 
-    <?php if (get_the_archive_description()) : ?>
+    <?php $archive_description = get_the_archive_description(); ?>
+    <?php if ($archive_description) : ?>
         <div class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mt-4 prose dark:prose-invert">
-            <?php the_archive_description(); ?>
+            <?php echo $archive_description; ?>
         </div>
     <?php endif; ?>
 </header>

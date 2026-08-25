@@ -110,8 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(textarea);
             textarea.select();
             try {
-                document.execCommand('copy');
-                resolve();
+                if (document.execCommand('copy')) {
+                    resolve();
+                } else {
+                    reject(new Error('Copy command failed'));
+                }
             } catch (error) {
                 reject(error);
             } finally {
@@ -286,11 +289,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tocContainer) tocContainer.classList.remove('opacity-0');
             if (floatingTocBtn) floatingTocBtn.classList.remove('hidden');
 
-            const usedIds = new Set();
+            const idCounts = new Map();
+            document.querySelectorAll('[id]').forEach((element) => {
+                idCounts.set(element.id, (idCounts.get(element.id) || 0) + 1);
+            });
+            const usedIds = new Set(idCounts.keys());
             const tocItems = Array.from(headers).map((header, index) => {
-                const baseId = header.id || 'section-' + index;
+                const originalId = header.id;
+                const baseId = originalId || 'section-' + index;
                 let headingId = baseId;
                 let suffix = 2;
+                if (originalId && idCounts.get(originalId) === 1) {
+                    usedIds.delete(originalId);
+                }
                 while (usedIds.has(headingId)) headingId = baseId + '-' + suffix++;
                 header.id = headingId;
                 usedIds.add(headingId);
@@ -301,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             });
 
-            if (document.getElementById('comments')) {
+            if (document.getElementById('comments') && !tocItems.some(item => item.id === 'comments')) {
                 tocItems.push({ id: 'comments', level: 'comments', text: '评论区' });
             }
 

@@ -7,7 +7,10 @@
         </div>
         <?php
         $zen_footer_text = zen_get_option('zen_footer_text');
-        $zen_show_footer_links = zen_get_option('zen_show_footer_theme_by') || zen_get_option('zen_show_footer_wordpress') || zen_get_option('zen_show_footer_rss');
+        $zen_show_footer_theme_by = zen_get_option('zen_show_footer_theme_by');
+        $zen_show_footer_wordpress = zen_get_option('zen_show_footer_wordpress');
+        $zen_show_footer_rss = zen_get_option('zen_show_footer_rss');
+        $zen_show_footer_links = $zen_show_footer_theme_by || $zen_show_footer_wordpress || $zen_show_footer_rss;
         if ($zen_footer_text !== '' || $zen_show_footer_links) :
         ?>
         <div class="zen-footer-links flex flex-col items-center gap-y-2">
@@ -18,13 +21,13 @@
             <?php endif; ?>
             <?php if ($zen_show_footer_links) : ?>
             <div class="zen-footer-row flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                <?php if (zen_get_option('zen_show_footer_theme_by')) : ?>
+                <?php if ($zen_show_footer_theme_by) : ?>
                 <a href="https://github.com/yahuisme/wordpress-zen" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Theme By RyanZ (在新窗口打开)">Theme By RyanZ</a>
                 <?php endif; ?>
-                <?php if (zen_get_option('zen_show_footer_wordpress')) : ?>
+                <?php if ($zen_show_footer_wordpress) : ?>
                 <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
                 <?php endif; ?>
-                <?php if (zen_get_option('zen_show_footer_rss')) : ?>
+                <?php if ($zen_show_footer_rss) : ?>
                 <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="订阅 RSS">
                     <i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS
                 </a>
