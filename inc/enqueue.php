@@ -39,7 +39,7 @@ function zen_scripts() {
         'zen-main',
         get_template_directory_uri() . '/js/main.js',
         $main_dependencies,
-        file_exists($main_js) ? filemtime($main_js) : $ver,
+        $ver,
         true
     );
 
@@ -50,7 +50,7 @@ function zen_scripts() {
 
     $compiled_css = get_template_directory() . '/assets/css/style.css';
     if (file_exists($compiled_css)) {
-        wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), filemtime($compiled_css));
+        wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), $ver);
         wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }' . $heading_weight);
     }
 
