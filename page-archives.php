@@ -9,7 +9,7 @@ get_header(); ?>
     <div class="text-gray-600 dark:text-gray-400">文章时光机</div>
 </header>
 
-<div class="max-w-2xl mx-auto space-y-8 animate-fade-in">
+<div class="max-w-zen-narrow mx-auto space-y-8 animate-fade-in">
     <?php
     $archives_posts = get_transient('zen_archives_posts');
 
