@@ -62,7 +62,7 @@
         <div class="zen-toc-drawer-header flex items-center justify-between p-6">
             <h3 id="drawer-toc-title" class="text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">目录</h3>
             <button id="drawer-toc-close" type="button" class="zen-icon-btn text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500" aria-label="关闭目录">
-                <i class="ph ph-x text-xl"></i>
+                <i class="ph ph-x text-xl" aria-hidden="true"></i>
             </button>
         </div>
         

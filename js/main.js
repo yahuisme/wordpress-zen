@@ -278,8 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.addEventListener('scroll', requestScrollUIUpdate, { passive: true });
-    updateScrollUI();
+    if (progressBar || backToTopBtn) {
+        window.addEventListener('scroll', requestScrollUIUpdate, { passive: true });
+        updateScrollUI();
+    }
 
     // TOC Generation & Spy
     if (article) {

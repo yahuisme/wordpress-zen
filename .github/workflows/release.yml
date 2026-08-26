@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: zen-release-main
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest

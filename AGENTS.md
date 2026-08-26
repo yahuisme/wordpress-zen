@@ -249,7 +249,7 @@ GitHub Actions（`.github/workflows/release.yml`）会在推送到 `main` 后：
 2. 用 `git archive` 打包 `zen.zip`（顶层 `zen/` 目录）；
 3. 创建名为 `Zen Theme vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`），并从 `.github/CHANGELOG.md` 提取对应版本的简要更新内容作为 Release 说明；上传 `zen.zip`。
 
-版本号未变化（该 tag 已存在）时跳过，不重复发布。发布包即仓库全部跟踪文件；本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，运行时无需任何构建步骤。
+版本号未变化（该 tag 已存在）时跳过，不重复发布。发布包仅包含工作流白名单中的主题运行文件；`.github/`、`AGENTS.md` 等仓库维护文件不会进入 ZIP。本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，运行时无需任何构建步骤。
 
 ## Pull Request Expectations
 
