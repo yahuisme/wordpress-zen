@@ -43,15 +43,38 @@ jobs:
           } > "$NOTES_FILE.tmp"
           mv "$NOTES_FILE.tmp" "$NOTES_FILE"
 
-          git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- . ':(exclude).github' ':(exclude)AGENTS.md'
+          RELEASE_FILES=(
+            404.php LICENSE README.md archive.php comments.php footer.php
+            functions.php header.php index.php page-archives.php page-links.php
+            page.php search.php single.php style.css
+            inc/comments.php inc/enqueue.php inc/options.php inc/schema.php
+            inc/setup.php inc/template-tags.php
+            js/main.js
+            assets/css/github-dark.min.css assets/css/style.css
+            assets/js/highlight.min.js assets/js/phosphor-icons.js
+            screenshot.png
+            template-parts/content-excerpt.php
+          )
+          git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- "${RELEASE_FILES[@]}"
 
           python - "$VERSION" <<'PY'
           import sys, zipfile, re
           version = sys.argv[1]
           with zipfile.ZipFile('zen.zip') as archive:
-              names = set(archive.namelist())
-              required = {'zen/style.css', 'zen/functions.php', 'zen/index.php'}
-              if not required.issubset(names) or 'zen/AGENTS.md' in names or any(name.startswith('zen/.github/') for name in names):
+              names = {name for name in archive.namelist() if not name.endswith('/')}
+              expected = {
+                  'zen/404.php', 'zen/LICENSE', 'zen/README.md', 'zen/archive.php',
+                  'zen/assets/css/github-dark.min.css', 'zen/assets/css/style.css',
+                  'zen/assets/js/highlight.min.js', 'zen/assets/js/phosphor-icons.js',
+                  'zen/comments.php', 'zen/footer.php', 'zen/functions.php',
+                  'zen/header.php', 'zen/inc/comments.php', 'zen/inc/enqueue.php',
+                  'zen/inc/options.php', 'zen/inc/schema.php', 'zen/inc/setup.php',
+                  'zen/inc/template-tags.php', 'zen/index.php', 'zen/js/main.js',
+                  'zen/page-archives.php', 'zen/page-links.php', 'zen/page.php',
+                  'zen/screenshot.png', 'zen/search.php', 'zen/single.php',
+                  'zen/style.css', 'zen/template-parts/content-excerpt.php',
+              }
+              if names != expected:
                   raise SystemExit('发布包结构校验失败')
               style = archive.read('zen/style.css').decode('utf-8')
               match = re.search(r'^Version:\s*(\S+)', style, re.MULTILINE)
@@ -60,8 +83,7 @@ jobs:
           PY
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            gh release upload "v$VERSION" zen.zip --clobber
-            echo "Release v$VERSION 已存在，已替换 zen.zip。"
+            echo "Release v$VERSION 已存在，跳过发布。"
           else
             gh release create "v$VERSION" zen.zip \
               --title "Zen Theme v$VERSION" \

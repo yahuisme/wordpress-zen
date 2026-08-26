@@ -18,4 +18,4 @@
 @media (max-width:640px){.zen-lightbox-panel{max-width:100vw;max-height:82vh}.zen-lightbox-image{max-width:92vw;max-height:82vh}.zen-lightbox-close{top:.4rem;right:.4rem;width:2rem;height:2rem}}
 @supports (height:100dvh){.zen-toc-drawer{height:100dvh}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.zen-lightbox{background:rgba(15,23,42,.94)}.zen-search-modal{background:#f8fafc}.dark .zen-search-modal{background:#18212b}}
-@media (prefers-reduced-motion:reduce){.zen-lightbox-close,.zen-lightbox-panel{transition:none!important}.zen-lightbox-close:hover{transform:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}.zen-lightbox-close,.zen-lightbox-panel,.zen-search-modal,.zen-toc-drawer{transition:none!important}.zen-lightbox-close:hover{transform:none}.zen-search-modal,.zen-toc-drawer{scroll-behavior:auto!important}}

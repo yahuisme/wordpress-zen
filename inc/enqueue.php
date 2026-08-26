@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) exit;
  * Frontend assets.
  */
 function zen_scripts() {
-    $ver = '1.1.26';
+    $ver = wp_get_theme()->get('Version');
 
     $font_family = zen_get_option('zen_font_family');
     $font_query  = $font_family === 'space-grotesk'

@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeDefaultMode = (window.zenSettings && window.zenSettings.theme_mode_default && themeModes.includes(window.zenSettings.theme_mode_default)) ? window.zenSettings.theme_mode_default : 'auto';
     let themeMode = themeDefaultMode;
     const zenSearchShortcut = !!(window.zenSettings && window.zenSettings.search_shortcut);
+    const reduceMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    const reduceMotion = reduceMotionQuery ? reduceMotionQuery.matches : false;
 
     const getStoredThemeMode = () => {
         try {
@@ -175,9 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. Lightbox (A11y: Focus Management & ARIA) ---
     const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
 
-    if (lightbox) {
-        const lightboxImg = document.getElementById('lightbox-img');
+    if (lightbox && lightboxImg) {
         const closeBtn = document.getElementById('lightbox-close');
         const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
         let lastFocusedElement;
@@ -371,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const navRect = tocNav.getBoundingClientRect();
                                 const linkRect = activeLink.getBoundingClientRect();
                                 if (linkRect.bottom > navRect.bottom || linkRect.top < navRect.top) {
-                                    activeLink.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                                    activeLink.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
                                 }
                             }
                         });
@@ -475,8 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileMenuBtn.setAttribute('aria-label', '打开菜单');
             if (restoreFocus) mobileMenuBtn.focus();
         };
-
-        trapFocus(mobileMenu);
 
         mobileMenuBtn.addEventListener('click', () => {
             const isHidden = mobileMenu.classList.contains('hidden');
@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 7. Back to Top ---
     if (backToTopBtn) {
         backToTopBtn.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
         });
     }
 

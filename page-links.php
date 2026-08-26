@@ -46,7 +46,7 @@ get_header(); ?>
                         </h3>
                         <p class="text-sm text-gray-500 truncate"><?php echo esc_html($bookmark->link_description); ?></p>
                     </div>
-                    <i class="ph ph-arrow-up-right text-gray-300 group-hover:text-gray-600 dark:text-gray-600 dark:group-hover:text-gray-300 transition-colors"></i>
+                    <i class="ph ph-arrow-up-right text-gray-300 group-hover:text-gray-600 dark:text-gray-600 dark:group-hover:text-gray-300 transition-colors" aria-hidden="true"></i>
                 </a>
                 <?php
             }

@@ -35,7 +35,7 @@
     <?php $archive_description = get_the_archive_description(); ?>
     <?php if ($archive_description) : ?>
         <div class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mt-4 prose dark:prose-invert">
-            <?php echo $archive_description; ?>
+            <?php echo wp_kses_post($archive_description); ?>
         </div>
     <?php endif; ?>
 </header>

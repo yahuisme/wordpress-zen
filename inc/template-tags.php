@@ -125,6 +125,12 @@ function zen_clear_archives_cache() {
     delete_transient('zen_archives_posts');
 }
 add_action('save_post_post', 'zen_clear_archives_cache');
+function zen_clear_archives_cache_on_status_change($new_status, $old_status, $post) {
+    if ($post instanceof WP_Post && 'post' === $post->post_type && $new_status !== $old_status) {
+        zen_clear_archives_cache();
+    }
+}
+add_action('transition_post_status', 'zen_clear_archives_cache_on_status_change', 10, 3);
 add_action('deleted_post', 'zen_clear_archives_cache');
 add_action('trashed_post', 'zen_clear_archives_cache');
 add_action('untrashed_post', 'zen_clear_archives_cache');
