@@ -27,6 +27,7 @@ function zen_get_option($key) {
             'zen_show_reading_progress'=> 1,
             'zen_theme_mode_default'   => 'auto',
             'zen_font_family'          => 'inter',
+            'zen_content_width'        => 896,
             'zen_show_back_to_top'     => 1,
             'zen_show_lightbox'        => 1,
             'zen_show_search_shortcut' => 1,
@@ -84,6 +85,10 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_font_family',
     ));
+    register_setting('zen_options', 'zen_content_width', array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'zen_sanitize_content_width',
+    ));
     register_setting('zen_options', 'zen_footer_text', array(
         'type'              => 'string',
         'sanitize_callback' => 'wp_kses_post',
@@ -107,6 +112,16 @@ function zen_sanitize_excerpt_length($value) {
     }
 
     return min($value, 300);
+}
+
+function zen_sanitize_content_width($value) {
+    $value = absint($value);
+
+    if ($value < 600) {
+        return 896;
+    }
+
+    return min($value, 1920);
 }
 
 function zen_sanitize_theme_mode($value) {
@@ -231,6 +246,13 @@ function zen_options_page_html() {
                             <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
                         </select>
                         <p class="description"><?php esc_html_e('Inter 模式使用 Noto Serif SC 作为文章标题字体；Space Grotesk 模式使用 Space Grotesk 与 Noto Sans SC 作为文章标题字体。字体通过 Google Fonts 在线加载。', 'zen'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="zen_content_width"><?php esc_html_e('内容宽度', 'zen'); ?></label></th>
+                    <td>
+                        <input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="10" class="small-text">
+                        <p class="description"><?php esc_html_e('主题界面与内容的整体最大宽度（像素）。默认 896px；想更宽可设为 1300–1500px，更窄可设为 700–900px。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部按钮', 'zen'), __('显示右下角返回顶部按钮', 'zen')); ?>
