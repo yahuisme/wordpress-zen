@@ -244,27 +244,8 @@ function zen_options_page_html() {
         <form method="post" action="options.php">
             <?php settings_fields('zen_options'); ?>
 
-            <h2 class="title zen-options-section-title"><?php esc_html_e('文章', 'zen'); ?></h2>
-            <table class="form-table" role="presentation">
-                <?php zen_checkbox_field('zen_show_reading_count', __('阅读量', 'zen'), __('在文章页显示阅读量', 'zen')); ?>
-                <tr>
-                    <th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
-                    <td>
-                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text">
-                        <p class="description"><?php esc_html_e('文章列表中每篇摘要显示的字数（1–300）。', 'zen'); ?></p>
-                    </td>
-                </tr>
-                <?php zen_checkbox_field('zen_show_tags', __('标签区', 'zen'), __('在文章页底部显示标签区', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示文章目录（侧边栏 / 移动端抽屉）', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_updated_date', __('最后更新时间', 'zen'), __('显示最后更新时间', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_reading_time', __('预计阅读时间', 'zen'), __('显示预计阅读时间', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇文章', 'zen'), __('显示上一篇 / 下一篇文章', 'zen')); ?>
-            </table>
-
             <h2 class="title zen-options-section-title"><?php esc_html_e('界面', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
-                <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_theme_mode_default"><?php esc_html_e('默认外观', 'zen'); ?></label></th>
                     <td>
@@ -277,7 +258,7 @@ function zen_options_page_html() {
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="zen_font_family"><?php esc_html_e('界面字体', 'zen'); ?></label></th>
+                    <th scope="row"><label for="zen_font_family"><?php esc_html_e('字体显示', 'zen'); ?></label></th>
                     <td>
                         <select name="zen_font_family" id="zen_font_family">
                             <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
@@ -293,22 +274,41 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('主题界面与内容的整体最大宽度（像素）。默认 900px；想更宽可设为 1300–1500px，更窄可设为 700–900px。', 'zen'); ?></p>
                     </td>
                 </tr>
+                <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
                 <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部按钮', 'zen'), __('显示右下角返回顶部按钮', 'zen')); ?>
-                <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('启用图片灯箱（点击图片放大查看）', 'zen')); ?>
                 <?php zen_checkbox_field('zen_show_search_shortcut', __('搜索快捷键', 'zen'), __('启用搜索快捷键（Ctrl/⌘ + K）', 'zen')); ?>
+            </table>
+
+            <h2 class="title zen-options-section-title"><?php esc_html_e('文章', 'zen'); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
+                    <td>
+                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text">
+                        <p class="description"><?php esc_html_e('文章列表中每篇摘要显示的字数（1–300）。', 'zen'); ?></p>
+                    </td>
+                </tr>
+                <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('启用图片灯箱（点击图片放大查看）', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_tags', __('标签显示', 'zen'), __('在文章页底部显示标签区', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示文章目录（侧边栏 / 移动端抽屉）', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_reading_count', __('阅读量统计', 'zen'), __('在文章页显示阅读量', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_updated_date', __('最后更新时间', 'zen'), __('显示最后更新时间', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_reading_time', __('预计阅读时间', 'zen'), __('显示预计阅读时间', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇', 'zen'), __('显示上一篇 / 下一篇文章', 'zen')); ?>
             </table>
 
             <h2 class="title zen-options-section-title"><?php esc_html_e('页脚', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
                 <tr>
-                    <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚内容', 'zen'); ?></label></th>
+                    <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚', 'zen'); ?></label></th>
                     <td>
                         <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('显示在右侧页脚信息上方的自定义内容，支持少量 HTML（如链接）。留空则不显示。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><?php esc_html_e('页脚信息', 'zen'); ?></th>
+                    <th scope="row"><?php esc_html_e('主题页脚信息', 'zen'); ?></th>
                     <td>
                         <?php foreach (array(
                             'zen_show_footer_theme_by'  => __('Theme By RyanZ', 'zen'),
@@ -327,7 +327,7 @@ function zen_options_page_html() {
 
             <h2 class="title zen-options-section-title"><?php esc_html_e('高级', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
-                <?php zen_checkbox_field('zen_show_copyright', __('文章版权信息', 'zen'), __('在文章底部显示版权信息', 'zen')); ?>
+                <?php zen_checkbox_field('zen_show_copyright', __('版权信息', 'zen'), __('在文章底部显示版权信息', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                     <td>
