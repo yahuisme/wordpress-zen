@@ -517,7 +517,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.type = 'button';
         btn.className = 'zen-audio-btn';
         btn.setAttribute('aria-label', '播放音频');
-        btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
+
+        const setAudioButtonState = (playing) => {
+            btn.innerHTML = `<i class="ph ph-${playing ? 'pause' : 'play'} text-lg" aria-hidden="true"></i>`;
+            btn.setAttribute('aria-label', playing ? '暂停音频' : '播放音频');
+        };
+
+        setAudioButtonState(false);
 
         const progressContainer = document.createElement('div');
         progressContainer.className = 'zen-audio-progress-container';
@@ -564,24 +570,19 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             if (audio.paused) {
                 audio.play().then(() => {
-                    btn.innerHTML = '<i class="ph ph-pause text-lg" aria-hidden="true"></i>';
-                    btn.setAttribute('aria-label', '暂停音频');
+                    setAudioButtonState(true);
                 }).catch(() => {
                     audio.style.display = '';
-                    btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
-                    btn.setAttribute('aria-label', '播放音频');
+                    setAudioButtonState(false);
                 });
             } else {
                 audio.pause();
-                btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
-                btn.setAttribute('aria-label', '播放音频');
+                setAudioButtonState(false);
             }
         });
 
         const syncAudioButton = () => {
-            const playing = !audio.paused && !audio.ended;
-            btn.innerHTML = `<i class="ph ph-${playing ? 'pause' : 'play'} text-lg" aria-hidden="true"></i>`;
-            btn.setAttribute('aria-label', playing ? '暂停音频' : '播放音频');
+            setAudioButtonState(!audio.paused && !audio.ended);
         };
 
         audio.addEventListener('play', syncAudioButton);
@@ -624,8 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         audio.addEventListener('ended', () => {
-            btn.innerHTML = '<i class="ph ph-play text-lg" aria-hidden="true"></i>';
-            btn.setAttribute('aria-label', '播放音频');
+            setAudioButtonState(false);
             updateAudioUI();
         });
         audio.style.display = 'none';
