@@ -71,7 +71,7 @@ get_header(); ?>
             <?php } ?>
             
             <li class="flex items-baseline justify-between group">
-                <a href="<?php echo esc_url($archive_post['url']); ?>" class="text-lg text-gray-800 dark:text-gray-200 hover:underline decoration-1 underline-offset-4">
+                <a href="<?php echo esc_url($archive_post['url']); ?>" class="text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
                     <?php echo esc_html($archive_post['title']); ?>
                 </a>
                 <span class="text-sm text-gray-600 dark:text-gray-500 shrink-0 font-mono"><?php echo esc_html($archive_post['date']); ?></span>

@@ -144,6 +144,71 @@ function zen_sanitize_copyright_license($value) {
     return in_array($value, $licenses, true) ? $value : 'cc-by-nc-sa-4.0';
 }
 
+function zen_get_update_info($force = false) {
+    $transient_key = 'zen_theme_update_info';
+
+    if ($force) {
+        delete_transient($transient_key);
+    }
+
+    $cached = get_transient($transient_key);
+    if (false !== $cached) {
+        return $cached;
+    }
+
+    if (!$force) {
+        return array(
+            'latest_version' => '',
+            'url'            => 'https://github.com/yahuisme/wordpress-zen/releases',
+            'error'          => '',
+        );
+    }
+
+    $result = array(
+        'latest_version' => '',
+        'url'            => 'https://github.com/yahuisme/wordpress-zen/releases',
+        'error'          => '',
+    );
+    $response = wp_remote_get('https://api.github.com/repos/yahuisme/wordpress-zen/releases/latest', array(
+        'timeout'    => 5,
+        'user-agent' => 'WordPress Zen Theme/' . wp_get_theme()->get('Version'),
+        'headers'    => array('Accept' => 'application/vnd.github+json'),
+    ));
+
+    if (is_wp_error($response)) {
+        $result['error'] = $response->get_error_message();
+    } elseif (200 !== wp_remote_retrieve_response_code($response)) {
+        $result['error'] = __('暂时无法连接 GitHub。', 'zen');
+    } else {
+        $release = json_decode(wp_remote_retrieve_body($response), true);
+        $tag = isset($release['tag_name']) ? sanitize_text_field($release['tag_name']) : '';
+        if (preg_match('/^v?(\d+\.\d+\.\d+)$/', $tag, $matches)) {
+            $result['latest_version'] = $matches[1];
+            $result['url'] = !empty($release['html_url']) ? esc_url_raw($release['html_url']) : $result['url'];
+        } else {
+            $result['error'] = __('GitHub 返回的版本信息无效。', 'zen');
+        }
+    }
+
+    set_transient($transient_key, $result, 12 * HOUR_IN_SECONDS);
+    return $result;
+}
+
+function zen_check_update_action() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('无权执行此操作。', 'zen'));
+    }
+
+    check_admin_referer('zen_check_update');
+    zen_get_update_info(true);
+    wp_safe_redirect(add_query_arg(array(
+        'page'           => 'zen-options',
+        'update_checked' => '1',
+    ), admin_url('themes.php')));
+    exit;
+}
+add_action('admin_post_zen_check_update', 'zen_check_update_action');
+
 function zen_get_reading_time($post_id = 0) {
     $content = get_post_field('post_content', $post_id ? $post_id : get_the_ID());
     $content = strip_shortcodes($content);
@@ -289,6 +354,34 @@ function zen_options_page_html() {
 
             <h2 class="title zen-options-section-title"><?php esc_html_e('高级', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><?php esc_html_e('主题更新', 'zen'); ?></th>
+                    <td>
+                        <p>
+                            <?php
+                            $zen_theme_version = wp_get_theme()->get('Version');
+                            $zen_update_info = zen_get_update_info();
+                            echo esc_html(sprintf(__('当前版本：%s', 'zen'), $zen_theme_version));
+                            ?>
+                        </p>
+                        <?php if (!empty($_GET['update_checked'])) : ?>
+                            <?php if ($zen_update_info['error']) : ?>
+                                <p class="description"><?php echo esc_html($zen_update_info['error']); ?></p>
+                            <?php elseif (version_compare($zen_update_info['latest_version'], $zen_theme_version, '>')) : ?>
+                                <p class="description"><?php echo esc_html(sprintf(__('发现新版本 %s。', 'zen'), $zen_update_info['latest_version'])); ?>
+                                    <a href="<?php echo esc_url($zen_update_info['url']); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('查看 Release', 'zen'); ?></a>
+                                </p>
+                            <?php else : ?>
+                                <p class="description"><?php esc_html_e('当前已是最新版本。', 'zen'); ?></p>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                            <input type="hidden" name="action" value="zen_check_update">
+                            <?php wp_nonce_field('zen_check_update'); ?>
+                            <?php submit_button(__('检查更新', 'zen'), 'secondary', 'submit', false); ?>
+                        </form>
+                    </td>
+                </tr>
                 <?php zen_checkbox_field('zen_show_copyright', __('文章版权信息', 'zen'), __('在文章底部显示版权信息', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
