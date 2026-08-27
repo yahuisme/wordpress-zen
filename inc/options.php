@@ -198,13 +198,16 @@ function zen_get_reading_time($post_id = 0) {
 }
 
 function zen_options_menu() {
-    add_theme_page(
-        __('主题设置', 'zen'),
-        __('主题设置', 'zen'),
+    add_menu_page(
+        __('Zen 主题设置', 'zen'),
+        __('Zen 主题设置', 'zen'),
         'manage_options',
         'zen-options',
-        'zen_options_page_html'
+        'zen_options_page_html',
+        'dashicons-admin-appearance',
+        81
     );
+    remove_submenu_page('zen-options', 'zen-options');
 }
 add_action('admin_menu', 'zen_options_menu');
 

@@ -1,5 +1,9 @@
 # Zen Theme 更新记录
 
+## 1.3.0
+
+- 将 Zen 主题设置提升为 WordPress 后台一级菜单，放置在「设置」菜单下方。
+
 ## 1.2.5
 
 - 将 Phosphor Icons CSS 与字体改为主题本地资源，移除前台对 unpkg CDN 的依赖。
