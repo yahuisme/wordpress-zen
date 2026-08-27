@@ -2,38 +2,32 @@
 
 一个极简的 WordPress 主题，专注于排版、留白与沉浸式阅读。
 
+**当前版本：1.2.3**
+
 - 原作者：[qwer-xyz](https://github.com/qwer-xyz)
 - 维护者：[RyanZ](https://ryanz.de/)
 - 项目主页：https://github.com/yahuisme/wordpress-zen
 - 主题演示：https://ryanz.de
-- 许可证：[GNU General Public License v3.0](LICENSE)
-
-## 说明
-
-这是一个由 RyanZ 维护的极简 WordPress 博客主题。本仓库以 GPL-3.0 许可证继续维护和发布。
+- 许可证：[GPL-3.0](LICENSE)
 
 ## 安装
 
-将本仓库中的 `zen` 主题目录（或发行版 ZIP）上传至 WordPress：
+在 WordPress 后台进入“外观” → “主题” → “安装主题” → “上传主题”，选择主题 ZIP 并安装启用。
 
-1. 在 WordPress 后台进入“外观” → “主题”；
-2. 点击“安装主题” → “上传主题”；
-3. 选择主题 ZIP，安装并启用。
+也可以将 `zen` 主题目录上传至 `wp-content/themes/`。
 
 ## 设置
 
-### 主题设置菜单
+主题设置位于“外观” → “主题设置”。
 
-WordPress 左侧菜单 —— 外观 —— 主题设置。可简单自定义外观、界面、页脚、版权显示等。
+### 归档页面
 
-### 主题归档页面
+新建页面，将模板设置为 `Archives Template`。
 
-添加一个新页面，并将页面模板设置为 `Archives Template` 即可。
+### 友情链接页面
 
-### 主题书签 / 友情链接页面
+新建页面，将模板设置为 `Links Template`，然后在 WordPress 的“链接”中添加链接。
 
-添加一个新页面，并将页面模板设置为 `Links Template`。然后在 WordPress 左侧菜单的“链接”中添加任意链接。如果后台没有“链接”菜单，需要先启用 WordPress 链接管理器兼容功能或安装提供该功能的插件。
+## 许可证
 
-## 开源许可
-
-本项目以 GPL-3.0 发布。详见 [LICENSE](LICENSE)。
+本项目采用 [GPL-3.0](LICENSE) 许可证。

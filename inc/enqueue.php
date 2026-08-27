@@ -33,7 +33,6 @@ function zen_scripts() {
         wp_enqueue_script('highlight-js', get_template_directory_uri() . '/assets/js/highlight.min.js', array(), $ver, true);
     }
 
-    $main_js = get_template_directory() . '/js/main.js';
     $main_dependencies = wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array();
     wp_enqueue_script(
         'zen-main',

@@ -591,9 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
             audio.style.display = '';
             syncAudioButton();
         });
-        audio.addEventListener('timeupdate', () => {
-            updateAudioUI();
-        });
+        audio.addEventListener('timeupdate', updateAudioUI);
 
         audio.addEventListener('loadedmetadata', updateAudioUI);
 
@@ -628,7 +626,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setAudioButtonState(false);
             updateAudioUI();
         });
-        audio.style.display = 'none';
     });
 
     // --- 7. Back to Top ---
