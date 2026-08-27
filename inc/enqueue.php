@@ -26,7 +26,7 @@ function zen_scripts() {
 
     $font_query .= '&display=swap';
     wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query, array(), null);
-    wp_enqueue_script('phosphor-icons', get_template_directory_uri() . '/assets/js/phosphor-icons.js', array(), $ver, true);
+    wp_enqueue_style('phosphor-icons', get_template_directory_uri() . '/assets/css/phosphor-icons.css', array(), $ver);
 
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
         wp_enqueue_style('highlight-css', get_template_directory_uri() . '/assets/css/github-dark.min.css', array(), $ver);

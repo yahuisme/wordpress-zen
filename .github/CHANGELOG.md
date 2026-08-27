@@ -1,5 +1,9 @@
 # Zen Theme 更新记录
 
+## 1.2.5
+
+- 将 Phosphor Icons CSS 与字体改为主题本地资源，移除前台对 unpkg CDN 的依赖。
+
 ## 1.2.4
 
 - 更新 WordPress 主题预览图。

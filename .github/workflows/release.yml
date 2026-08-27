@@ -54,9 +54,9 @@ jobs:
             inc/comments.php inc/enqueue.php inc/options.php inc/schema.php
             inc/setup.php inc/template-tags.php
             js/main.js
-            assets/css/github-dark.min.css assets/css/style.css
-            assets/js/highlight.min.js assets/js/phosphor-icons.js
-            screenshot.png
+            assets/css/github-dark.min.css assets/css/phosphor-icons.css assets/css/style.css
+            assets/fonts/Phosphor.woff2 assets/js/highlight.min.js
+            licenses/Phosphor-MIT.txt screenshot.png
             template-parts/content-excerpt.php
           )
           git archive --format=zip --prefix=zen/ HEAD -o zen.zip -- "${RELEASE_FILES[@]}"
@@ -68,8 +68,9 @@ jobs:
               names = {name for name in archive.namelist() if not name.endswith('/')}
               expected = {
                   'zen/404.php', 'zen/LICENSE', 'zen/README.md', 'zen/archive.php',
-                  'zen/assets/css/github-dark.min.css', 'zen/assets/css/style.css',
-                  'zen/assets/js/highlight.min.js', 'zen/assets/js/phosphor-icons.js',
+                  'zen/assets/css/github-dark.min.css', 'zen/assets/css/phosphor-icons.css', 'zen/assets/css/style.css',
+                  'zen/assets/fonts/Phosphor.woff2', 'zen/assets/js/highlight.min.js',
+                  'zen/licenses/Phosphor-MIT.txt',
                   'zen/comments.php', 'zen/footer.php', 'zen/functions.php',
                   'zen/header.php', 'zen/inc/comments.php', 'zen/inc/enqueue.php',
                   'zen/inc/options.php', 'zen/inc/schema.php', 'zen/inc/setup.php',
