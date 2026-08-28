@@ -243,7 +243,7 @@ npm run build
 
 ## Release Packaging
 
-GitHub Actions（`.github/workflows/release.yml`）会在推送到 `main` 后：
+GitHub Actions（`.github/workflows/release.yml`）通过 `workflow_dispatch` 手动触发（推送到 `main` 不会自动发布）：
 
 1. 从 `style.css` 读取版本号；
 2. 用 `git archive` 打包 `zen.zip`（顶层 `zen/` 目录）；
