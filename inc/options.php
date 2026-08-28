@@ -207,7 +207,6 @@ function zen_options_menu() {
         'dashicons-admin-appearance',
         81
     );
-    remove_submenu_page('zen-options', 'zen-options');
 }
 add_action('admin_menu', 'zen_options_menu');
 
