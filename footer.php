@@ -37,7 +37,7 @@
         </div>
         <?php endif; ?>
         <?php if (has_nav_menu('footer')) : ?>
-        <nav class="zen-footer-menu" aria-label="页脚菜单">
+        <nav aria-label="页脚菜单">
             <?php wp_nav_menu(array('theme_location' => 'footer', 'container' => false, 'menu_class' => 'flex flex-wrap items-center justify-center gap-x-4 gap-y-2')); ?>
         </nav>
         <?php endif; ?>

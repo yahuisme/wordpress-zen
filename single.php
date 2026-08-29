@@ -5,7 +5,7 @@
     <?php if (zen_get_option('zen_show_toc')) : ?>
 
     <!-- PC端侧边栏目录 -->
-    <aside id="toc-container" class="zen-desktop-toc hidden xl:block fixed top-32 w-56 opacity-0 transition-opacity duration-500" style="left: calc(50% + min(var(--zen-content-half), 50vw - 1rem) + 2rem);" aria-label="文章目录">
+    <aside id="toc-container" class="zen-desktop-toc hidden xl:block fixed top-32 w-56 opacity-0 transition-opacity duration-500" style="left: calc(50% + min(var(--zen-content-half), 50vw - 16rem) + 2rem);" aria-label="文章目录">
         <div class="relative">
             <h4 class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4 pl-3">
                 目录

@@ -74,10 +74,12 @@
             <a href="<?php echo esc_url(home_url('/')); ?>" class="block shrink-0 group zen-ui-link rounded-full" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - 首页">
                 <?php 
                 $avatar_url = get_avatar_url(get_option('admin_email'));
+                if ($avatar_url) :
                 ?>
                 <img src="<?php echo esc_url($avatar_url); ?>" 
                      alt="" 
                      class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700 group-hover:ring-gray-300 dark:group-hover:ring-gray-500 transition-all duration-300">
+                <?php endif; ?>
             </a>
             <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-ui-link min-w-0 truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white font-serif hover:opacity-80">
                 <?php echo esc_html(get_bloginfo('name')); ?>

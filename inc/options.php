@@ -243,6 +243,7 @@ function zen_options_page_html() {
             }
         </style>
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+        <?php settings_errors(); ?>
         <form method="post" action="options.php">
             <?php settings_fields('zen_options'); ?>
 
@@ -350,8 +351,11 @@ function zen_options_page_html() {
                         $zen_theme_version = wp_get_theme()->get('Version');
                         $zen_update_info = zen_get_update_info();
                         $zen_latest_version = $zen_update_info['latest_version'];
+                        $zen_update_error = $zen_update_info['error'];
                         ?>
-                        <?php if ($zen_latest_version && version_compare($zen_latest_version, $zen_theme_version, '>')) : ?>
+                        <?php if ($zen_update_error) : ?>
+                            <p class="description"><?php echo esc_html($zen_update_error); ?></p>
+                        <?php elseif ($zen_latest_version && version_compare($zen_latest_version, $zen_theme_version, '>')) : ?>
                             <p class="description"><?php echo esc_html(sprintf(__('有新版本 v%s 可供下载', 'zen'), $zen_latest_version)); ?></p>
                         <?php else : ?>
                             <p class="description"><?php echo esc_html(sprintf(__('当前版本 v%s 已是最新版本', 'zen'), $zen_theme_version)); ?></p>
@@ -377,6 +381,10 @@ function zen_track_post_view() {
     }
 
     if (function_exists('is_bot') && is_bot()) {
+        return;
+    }
+
+    if (is_user_logged_in()) {
         return;
     }
 

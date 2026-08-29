@@ -10,7 +10,7 @@ if (post_password_required()) return;
                 <h2 class="serif text-3xl md:text-4xl font-bold leading-tight text-gray-900 dark:text-white">
                     <?php
                     $comments_number = get_comments_number();
-                    if ($comments_number === 0) {
+                    if ($comments_number == 0) {
                         echo '评论';
                     } else {
                         echo esc_html(sprintf('%d 条评论', $comments_number));
