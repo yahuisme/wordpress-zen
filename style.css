@@ -12,37 +12,6 @@ Tags: one-column, accessibility-ready, blog, custom-menu, dark-mode
 */
 
 /*
- * WordPress compatibility styles. Most theme styling is compiled from
- * src/input.css into assets/css/style.css.
+ * 主题样式位于 assets/css/style.css（编译产物，本仓库无构建流程）。
+ * 本文件仅提供主题元数据，未在前台加载。
  */
-
-.screen-reader-text {
-    border: 0;
-    clip: rect(1px, 1px, 1px, 1px);
-    -webkit-clip-path: inset(50%);
-    clip-path: inset(50%);
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    padding: 0;
-    position: absolute;
-    width: 1px;
-    word-wrap: normal !important;
-}
-
-.children {
-    margin-left: 0;
-    padding-left: 0;
-}
-
-@media (min-width: 768px) {
-    .children {
-        margin-left: 2rem;
-        border-left: 1px solid #e5e7eb;
-        padding-left: 1rem;
-    }
-
-    .dark .children {
-        border-color: #374151;
-    }
-}

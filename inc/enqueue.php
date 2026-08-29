@@ -18,10 +18,10 @@ function zen_scripts() {
         ? $font_stack
         : '"Noto Serif SC", "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
     $heading_weight = $font_family === 'space-grotesk' ? ' body h1, body h2, body h3 { font-weight: 600 !important; }' : '';
-    $font_query .= '&family=Noto+Sans+SC:wght@100..900';
+    $font_query .= '&family=Noto+Sans+SC:wght@400;500;600;700;800';
 
     if ($font_family !== 'space-grotesk') {
-        $font_query .= '&family=Noto+Serif+SC:wght@200..900';
+        $font_query .= '&family=Noto+Serif+SC:wght@400;500;600;700;800';
     }
 
     $font_query .= '&display=swap';

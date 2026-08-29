@@ -37,8 +37,7 @@
     <div id="toc-overlay" class="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0" aria-hidden="true"></div>
     
     <aside id="drawer-toc" 
-           class="zen-toc-drawer fixed top-0 right-0 w-80 h-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" 
-           style="width: min(20rem, 100vw); height: 100vh;"
+           class="zen-toc-drawer fixed top-0 right-0 w-80 h-screen max-w-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" 
            role="dialog" 
            aria-modal="true" 
            aria-labelledby="drawer-toc-title"

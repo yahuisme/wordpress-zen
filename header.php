@@ -189,4 +189,4 @@
     </div>
 </div>
 
-<main id="main-content" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 py-10 transition-all relative">
+<main id="main-content" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 py-10 transition-colors relative">
