@@ -7,9 +7,9 @@
             $zen_footer_license = zen_get_option('zen_copyright_license');
             $zen_footer_license_labels = array(
                 'all-rights-reserved' => '保留所有权利',
-                'cc-by-4.0'           => 'CC BY 4.0',
-                'cc-by-sa-4.0'        => 'CC BY-SA 4.0',
-                'cc-by-nc-sa-4.0'     => 'CC BY-NC-SA 4.0',
+                'cc-by-4.0'           => '采用 CC BY 4.0 许可协议',
+                'cc-by-sa-4.0'        => '采用 CC BY-SA 4.0 许可协议',
+                'cc-by-nc-sa-4.0'     => '采用 CC BY-NC-SA 4.0 许可协议',
             );
             ?>
             <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?><?php if (isset($zen_footer_license_labels[$zen_footer_license])) : ?>. <?php echo esc_html($zen_footer_license_labels[$zen_footer_license]); ?><?php endif; ?></div>
