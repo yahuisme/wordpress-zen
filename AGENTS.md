@@ -14,37 +14,16 @@
 ## Environment Setup
 
 - 本主题运行在 WordPress 中。不要为主题引入独立服务端框架。
-- Node.js 只用于 Tailwind 构建。
-- 生产主题包不应依赖 `node_modules/`、`src/`、`package.json` 或 Tailwind 配置。
+- 本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，`assets/css/style.css` 为唯一样式文件，无需任何构建步骤。
 - 如果需要本地预览，优先使用已有 WordPress 开发环境，而不是另起一个非 WordPress 应用。
 
-安装依赖：
-
-```bash
-npm ci
-```
-
 ## Commands
-
-开发监听 Tailwind：
-
-```bash
-npm run dev
-```
-
-构建生产 CSS：
-
-```bash
-npm run build
-```
 
 检查 PHP 语法，如果本机有 PHP：
 
 ```bash
 php -l path/to/file.php
 ```
-
-修改 `src/input.css` 或模板中的 Tailwind class 后，运行 `npm run build`，并确认 `assets/css/style.css` 已更新。
 
 ## Repository Structure
 
@@ -61,7 +40,6 @@ php -l path/to/file.php
 - `page-links.php`：友情链接页面模板，读取 WordPress 链接管理器数据。
 - `template-parts/content-excerpt.php`：文章列表摘要组件。
 - `js/main.js`：前端交互。
-- `src/input.css`：Tailwind 源样式。
 - `assets/css/style.css`：编译后的样式。
 - `assets/js/`：第三方浏览器资源，不要随意重写压缩库。
 
@@ -73,7 +51,7 @@ php -l path/to/file.php
 2. PHP 模板负责输出 WordPress 页面结构。
 3. `inc/` 中的辅助函数负责复用逻辑，不承担大型业务模块。
 4. `js/main.js` 负责轻量前端交互，不承担应用状态管理框架职责。
-5. `src/input.css` 负责视觉系统和组件样式，`assets/css/style.css` 是构建产物。
+5. `assets/css/style.css` 是唯一样式文件；本仓库无构建流程，不能新增 Tailwind 工具类。
 6. 不添加自定义数据库表。
 7. 不把 SEO 插件、统计插件、表单系统、会员系统等插件职责塞进主题。
 8. 不能让生产运行依赖构建工具。
@@ -126,7 +104,7 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 
 深色模式由 `<html>` 上的 `dark` class 和 `zen-theme-mode` localStorage key 控制。
 
-- 修改颜色时优先调整 `src/input.css` 中的 `--zen-*` 变量。
+- 修改颜色时优先复用 `assets/css/style.css` 中已有的 `--zen-*` 变量。
 - 避免只在浅色或深色模式可读的硬编码颜色。
 - 保持 `header.php` 中的首屏主题初始化脚本和 `js/main.js` 中的切换逻辑一致。
 - 修改任何背景、边框、文本、阴影后，都要检查 light、dark、auto 三种模式。
@@ -167,10 +145,8 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 
 ## CSS and Tailwind Standards
 
-- `src/input.css` 是样式源文件。
-- `assets/css/style.css` 是构建产物。
-- 不手动编辑构建产物，除非任务明确要求。
-- 共享视觉模式放进 `@layer components`。
+- `assets/css/style.css` 是唯一样式文件（编译产物，本仓库无构建流程）：不要手改其中的压缩规则，也不要使用其中不存在的类。
+- 模板中只能使用 `assets/css/style.css` 中已存在的 Tailwind 工具类与 `.zen-*` 组件类；确有新增样式需求时，通过 `wp_add_inline_style` 注入少量规则。
 - 局部布局可以用 Tailwind class，但不要让模板堆满难以维护的长 class 串。
 - 优先复用现有 `--zen-*` 变量、`.zen-*` 组件和 Tailwind typography/forms 配置。
 - 新样式应同时考虑正文、评论、搜索、目录、友链、归档、媒体块和代码块的整体一致性。
@@ -213,11 +189,9 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 
 当前依赖应保持克制：
 
-- Tailwind CSS。
-- `@tailwindcss/typography`。
-- `@tailwindcss/forms`。
-- Phosphor Icons。
-- Highlight.js。
+- Tailwind CSS（编译产物 `assets/css/style.css`，仓库内无构建配置）。
+- Phosphor Icons（本地打包，无 CDN）。
+- Highlight.js（本地打包）。
 
 新增依赖前，先确认是否可以用 WordPress API、浏览器 API 或现有 Tailwind/CSS 完成。新增依赖必须带来明确的 UI 或维护收益。
 
@@ -235,11 +209,7 @@ UI 改动至少检查：
 - light、dark、auto 三种主题模式。
 - 手机宽度和桌面宽度。
 
-PHP 改动至少检查相关模板是否能正常渲染。CSS 或 Tailwind class 改动必须运行：
-
-```bash
-npm run build
-```
+PHP 改动至少检查相关模板是否能正常渲染，并用 `php -l` 检查语法。CSS 或 Tailwind class 改动必须确认所用类存在于 `assets/css/style.css`（本仓库无构建流程）。
 
 ## Release Packaging
 
@@ -257,7 +227,6 @@ UI 相关 PR 应说明：
 
 - 视觉上改了什么。
 - 检查了哪些页面、状态和屏幕宽度。
-- 是否运行了 `npm run build`。
 - 是否影响 light/dark/auto。
 
 PHP 相关 PR 应说明：
