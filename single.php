@@ -147,7 +147,7 @@
         <?php endif; ?>
 
         <?php if (zen_get_option('zen_show_post_navigation')) : ?>
-        <nav class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-3 sm:flex-row sm:justify-between text-sm" aria-label="文章导航">
+        <nav class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-4 sm:flex-row sm:justify-between text-sm" aria-label="文章导航">
             <div class="min-w-0 flex-1">
                 <?php
                 $previous_post = get_previous_post();
