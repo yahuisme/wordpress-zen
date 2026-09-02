@@ -90,7 +90,7 @@
         <div class="zen-header-actions flex items-center">
             
             <!-- Desktop Navigation -->
-            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center text-base font-medium text-gray-600 dark:text-gray-400">
+            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center font-medium text-gray-600 dark:text-gray-400">
                 <?php
                 wp_nav_menu(array(
                     'theme_location' => 'primary',

@@ -68,8 +68,7 @@ if (post_password_required()) return;
             ?>
         <?php endif; ?>
 
-        <div class="comment-list-wrapper">
-            <?php if (have_comments()) : ?>
+        <?php if (have_comments()) : ?>
                 <ol class="comment-list">
                     <?php
                     wp_list_comments(array(
@@ -90,6 +89,5 @@ if (post_password_required()) return;
             <?php elseif (!comments_open()) : ?>
                 <p class="text-sm text-gray-500 dark:text-gray-400 py-6">评论已关闭。</p>
             <?php endif; ?>
-        </div>
     </div>
 </section>

@@ -61,7 +61,7 @@
      aria-label="图片查看器" 
      class="zen-lightbox fixed inset-0 z-[100] hidden flex items-center justify-center p-4 cursor-zoom-out"
      tabindex="-1">
-    <div class="zen-lightbox-panel relative cursor-default">
+    <div class="zen-lightbox-panel relative">
         <img id="lightbox-img" src="" alt="" class="zen-lightbox-image object-contain">
         <button id="lightbox-close" class="zen-lightbox-close zen-icon-btn flex items-center justify-center" type="button" aria-label="关闭图片">
             <i class="ph ph-x" aria-hidden="true"></i>
