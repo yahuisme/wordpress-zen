@@ -15,9 +15,9 @@
     <h1 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900 dark:text-white">
         <?php 
         if (is_category()) {
-            single_cat_title();
+            echo esc_html(single_cat_title('', false));
         } elseif (is_tag()) {
-            single_tag_title();
+            echo esc_html(single_tag_title('', false));
         } elseif (is_author()) {
             echo esc_html(get_the_author());
         } elseif (is_day()) {
