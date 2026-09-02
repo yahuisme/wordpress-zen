@@ -156,7 +156,7 @@
                 }
                 ?>
             </div>
-            <div class="min-w-0 flex-1" style="text-align: right;">
+            <div class="zen-post-nav-next min-w-0 flex-1">
                 <?php
                 $next_post = get_next_post();
                 if ($next_post) {
