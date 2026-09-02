@@ -2,7 +2,7 @@
 
 一个极简的 WordPress 主题，专注于排版、留白与沉浸式阅读。
 
-**当前版本：1.3.2**
+**当前版本：1.3.3**
 
 - 原作者：[qwer-xyz](https://github.com/qwer-xyz)
 - 维护者：[RyanZ](https://ryanz.de/)
