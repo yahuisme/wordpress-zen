@@ -21,8 +21,6 @@ add_filter('wp_resource_hints', 'zen_resource_hints', 10, 2);
  * Theme setup.
  */
 function zen_setup() {
-    load_theme_textdomain('zen', get_template_directory() . '/languages');
-
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
     add_theme_support('automatic-feed-links');
@@ -45,3 +43,4 @@ function zen_custom_excerpt_length($length) {
     return (int) zen_get_option('zen_excerpt_length');
 }
 add_filter('excerpt_length', 'zen_custom_excerpt_length', 999);
+

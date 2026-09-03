@@ -9,8 +9,8 @@ function zen_scripts() {
 
     $font_family = zen_get_option('zen_font_family');
     $font_query  = $font_family === 'space-grotesk'
-        ? 'family=Space+Grotesk:wght@300..700'
-        : 'family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900';
+        ? 'family=Space+Grotesk:wght@400;500;600;700'
+        : 'family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400';
     $font_stack  = $font_family === 'space-grotesk'
         ? '"Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif'
         : 'Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif';

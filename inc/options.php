@@ -35,7 +35,6 @@ function zen_get_option($key) {
             'zen_show_footer_theme_by' => 1,
             'zen_show_footer_wordpress'=> 1,
             'zen_show_footer_rss'      => 1,
-            'zen_show_copyright'       => 0,
             'zen_copyright_license'    => 'cc-by-nc-sa-4.0',
         );
     }
@@ -63,7 +62,6 @@ function zen_register_options() {
         'zen_show_footer_theme_by',
         'zen_show_footer_wordpress',
         'zen_show_footer_rss',
-        'zen_show_copyright',
     );
 
     foreach ($checkbox_options as $key) {
@@ -330,7 +328,6 @@ function zen_options_page_html() {
 
             <h2 class="title zen-options-section-title"><?php esc_html_e('高级', 'zen'); ?></h2>
             <table class="form-table" role="presentation">
-                <?php zen_checkbox_field('zen_show_copyright', __('版权信息', 'zen'), __('在文章底部显示版权信息', 'zen')); ?>
                 <tr>
                     <th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                     <td>
@@ -341,7 +338,7 @@ function zen_options_page_html() {
                             <option value="cc-by-sa-4.0" <?php selected('cc-by-sa-4.0', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('CC BY-SA 4.0', 'zen'); ?></option>
                             <option value="cc-by-nc-sa-4.0" <?php selected('cc-by-nc-sa-4.0', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('CC BY-NC-SA 4.0', 'zen'); ?></option>
                         </select>
-                        <p class="description"><?php esc_html_e('选择「不显示」时，不输出文章版权信息。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('页脚会显示对应协议名；选择「不显示」时，页脚只保留年份与站名，文章底部也不输出版权信息。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>

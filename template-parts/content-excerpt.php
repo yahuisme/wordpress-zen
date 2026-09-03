@@ -43,7 +43,7 @@ $zen_title_link_classes = is_home()
     </h2>
 
     <div class="text-gray-600 dark:text-gray-300 leading-relaxed mb-4 line-clamp-3">
-        <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '...')); ?>
+        <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '…')); ?>
     </div>
 
     <a href="<?php the_permalink(); ?>" class="zen-action-link text-sm tracking-wide dark:text-white">

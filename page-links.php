@@ -8,16 +8,13 @@ get_header(); ?>
 
     <header class="mb-12 text-center">
         <h1 class="text-3xl font-bold mb-6 serif"><?php the_title(); ?></h1>
-        <!-- 页面简介 (支持后台编辑内容，如申请友链规则) -->
         <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto prose dark:prose-invert">
             <?php the_content(); ?>
         </div>
     </header>
 
-    <!-- 友链网格 (增加 mb-20 与评论区拉开距离) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-zen mx-auto mb-20">
         <?php
-        // 获取所有链接分类
         $bookmarks = get_bookmarks(array(
             'orderby' => 'name',
             'order'   => 'ASC'
@@ -56,9 +53,7 @@ get_header(); ?>
         ?>
     </div>
 
-    <!-- 评论区 (新增) -->
-    <?php 
-    // 只有在后台页面设置中开启了"允许评论"，或者已经有评论时才显示
+    <?php
     if ( comments_open() || get_comments_number() ) :
         comments_template();
     endif;

@@ -21,14 +21,11 @@
             document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
         })();
     </script>
-    
-    <!-- SEO: Robots Control -->
-    <!-- Google 最佳实践：防止索引内部搜索结果页，避免重复内容和爬虫预算浪费 -->
+
     <?php if (is_search()) : ?>
         <meta name="robots" content="noindex, follow" />
     <?php endif; ?>
 
-    <!-- SEO: Meta Description -->
     <meta name="description" content="<?php 
         if ( is_single() || is_page() ) {
             $excerpt = get_the_excerpt();
@@ -57,19 +54,15 @@
 <body <?php body_class('transition-colors duration-300 min-h-screen flex flex-col relative'); ?>>
 <?php wp_body_open(); ?>
 
-<!-- A11y: Skip Link -->
 <a href="#main-content" class="skip-link">跳至主要内容</a>
 
-<!-- Reading Progress Bar -->
 <?php if (zen_get_option('zen_show_reading_progress')) : ?>
 <div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 h-1 bg-gray-900 dark:bg-white z-50 transition-all duration-100 ease-out w-0"></div>
 <?php endif; ?>
 
-<!-- Header -->
 <header role="banner" class="zen-site-header w-full transition-colors backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-zen mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
         
-        <!-- Logo / Avatar -->
         <div class="flex items-center gap-4 min-w-0">
             <a href="<?php echo esc_url(home_url('/')); ?>" class="block shrink-0 group zen-ui-link rounded-full" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - 首页">
                 <?php 
@@ -86,10 +79,8 @@
             </a>
         </div>
 
-        <!-- Right Actions Container -->
         <div class="zen-header-actions flex items-center">
             
-            <!-- Desktop Navigation -->
             <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center font-medium text-gray-600 dark:text-gray-400">
                 <?php
                 wp_nav_menu(array(
@@ -104,7 +95,6 @@
             </nav>
 
             <div class="zen-header-tools">
-                <!-- Theme Toggle Button -->
                 <button id="theme-toggle" type="button"
                         class="zen-theme-toggle zen-header-tool zen-icon-btn"
                         aria-label="切换主题"
@@ -113,7 +103,6 @@
                     <span class="screen-reader-text" data-theme-toggle-label>跟随系统</span>
                 </button>
 
-                <!-- Search Toggle Button -->
                 <button id="search-toggle" type="button"
                         class="zen-header-tool zen-icon-btn"
                         aria-label="搜索"
@@ -122,7 +111,6 @@
                     <i class="ph ph-magnifying-glass text-xl md:text-lg" aria-hidden="true"></i>
                 </button>
 
-                <!-- Mobile Menu Button -->
                 <button id="mobile-menu-btn" type="button"
                         class="zen-header-tool zen-icon-btn md:hidden"
                         aria-expanded="false"
@@ -134,7 +122,6 @@
         </div>
     </div>
 
-    <!-- Mobile Menu Overlay -->
     <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute top-20 left-0 w-full p-4 shadow-lg animate-fade-in z-40" aria-hidden="true">
         <nav aria-label="移动端菜单" class="flex flex-col gap-4 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
             <?php
@@ -151,7 +138,6 @@
     </div>
 </header>
 
-<!-- Search Modal (Overlay) -->
 <div id="search-modal"
      role="dialog"
      aria-modal="true"

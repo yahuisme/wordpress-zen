@@ -4,19 +4,16 @@
 
     <?php if (zen_get_option('zen_show_toc')) : ?>
 
-    <!-- PC端侧边栏目录 -->
     <aside id="toc-container" class="zen-desktop-toc hidden xl:block fixed top-32 w-56 opacity-0 transition-opacity duration-500" style="left: calc(50% + min(var(--zen-content-half), 50vw - 16rem) + 2rem);" aria-label="文章目录">
         <div class="relative">
             <h4 class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4 pl-3">
                 目录
             </h4>
             <nav id="toc-nav" class="relative border-l-2 border-gray-100 dark:border-gray-800 space-y-1 max-h-[calc(100vh-24rem)] overflow-y-auto pr-2 custom-scrollbar" aria-label="桌面端目录导航">
-                <!-- JS 填充内容 -->
             </nav>
         </div>
     </aside>
 
-    <!-- 移动端目录按钮 -->
     <button id="floating-toc-btn" type="button"
             class="zen-mobile-toc xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-50
                    zen-floating-toc-btn p-3 rounded-l-lg 
@@ -33,7 +30,6 @@
         <i class="ph ph-list-bullets text-2xl" aria-hidden="true"></i>
     </button>
 
-    <!-- 移动端目录抽屉 -->
     <div id="toc-overlay" class="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0" aria-hidden="true"></div>
     
     <aside id="drawer-toc" 
@@ -52,7 +48,6 @@
         
         <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
             <nav id="drawer-toc-nav" class="relative border-l-2 border-gray-100 dark:border-gray-800 space-y-0" aria-label="移动端目录导航">
-                <!-- JS 填充内容 -->
             </nav>
         </div>
     </aside>
@@ -105,7 +100,7 @@
     </div>
     <?php endif; ?>
 
-        <?php if (zen_get_option('zen_show_copyright') && zen_get_option('zen_copyright_license') !== 'none') : ?>
+        <?php if (zen_get_option('zen_copyright_license') !== 'none') : ?>
         <?php
         $zen_license = zen_get_option('zen_copyright_license');
         $zen_licenses = array(

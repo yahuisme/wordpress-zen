@@ -52,14 +52,11 @@ get_header(); ?>
 
     $year_prev = null;
     
-    if (!empty($archives_posts)) : 
-        // A11y: 修复列表结构。年份作为标题在列表之外。
-        foreach ($archives_posts as $archive_post) : 
+    if (!empty($archives_posts)) :
+        foreach ($archives_posts as $archive_post) :
             $year_current = $archive_post['year'];
-            
-            // 如果年份改变
+
             if ($year_current != $year_prev) {
-                // 如果不是第一年，先闭合上一个年份的列表容器
                 if ($year_prev != null) { ?>
                     </ul>
                 </section>
@@ -80,8 +77,8 @@ get_header(); ?>
             <?php $year_prev = $year_current; ?>
             
         <?php endforeach; ?>
-            </ul> <!-- Close last ul -->
-        </section> <!-- Close last section -->
+            </ul>
+        </section>
     <?php else : ?>
         <p class="text-center text-gray-600">暂无文章。</p>
     <?php endif; ?>

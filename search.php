@@ -1,6 +1,5 @@
 <?php get_header(); ?>
 
-<!-- 搜索结果头部 -->
 <header class="mb-12 text-center animate-fade-in">
     <div class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
         搜索结果
@@ -25,7 +24,6 @@
 
     <?php endwhile; ?>
         
-        <!-- 分页导航 -->
         <?php zen_pagination(); ?>
 
     <?php else : ?>
@@ -36,14 +34,12 @@
             <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">未找到相关内容</h2>
             <p class="text-gray-500 dark:text-gray-400 mb-6">尝试更换关键词，或者查看归档页面。</p>
             
-            <?php 
-            // 自动查找归档页面链接
+            <?php
             $archive_pages = get_pages(array(
                 'meta_key' => '_wp_page_template',
                 'meta_value' => 'page-archives.php',
                 'number' => 1
             ));
-            // 如果找到，使用该页面链接；否则回退到首页
             $archive_url = (!empty($archive_pages)) ? get_permalink($archive_pages[0]->ID) : home_url('/');
             ?>
             

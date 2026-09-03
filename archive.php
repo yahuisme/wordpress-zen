@@ -1,6 +1,5 @@
 <?php get_header(); ?>
 
-<!-- 归档页头部 -->
 <header class="mb-12 text-center animate-fade-in">
     <div class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
         <?php 
@@ -46,14 +45,13 @@
 
     <?php endwhile; ?>
         
-        <!-- 分页导航 -->
         <?php zen_pagination(); ?>
 
     <?php else : ?>
         <div class="text-center py-20">
             <h2 class="text-xl font-bold mb-2">此处空空如也</h2>
             <p class="text-gray-500">该专栏或话题下暂时没有文章。</p>
-            <a href="<?php echo esc_url(home_url('/')); ?>" class="inline-block mt-4 text-blue-600 hover:underline">返回首页</a>
+            <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-ui-link inline-block mt-4 hover:text-gray-900 dark:hover:text-white">返回首页</a>
         </div>
     <?php endif; ?>
 </div>
