@@ -8,7 +8,6 @@
 - 维护者：[RyanZ](https://ryanz.de/)
 - 项目主页：https://github.com/yahuisme/wordpress-zen
 - 主题演示：https://ryanz.de
-- 许可证：[GPL-3.0](LICENSE)
 
 ## 安装
 
