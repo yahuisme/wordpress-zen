@@ -2,7 +2,7 @@
 
 一个极简的 WordPress 主题，专注于排版、留白与沉浸式阅读。
 
-**当前版本：1.4.0**
+当前版本：`1.4.0`
 
 - 原作者：[qwer-xyz](https://github.com/qwer-xyz)
 - 维护者：[RyanZ](https://ryanz.de/)
@@ -16,7 +16,7 @@
 
 也可以将 `zen` 主题目录上传至 `wp-content/themes/`。
 
-## 设置
+## 主图设置
 
 主题设置位于后台左侧的「Zen 主题设置」一级菜单中，位置在 WordPress 自带的「设置」菜单下方。
 
@@ -24,7 +24,7 @@
 
 新建页面，将模板设置为 `Archives Template`。
 
-### 友情链接页面
+### 友链页面
 
 新建页面，将模板设置为 `Links Template`，然后在 WordPress 的“链接”中添加链接。
 
