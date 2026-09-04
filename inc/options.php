@@ -271,7 +271,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_content_width"><?php esc_html_e('内容宽度', 'zen'); ?></label></th>
                     <td>
-                        <input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="10" class="small-text">
+                        <input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="10" class="small-text"> px
                         <p class="description"><?php esc_html_e('主题界面与内容的整体最大宽度（像素）。默认 900px；想更宽可设为 1300–1500px，更窄可设为 700–900px。', 'zen'); ?></p>
                     </td>
                 </tr>
@@ -285,7 +285,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                     <td>
-                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text">
+                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text"> 字
                         <p class="description"><?php esc_html_e('文章列表中每篇摘要显示的字数（1–300）。', 'zen'); ?></p>
                     </td>
                 </tr>
@@ -317,7 +317,7 @@ function zen_options_page_html() {
                             'zen_show_footer_rss'       => __('RSS', 'zen'),
                         ) as $key => $label) : ?>
                             <input type="hidden" name="<?php echo esc_attr($key); ?>" value="0">
-                            <label for="<?php echo esc_attr($key); ?>" style="display: inline-flex; align-items: center; margin-right: 1.5rem;">
+                            <label for="<?php echo esc_attr($key); ?>" style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 1.5rem;">
                                 <input type="checkbox" name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" value="1" <?php checked(1, zen_get_option($key)); ?>>
                                 <?php echo esc_html($label); ?>
                             </label>
@@ -350,6 +350,7 @@ function zen_options_page_html() {
                         $zen_latest_version = $zen_update_info['latest_version'];
                         $zen_update_error = $zen_update_info['error'];
                         ?>
+                        <a class="button button-secondary" href="<?php echo esc_url($zen_update_info['url']); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('GitHub 仓库', 'zen'); ?></a>
                         <?php if ($zen_update_error) : ?>
                             <p class="description"><?php echo esc_html($zen_update_error); ?></p>
                         <?php elseif ($zen_latest_version && version_compare($zen_latest_version, $zen_theme_version, '>')) : ?>
@@ -357,7 +358,6 @@ function zen_options_page_html() {
                         <?php else : ?>
                             <p class="description"><?php echo esc_html(sprintf(__('当前版本 v%s 已是最新版本', 'zen'), $zen_theme_version)); ?></p>
                         <?php endif; ?>
-                        <p><a class="button button-secondary" href="<?php echo esc_url($zen_update_info['url']); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('GitHub 仓库', 'zen'); ?></a></p>
                     </td>
                 </tr>
             </table>
