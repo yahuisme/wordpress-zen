@@ -17,10 +17,26 @@ get_header(); ?>
         <?php
         $bookmarks = get_bookmarks(array(
             'orderby' => 'name',
-            'order'   => 'ASC'
+            'order'   => 'ASC',
         ));
 
         if ($bookmarks) {
+            usort($bookmarks, function ($a, $b) {
+                $order_a = isset($a->link_rating) ? (int) $a->link_rating : 0;
+                $order_b = isset($b->link_rating) ? (int) $b->link_rating : 0;
+
+                if ($order_a === $order_b) {
+                    return strnatcasecmp($a->link_name, $b->link_name);
+                }
+                if ($order_a === 0) {
+                    return 1;
+                }
+                if ($order_b === 0) {
+                    return -1;
+                }
+                return $order_a <=> $order_b;
+            });
+
             foreach ($bookmarks as $bookmark) {
                 ?>
                 <?php
