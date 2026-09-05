@@ -282,7 +282,7 @@ function zen_options_page_html() {
                             <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
                             <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
                         </select>
-                        <p class="description"><?php esc_html_e('Inter 模式使用 Noto Serif SC 作为文章标题字体；Space Grotesk 模式使用 Space Grotesk 与 Noto Sans SC 作为文章标题字体。字体通过 Google Fonts 在线加载。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('控制全站标题与正文字体搭配风格。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -321,7 +321,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚', 'zen'); ?></label></th>
                     <td>
-                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="code" style="width: 640px; max-width: 100%;" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
+                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="code" style="width: 800px; max-width: 100%;" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('显示在右侧页脚信息上方的自定义内容，支持少量 HTML（如链接）。留空则不显示。', 'zen'); ?></p>
                     </td>
                 </tr>
