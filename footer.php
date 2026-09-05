@@ -3,16 +3,8 @@
 <footer role="contentinfo" class="zen-site-footer w-full mt-auto">
     <div class="max-w-zen mx-auto px-4 sm:px-6 py-6 md:h-20 md:py-0 flex flex-col md:flex-row items-center justify-between text-xs text-gray-600 dark:text-gray-400 gap-y-3">
         <div class="text-center md:text-left">
-            <?php
-            $zen_footer_license = zen_get_option('zen_copyright_license');
-            $zen_footer_license_labels = array(
-                'all-rights-reserved' => '保留所有权利',
-                'cc-by-4.0'           => '采用 CC BY 4.0 许可协议',
-                'cc-by-sa-4.0'        => '采用 CC BY-SA 4.0 许可协议',
-                'cc-by-nc-sa-4.0'     => '采用 CC BY-NC-SA 4.0 许可协议',
-            );
-            ?>
-            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?><?php if (isset($zen_footer_license_labels[$zen_footer_license])) : ?>. <?php echo esc_html($zen_footer_license_labels[$zen_footer_license]); ?><?php endif; ?></div>
+            <?php $zen_uptime = zen_get_site_uptime(); ?>
+            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days'] . ' ' . _n('Day', 'Days', $zen_uptime['days'], 'zen')); ?></div>
         </div>
         <?php
         $zen_footer_text = zen_get_option('zen_footer_text');

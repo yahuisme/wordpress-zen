@@ -36,6 +36,7 @@ function zen_get_option($key) {
             'zen_show_footer_wordpress'=> 1,
             'zen_show_footer_rss'      => 1,
             'zen_copyright_license'    => 'cc-by-nc-sa-4.0',
+            'zen_site_start_date'      => '',
         );
     }
 
@@ -95,6 +96,11 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_copyright_license',
     ));
+
+    register_setting('zen_options', 'zen_site_start_date', array(
+        'type'              => 'string',
+        'sanitize_callback' => 'zen_sanitize_site_start_date',
+    ));
 }
 add_action('admin_init', 'zen_register_options');
 
@@ -140,6 +146,17 @@ function zen_sanitize_copyright_license($value) {
     );
 
     return in_array($value, $licenses, true) ? $value : 'cc-by-nc-sa-4.0';
+}
+
+function zen_sanitize_site_start_date($value) {
+    $value = sanitize_text_field(trim($value));
+    if ($value === '') {
+        return '';
+    }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) && strtotime($value)) {
+        return $value;
+    }
+    return '';
 }
 
 function zen_get_update_info() {
@@ -338,7 +355,14 @@ function zen_options_page_html() {
                             <option value="cc-by-sa-4.0" <?php selected('cc-by-sa-4.0', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('CC BY-SA 4.0', 'zen'); ?></option>
                             <option value="cc-by-nc-sa-4.0" <?php selected('cc-by-nc-sa-4.0', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('CC BY-NC-SA 4.0', 'zen'); ?></option>
                         </select>
-                        <p class="description"><?php esc_html_e('页脚会显示对应协议名；选择「不显示」时，页脚只保留年份与站名，文章底部也不输出版权信息。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('控制文章详情页底部的版权声明展示；选择「不显示」时文章底部不输出版权信息。', 'zen'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
+                    <td>
+                        <input type="date" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="YYYY-MM-DD" class="regular-text">
+                        <p class="description"><?php esc_html_e('页脚运行时间起始日期。留空时将自动以全站第一篇公开文章的发布时间为准。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>

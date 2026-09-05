@@ -123,6 +123,7 @@ function zen_pagination() {
 
 function zen_clear_archives_cache() {
     delete_transient('zen_archives_posts');
+    delete_transient('zen_site_uptime');
 }
 add_action('save_post_post', 'zen_clear_archives_cache');
 function zen_clear_archives_cache_on_status_change($new_status, $old_status, $post) {
@@ -134,3 +135,46 @@ add_action('transition_post_status', 'zen_clear_archives_cache_on_status_change'
 add_action('deleted_post', 'zen_clear_archives_cache');
 add_action('trashed_post', 'zen_clear_archives_cache');
 add_action('untrashed_post', 'zen_clear_archives_cache');
+add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
+
+function zen_get_site_uptime() {
+    $uptime = get_transient('zen_site_uptime');
+    if (false === $uptime) {
+        $start_date_str = zen_get_option('zen_site_start_date');
+        $start_timestamp = 0;
+
+        if (!empty($start_date_str) && strtotime($start_date_str)) {
+            $start_timestamp = strtotime($start_date_str . ' 00:00:00');
+        } else {
+            $first_posts = get_posts(array(
+                'numberposts' => 1,
+                'post_status' => 'publish',
+                'orderby'     => 'date',
+                'order'       => 'ASC',
+                'fields'      => 'ids',
+            ));
+            if (!empty($first_posts)) {
+                $start_timestamp = get_post_time('U', true, $first_posts[0]);
+            }
+        }
+
+        $now = current_time('timestamp');
+        if ($start_timestamp > 0 && $start_timestamp <= $now) {
+            $year = gmdate('Y', $start_timestamp);
+            $days = max(1, (int) floor(($now - $start_timestamp) / DAY_IN_SECONDS));
+        } else {
+            $year = gmdate('Y', $now);
+            $days = 1;
+        }
+
+        $uptime = array(
+            'year' => $year,
+            'days' => $days,
+        );
+
+        // 缓存半天（12 小时），确保跨天自动更新天数
+        set_transient('zen_site_uptime', $uptime, 12 * HOUR_IN_SECONDS);
+    }
+
+    return $uptime;
+}
