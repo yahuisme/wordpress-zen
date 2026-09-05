@@ -267,7 +267,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_theme_mode_default"><?php esc_html_e('默认外观', 'zen'); ?></label></th>
                     <td>
-                        <select name="zen_theme_mode_default" id="zen_theme_mode_default">
+                        <select name="zen_theme_mode_default" id="zen_theme_mode_default" style="width: 200px;">
                             <option value="auto" <?php selected('auto', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('跟随系统', 'zen'); ?></option>
                             <option value="light" <?php selected('light', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('浅色', 'zen'); ?></option>
                             <option value="dark" <?php selected('dark', zen_get_option('zen_theme_mode_default')); ?>><?php esc_html_e('深色', 'zen'); ?></option>
@@ -278,7 +278,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_font_family"><?php esc_html_e('字体显示', 'zen'); ?></label></th>
                     <td>
-                        <select name="zen_font_family" id="zen_font_family">
+                        <select name="zen_font_family" id="zen_font_family" style="width: 200px;">
                             <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
                             <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
                         </select>
@@ -288,7 +288,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_content_width"><?php esc_html_e('内容宽度', 'zen'); ?></label></th>
                     <td>
-                        <input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="10" class="small-text"> px
+                        <input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="10" class="small-text" style="width: 80px;"> px
                         <p class="description"><?php esc_html_e('主题界面与内容的整体最大宽度（像素）。默认 900px；想更宽可设为 1300–1500px，更窄可设为 700–900px。', 'zen'); ?></p>
                     </td>
                 </tr>
@@ -302,7 +302,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                     <td>
-                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text"> 字
+                        <input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text" style="width: 80px;"> 字
                         <p class="description"><?php esc_html_e('文章列表中每篇摘要显示的字数（1–300）。', 'zen'); ?></p>
                     </td>
                 </tr>
@@ -321,7 +321,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚', 'zen'); ?></label></th>
                     <td>
-                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
+                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="code" style="width: 640px; max-width: 100%;" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('显示在右侧页脚信息上方的自定义内容，支持少量 HTML（如链接）。留空则不显示。', 'zen'); ?></p>
                     </td>
                 </tr>
@@ -348,7 +348,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                     <td>
-                        <select name="zen_copyright_license" id="zen_copyright_license">
+                        <select name="zen_copyright_license" id="zen_copyright_license" style="width: 200px;">
                             <option value="none" <?php selected('none', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('不显示', 'zen'); ?></option>
                             <option value="all-rights-reserved" <?php selected('all-rights-reserved', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('保留所有权利', 'zen'); ?></option>
                             <option value="cc-by-4.0" <?php selected('cc-by-4.0', zen_get_option('zen_copyright_license')); ?>><?php esc_html_e('CC BY 4.0', 'zen'); ?></option>
@@ -361,7 +361,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
                     <td>
-                        <input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="例如：2022-07-01" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
+                        <input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="例如：2022-07-01" class="regular-text" style="width: 160px;" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
                         <p class="description"><?php esc_html_e('页脚运行时间起始日期（格式：YYYY-MM-DD）。留空时将自动以全站第一篇公开文章的发布时间为准。', 'zen'); ?></p>
                     </td>
                 </tr>
