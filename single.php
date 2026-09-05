@@ -114,7 +114,7 @@
         <aside class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-600 dark:text-gray-400 leading-relaxed" aria-label="文章版权信息">
             <div>本文作者：<?php echo esc_html(get_the_author()); ?></div>
             <div>本文链接：<a href="<?php echo esc_url(get_permalink()); ?>" class="zen-ui-link break-words hover:text-gray-900 dark:hover:text-white" style="overflow-wrap: anywhere;"><?php echo esc_html(get_permalink()); ?></a></div>
-            <div>版权声明：除特别声明外，本站文章<?php if ($zen_license_info[1]) : ?>采用 <a href="<?php echo esc_url($zen_license_info[1]); ?>" target="_blank" rel="license noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white"><?php echo esc_html($zen_license_info[0]); ?></a> 许可协议。<?php else : ?><?php echo esc_html($zen_license_info[0]); ?>。<?php endif; ?></div>
+            <div>版权声明：除特别声明外，本站文章<?php if ($zen_license_info[1]) : ?>采用 <a href="<?php echo esc_url($zen_license_info[1]); ?>" target="_blank" rel="license noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="<?php echo esc_attr($zen_license_info[0]); ?> (在新窗口打开)"><?php echo esc_html($zen_license_info[0]); ?></a> 许可协议。<?php else : ?><?php echo esc_html($zen_license_info[0]); ?>。<?php endif; ?></div>
         </aside>
         <?php endif; ?>
 

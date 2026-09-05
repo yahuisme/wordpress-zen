@@ -37,7 +37,7 @@
                 <a href="https://wordpress.org/" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="Powered By WordPress (在新窗口打开)">Powered By WordPress</a>
                 <?php endif; ?>
                 <?php if ($zen_show_footer_rss) : ?>
-                <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="订阅 RSS">
+                <a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="zen-ui-link hover:text-gray-900 dark:hover:text-white flex items-center gap-1" aria-label="订阅 RSS (在新窗口打开)">
                     <i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS
                 </a>
                 <?php endif; ?>
