@@ -361,8 +361,8 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
                     <td>
-                        <input type="date" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="YYYY-MM-DD" class="regular-text">
-                        <p class="description"><?php esc_html_e('页脚运行时间起始日期。留空时将自动以全站第一篇公开文章的发布时间为准。', 'zen'); ?></p>
+                        <input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="例如：2022-07-01" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
+                        <p class="description"><?php esc_html_e('页脚运行时间起始日期（格式：YYYY-MM-DD）。留空时将自动以全站第一篇公开文章的发布时间为准。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>
