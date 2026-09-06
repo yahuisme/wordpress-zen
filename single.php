@@ -16,29 +16,29 @@
 
     <button id="floating-toc-btn" type="button"
             class="zen-mobile-toc xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-50
-                   zen-floating-toc-btn p-3 rounded-l-lg 
+                   zen-floating-toc-btn p-3 rounded-l-lg
                    shadow-lg hover:shadow-xl dark:shadow-none dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]
-                   border-y border-l border-gray-200 dark:border-gray-700 
-                   text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white 
+                   border-y border-l border-gray-200 dark:border-gray-700
+                   text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white
                    transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]
                    hover:scale-110 hover:-translate-x-2
-                   hidden" 
-            aria-label="打开目录" 
-            aria-haspopup="dialog" 
-            aria-controls="drawer-toc" 
+                   hidden"
+            aria-label="打开目录"
+            aria-haspopup="dialog"
+            aria-controls="drawer-toc"
             aria-expanded="false">
         <i class="ph ph-list-bullets text-2xl" aria-hidden="true"></i>
     </button>
 
     <div id="toc-overlay" class="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0" aria-hidden="true"></div>
-    
-    <aside id="drawer-toc" 
-           class="zen-toc-drawer fixed top-0 right-0 w-80 h-screen max-w-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" 
-           role="dialog" 
-           aria-modal="true" 
+
+    <aside id="drawer-toc"
+           class="zen-toc-drawer fixed top-0 right-0 w-80 h-screen max-w-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col"
+           role="dialog"
+           aria-modal="true"
            aria-labelledby="drawer-toc-title"
            inert>
-        
+
         <div class="zen-toc-drawer-header flex items-center justify-between p-6">
             <h3 id="drawer-toc-title" class="text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">目录</h3>
             <button id="drawer-toc-close" type="button" class="zen-icon-btn text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500" aria-label="关闭目录">
@@ -56,7 +56,7 @@
 
     <header class="mb-10 text-center">
         <div class="text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-4 flex items-center justify-center gap-2">
-            <?php 
+            <?php
             $cat = zen_get_primary_category();
             if ($cat) {
                 echo '<a href="' . esc_url(get_category_link($cat->term_id)) . '" class="zen-ui-link bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">' . esc_html($cat->name) . '</a>';
@@ -162,7 +162,7 @@
         </nav>
         <?php endif; ?>
 
-    <?php 
+    <?php
     if (comments_open() || get_comments_number()) :
         comments_template();
     endif;

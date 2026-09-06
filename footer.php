@@ -46,10 +46,10 @@
 </footer>
 
 <?php if (zen_get_option('zen_show_lightbox')) : ?>
-<div id="lightbox" 
-     role="dialog" 
-     aria-modal="true" 
-     aria-label="图片查看器" 
+<div id="lightbox"
+     role="dialog"
+     aria-modal="true"
+     aria-label="图片查看器"
      class="zen-lightbox fixed inset-0 z-[100] hidden flex items-center justify-center p-4 cursor-zoom-out"
      tabindex="-1">
     <div class="zen-lightbox-panel relative">

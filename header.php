@@ -26,7 +26,7 @@
         <meta name="robots" content="noindex, follow" />
     <?php endif; ?>
 
-    <meta name="description" content="<?php 
+    <meta name="description" content="<?php
         if ( is_single() || is_page() ) {
             $excerpt = get_the_excerpt();
             if (empty($excerpt)) {
@@ -62,15 +62,15 @@
 
 <header role="banner" class="zen-site-header w-full transition-colors backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-zen mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-        
+
         <div class="flex items-center gap-4 min-w-0">
             <a href="<?php echo esc_url(home_url('/')); ?>" class="block shrink-0 group zen-ui-link rounded-full" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - 首页">
-                <?php 
+                <?php
                 $avatar_url = get_avatar_url(get_option('admin_email'));
                 if ($avatar_url) :
                 ?>
-                <img src="<?php echo esc_url($avatar_url); ?>" 
-                     alt="" 
+                <img src="<?php echo esc_url($avatar_url); ?>"
+                     alt=""
                      class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700 group-hover:ring-gray-300 dark:group-hover:ring-gray-500 transition-all duration-300">
                 <?php endif; ?>
             </a>
