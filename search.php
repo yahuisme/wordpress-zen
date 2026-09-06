@@ -10,7 +10,7 @@
     </h1>
 
     <div class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mt-4 prose dark:prose-invert">
-        <?php 
+        <?php
         global $wp_query;
         $count = $wp_query->found_posts;
         echo esc_html(sprintf('共找到 %d 篇相关文章', $count));

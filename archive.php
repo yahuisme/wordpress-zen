@@ -2,7 +2,7 @@
 
 <header class="mb-12 text-center animate-fade-in">
     <div class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
-        <?php 
+        <?php
         if (is_category()) { echo '分类专栏'; }
         elseif (is_tag()) { echo '话题标签'; }
         elseif (is_author()) { echo '作者专栏'; }
@@ -10,9 +10,9 @@
         else { echo '归档'; }
         ?>
     </div>
-    
+
     <h1 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900 dark:text-white">
-        <?php 
+        <?php
         if (is_category()) {
             echo esc_html(single_cat_title('', false));
         } elseif (is_tag()) {
@@ -26,7 +26,7 @@
         } elseif (is_year()) {
             echo esc_html(get_the_date('Y年'));
         } else {
-            the_archive_title('', false); 
+            the_archive_title('', false);
         }
         ?>
     </h1>

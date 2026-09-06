@@ -51,13 +51,13 @@ get_header(); ?>
     }
 
     $year_prev = null;
-    
+
     if (!empty($archives_posts)) :
         foreach ($archives_posts as $archive_post) :
             $year_current = $archive_post['year'];
 
-            if ($year_current != $year_prev) {
-                if ($year_prev != null) { ?>
+            if ($year_current !== $year_prev) {
+                if ($year_prev !== null) { ?>
                     </ul>
                 </section>
                 <?php } ?>
