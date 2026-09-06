@@ -158,7 +158,7 @@ function zen_get_site_uptime() {
             }
         }
 
-        $now = current_time('timestamp');
+        $now = time();
         if ($start_timestamp > 0 && $start_timestamp <= $now) {
             $year = gmdate('Y', $start_timestamp);
             $days = max(1, (int) floor(($now - $start_timestamp) / DAY_IN_SECONDS));
