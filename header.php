@@ -80,7 +80,7 @@
         </div>
 
         <div class="zen-header-actions flex items-center">
-            
+
             <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center font-medium text-gray-600 dark:text-gray-400">
                 <?php
                 wp_nav_menu(array(

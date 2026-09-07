@@ -61,12 +61,12 @@ get_header(); ?>
                     </ul>
                 </section>
                 <?php } ?>
-                
+
                 <section>
                     <h3 class="text-xl font-bold mb-4 text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-2"><?php echo esc_html($year_current); ?></h3>
                     <ul class="space-y-4">
             <?php } ?>
-            
+
             <li class="flex items-baseline justify-between group">
                 <a href="<?php echo esc_url($archive_post['url']); ?>" class="text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
                     <?php echo esc_html($archive_post['title']); ?>
@@ -75,7 +75,7 @@ get_header(); ?>
             </li>
 
             <?php $year_prev = $year_current; ?>
-            
+
         <?php endforeach; ?>
             </ul>
         </section>

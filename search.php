@@ -4,7 +4,7 @@
     <div class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
         搜索结果
     </div>
-    
+
     <h1 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900 dark:text-white break-words">
         “<?php echo esc_html(get_search_query(false)); ?>”
     </h1>
@@ -23,7 +23,7 @@
         <?php get_template_part('template-parts/content', 'excerpt', array('highlight_title' => true)); ?>
 
     <?php endwhile; ?>
-        
+
         <?php zen_pagination(); ?>
 
     <?php else : ?>
@@ -33,7 +33,7 @@
             </div>
             <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">未找到相关内容</h2>
             <p class="text-gray-500 dark:text-gray-400 mb-6">尝试更换关键词，或者查看归档页面。</p>
-            
+
             <?php
             $archive_pages = get_pages(array(
                 'meta_key' => '_wp_page_template',
@@ -42,7 +42,7 @@
             ));
             $archive_url = (!empty($archive_pages)) ? get_permalink($archive_pages[0]->ID) : home_url('/');
             ?>
-            
+
             <a href="<?php echo esc_url($archive_url); ?>" class="inline-block px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors text-sm font-medium">
                 浏览归档
             </a>
