@@ -20,7 +20,7 @@ function zen_comment_callback($comment, $args, $depth) {
             <div class="flex gap-4">
                 <div class="shrink-0">
                     <?php
-                    if ($args['avatar_size'] != 0) {
+                    if ($args['avatar_size'] !== 0) {
                         echo get_avatar(
                             $comment,
                             $args['avatar_size'],

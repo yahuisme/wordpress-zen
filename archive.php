@@ -44,7 +44,7 @@
         <?php get_template_part('template-parts/content', 'excerpt'); ?>
 
     <?php endwhile; ?>
-        
+
         <?php zen_pagination(); ?>
 
     <?php else : ?>

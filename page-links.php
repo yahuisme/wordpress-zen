@@ -52,7 +52,7 @@ get_header(); ?>
                             <?php echo esc_html($fallback_initial); ?>
                         </div>
                     <?php endif; ?>
-                    
+
                     <div class="flex-grow min-w-0">
                         <h3 class="font-bold text-gray-900 dark:text-white truncate transition-colors">
                             <?php echo esc_html($bookmark->link_name); ?>
