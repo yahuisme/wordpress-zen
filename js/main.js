@@ -648,6 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeModalIds = ['lightbox', 'search-modal', 'drawer-toc'];
         const activeModals = activeModalIds.map((id) => document.getElementById(id)).filter((modal) => modal && (modal.id === 'drawer-toc' ? !modal.hasAttribute('inert') : !modal.classList.contains('hidden')));
 
+        // The drawer backdrop is interactive, not part of the inert background.
+        if (activeModals.includes(drawerToc) && tocOverlay) activeModals.push(tocOverlay);
+
         const isolateDescendants = (node) => {
             Array.from(node.children).forEach((child) => {
                 if (activeModals.some((modal) => child === modal || child.contains(modal))) {
@@ -707,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchToggle && searchModal && searchInput) {
         trapFocus(searchModal);
         const openSearch = () => {
+            if (document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])')) return;
             if (searchCloseTimer) clearTimeout(searchCloseTimer);
             lastActiveElementBeforeSearch = document.activeElement;
             searchModal.classList.remove('hidden');

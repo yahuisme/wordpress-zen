@@ -28,6 +28,9 @@ function zen_highlight_search_terms($text, $query = '') {
     }
 
     $terms = preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY);
+    if (false === $terms) {
+        return esc_html($text);
+    }
     $terms = array_unique(array_filter($terms));
 
     if (empty($terms)) {
@@ -37,6 +40,9 @@ function zen_highlight_search_terms($text, $query = '') {
     $terms = array_filter($terms, function ($term) {
         return function_exists('mb_strlen') ? mb_strlen($term) <= 100 : strlen($term) <= 300;
     });
+    if (empty($terms)) {
+        return esc_html($text);
+    }
     $terms = array_slice($terms, 0, 20);
 
     usort($terms, function ($a, $b) {
@@ -122,7 +128,7 @@ function zen_pagination() {
 }
 
 function zen_clear_archives_cache() {
-    delete_transient('zen_archives_posts');
+    delete_transient('zen_archives_public_posts');
     delete_transient('zen_site_uptime');
 }
 add_action('save_post_post', 'zen_clear_archives_cache');
