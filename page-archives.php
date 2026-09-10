@@ -11,7 +11,7 @@ get_header(); ?>
 
 <div class="max-w-zen-narrow mx-auto space-y-8 animate-fade-in">
     <?php
-    $archives_posts = get_transient('zen_archives_posts');
+    $archives_posts = get_transient('zen_archives_public_posts');
 
     if (false === $archives_posts) {
         $archives_posts = array();
@@ -20,24 +20,24 @@ get_header(); ?>
 
         do {
             $archives_query = new WP_Query(array(
+                'post_status' => 'publish',
                 'posts_per_page' => $archive_batch_size,
                 'paged' => $archive_page,
                 'ignore_sticky_posts' => true,
                 'orderby' => 'date',
                 'order' => 'DESC',
-                'fields' => 'ids',
                 'no_found_rows' => false,
                 'update_post_meta_cache' => false,
                 'update_post_term_cache' => false,
             ));
 
-            foreach ($archives_query->posts as $post_id) {
+            foreach ($archives_query->posts as $archive_post) {
                 $archives_posts[] = array(
-                    'id' => $post_id,
-                    'title' => get_the_title($post_id),
-                    'url' => get_permalink($post_id),
-                    'year' => get_the_date('Y', $post_id),
-                    'date' => get_the_date('m-d', $post_id),
+                    'id' => $archive_post->ID,
+                    'title' => get_the_title($archive_post),
+                    'url' => get_permalink($archive_post),
+                    'year' => get_the_date('Y', $archive_post),
+                    'date' => get_the_date('m-d', $archive_post),
                 );
             }
 
@@ -47,7 +47,7 @@ get_header(); ?>
             unset($archives_query);
         } while ($archive_has_more);
 
-        set_transient('zen_archives_posts', $archives_posts, HOUR_IN_SECONDS);
+        set_transient('zen_archives_public_posts', $archives_posts, HOUR_IN_SECONDS);
     }
 
     $year_prev = null;
