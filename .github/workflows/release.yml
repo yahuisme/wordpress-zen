@@ -19,7 +19,7 @@ jobs:
 
       - name: Package and publish release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           VERSION="$(grep -m1 '^Version:' style.css | sed 's/^Version:[[:space:]]*//')"
           if [ -z "$VERSION" ]; then
