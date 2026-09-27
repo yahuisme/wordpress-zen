@@ -31,7 +31,7 @@ function zen_highlight_search_terms($text, $query = '') {
     if (false === $terms) {
         return esc_html($text);
     }
-    $terms = array_unique(array_filter($terms));
+    $terms = array_unique($terms);
 
     if (empty($terms)) {
         return esc_html($text);
@@ -116,7 +116,7 @@ function zen_pagination() {
         echo '<nav class="pt-8 flex justify-center items-center gap-2" aria-label="分页导航">';
 
         foreach ($pages as $page) {
-            if (strpos($page, 'current') !== false) {
+            if (preg_match('/^<span\b[^>]*\saria-current=([\'\"])page\1/i', $page)) {
                 echo "<span class='page-numbers px-3 py-1 border border-transparent bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-sm text-sm' aria-current='page'>" . esc_html(strip_tags($page)) . "</span>";
             } else {
                 echo zen_kses_link(str_replace('page-numbers', 'page-numbers px-3 py-1 border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-sm text-gray-600 dark:text-gray-400', $page));
@@ -141,6 +141,7 @@ add_action('transition_post_status', 'zen_clear_archives_cache_on_status_change'
 add_action('deleted_post', 'zen_clear_archives_cache');
 add_action('trashed_post', 'zen_clear_archives_cache');
 add_action('untrashed_post', 'zen_clear_archives_cache');
+add_action('add_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
 
 function zen_get_site_uptime() {

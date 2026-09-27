@@ -67,8 +67,8 @@ get_header(); ?>
                     <ul class="space-y-4">
             <?php } ?>
 
-            <li class="flex items-baseline justify-between group">
-                <a href="<?php echo esc_url($archive_post['url']); ?>" class="text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
+            <li class="zen-archive-row flex items-baseline justify-between group">
+                <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
                     <?php echo esc_html($archive_post['title']); ?>
                 </a>
                 <span class="text-sm text-gray-600 dark:text-gray-500 shrink-0 font-mono"><?php echo esc_html($archive_post['date']); ?></span>

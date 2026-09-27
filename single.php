@@ -91,6 +91,11 @@
         <?php the_content(); ?>
     </article>
 
+    <?php wp_link_pages(array(
+        'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
+        'after' => '</nav>',
+    )); ?>
+
     <?php if (zen_get_option('zen_show_updated_date')) : ?>
     <div class="mt-12 pt-7 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400" aria-label="文章信息">
         <span class="flex items-center gap-1">
