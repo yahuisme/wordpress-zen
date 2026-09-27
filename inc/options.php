@@ -324,7 +324,7 @@ function zen_options_page_html() {
                 <tr>
                     <th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚', 'zen'); ?></label></th>
                     <td>
-                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="code" style="width: 800px; max-width: 100%;" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
+                        <textarea name="zen_footer_text" id="zen_footer_text" rows="5" class="code" style="width: 100%; max-width: 800px;" placeholder="例如：&lt;a href=&quot;https://example.com&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('页脚自定义内容，支持 HTML 标签。留空不显示。', 'zen'); ?></p>
                     </td>
                 </tr>

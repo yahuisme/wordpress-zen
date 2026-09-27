@@ -8,9 +8,13 @@ get_header(); ?>
 
     <header class="mb-12 text-center">
         <h1 class="text-3xl font-bold mb-6 serif"><?php the_title(); ?></h1>
-        <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto prose dark:prose-invert">
+        <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto prose dark:prose-invert entry-content">
             <?php the_content(); ?>
         </div>
+        <?php wp_link_pages(array(
+            'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
+            'after' => '</nav>',
+        )); ?>
     </header>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-zen mx-auto mb-20">
@@ -40,8 +44,11 @@ get_header(); ?>
             foreach ($bookmarks as $bookmark) {
                 ?>
                 <?php
-                $allowed_targets = array('_blank', '_self', '_parent', '_top');
+                $allowed_targets = array('', '_blank', '_self', '_parent', '_top');
                 $link_target = in_array($bookmark->link_target, $allowed_targets, true) ? $bookmark->link_target : '_blank';
+                if ('' === $link_target) {
+                    $link_target = '_self';
+                }
                 $fallback_initial = function_exists('mb_substr') ? mb_substr($bookmark->link_name, 0, 1) : substr($bookmark->link_name, 0, 1);
                 ?>
                 <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="noopener noreferrer" class="zen-link-card group flex items-center p-4 rounded-lg transition-all">

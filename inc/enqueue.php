@@ -53,8 +53,13 @@ function zen_scripts() {
         wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }' . $heading_weight);
         $zen_content_width = max(600, min(1920, (int) zen_get_option('zen_content_width')));
         wp_add_inline_style('zen-compiled-style', ':root{--zen-content-width:' . $zen_content_width . 'px;--zen-content-half:' . round($zen_content_width / 2) . 'px;--zen-archives-width:' . round($zen_content_width * 0.75) . 'px}.max-w-zen{max-width:var(--zen-content-width)}.max-w-zen-narrow{max-width:var(--zen-archives-width)}');
-        wp_add_inline_style('zen-compiled-style', '.entry-content{overflow-wrap:anywhere}.entry-content pre{overflow-wrap:normal}');
+        // Reserve both side gutters for the 224px TOC and its 32px gap.
+        $zen_toc_breakpoint = max(1360, $zen_content_width + 512);
+        wp_add_inline_style('zen-compiled-style', '#toc-container{display:none!important}#floating-toc-btn.zen-toc-ready{display:block!important}@media(min-width:' . $zen_toc_breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready{display:none!important}}#toc-container:not(.zen-toc-ready),#floating-toc-btn:not(.zen-toc-ready){display:none!important}');
+        wp_add_inline_style('zen-compiled-style', '#post-content h2,#post-content h3{scroll-margin-top:96px}.admin-bar #post-content h2,.admin-bar #post-content h3{scroll-margin-top:128px}');
+        wp_add_inline_style('zen-compiled-style', '.entry-content,#main-content h1,#main-content h2{overflow-wrap:anywhere}.entry-content pre{overflow-wrap:normal}.zen-archive-row{gap:16px}.zen-archive-link{min-width:0;overflow-wrap:anywhere}');
         wp_add_inline_style('zen-compiled-style', '@media (prefers-reduced-motion: reduce) { html.scroll-smooth { scroll-behavior: auto; } }');
+        wp_add_inline_style('zen-compiled-style', '.zen-page-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:32px}.zen-page-links .post-page-numbers{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;border:1px solid var(--zen-border);border-radius:4px;color:var(--zen-muted)}.zen-page-links a:hover,.zen-page-links [aria-current]{color:var(--zen-text);background:var(--zen-bg-soft)}');
         wp_add_inline_style('zen-compiled-style', '.zen-post-nav-next{text-align:right}@media (max-width:639.98px){.zen-post-nav-next{text-align:left}}');
     }
 

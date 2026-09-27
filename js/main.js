@@ -191,7 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
             img.classList.add('cursor-zoom-in');
             img.setAttribute('tabindex', '0');
             img.setAttribute('role', 'button');
-            img.setAttribute('aria-label', '点击查看大图');
+            const imageDescription = (img.getAttribute('aria-label') || img.alt || '').trim();
+            img.setAttribute('aria-label', imageDescription ? `${imageDescription}，点击查看大图` : '点击查看大图');
 
             const openLightbox = (e) => {
                 if (img.parentElement.tagName === 'A') return;
@@ -261,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (backToTopBtn) {
+            backToTopBtn.disabled = window.scrollY <= 300;
             if (window.scrollY > 300) {
                 backToTopBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
             } else {
@@ -290,8 +292,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. 初始化显示
             // 只要有目录内容，就移除 display:none (hidden)
             // 具体的显隐由 CSS @media 查询控制 (xl:block / xl:hidden)
-            if (tocContainer) tocContainer.classList.remove('opacity-0');
-            if (floatingTocBtn) floatingTocBtn.classList.remove('hidden');
+            if (tocContainer) {
+                tocContainer.classList.add('zen-toc-ready');
+                tocContainer.classList.remove('opacity-0');
+            }
+            if (floatingTocBtn) {
+                floatingTocBtn.classList.add('zen-toc-ready');
+                floatingTocBtn.classList.remove('hidden');
+            }
 
             const idCounts = new Map();
             document.querySelectorAll('[id]').forEach((element) => {
