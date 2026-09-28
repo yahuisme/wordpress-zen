@@ -25,7 +25,12 @@ function zen_scripts() {
     }
 
     $font_query .= '&display=swap';
-    wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query, array(), null);
+    if ($font_family === 'system') {
+        $font_stack = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+        $heading_stack = '"Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+    } else {
+        wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query, array(), null);
+    }
     wp_enqueue_style('phosphor-icons', get_template_directory_uri() . '/assets/css/phosphor-icons.css', array(), $ver);
 
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {

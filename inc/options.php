@@ -37,6 +37,9 @@ function zen_get_option($key) {
             'zen_show_footer_rss'      => 1,
             'zen_copyright_license'    => 'cc-by-nc-sa-4.0',
             'zen_site_start_date'      => '',
+            'zen_code_head'            => '',
+            'zen_code_body'            => '',
+            'zen_code_footer'          => '',
         );
     }
 
@@ -101,8 +104,32 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_site_start_date',
     ));
+
+    foreach (array('head', 'body', 'footer') as $position) {
+        $key = 'zen_code_' . $position;
+        register_setting('zen_options', $key, array(
+            'type'              => 'string',
+            'show_in_rest'      => false,
+            'sanitize_callback' => function ($value) use ($key) {
+                if (!current_user_can('unfiltered_html') || !is_string($value)) {
+                    return get_option($key, '');
+                }
+                return $value;
+            },
+        ));
+    }
 }
 add_action('admin_init', 'zen_register_options');
+
+// Raw markup is intentional: only unfiltered_html users may save these fields.
+foreach (array('wp_head' => 'head', 'wp_body_open' => 'body', 'wp_footer' => 'footer') as $zen_hook => $zen_position) {
+    add_action($zen_hook, function () use ($zen_position) {
+        $code = zen_get_option('zen_code_' . $zen_position);
+        if (is_string($code) && '' !== trim($code)) {
+            echo "\n" . $code . "\n";
+        }
+    }, 20);
+}
 
 function zen_sanitize_checkbox($value) {
     return empty($value) ? 0 : 1;
@@ -133,7 +160,7 @@ function zen_sanitize_theme_mode($value) {
 }
 
 function zen_sanitize_font_family($value) {
-    return in_array($value, array('inter', 'space-grotesk'), true) ? $value : 'inter';
+    return in_array($value, array('inter', 'space-grotesk', 'system'), true) ? $value : 'inter';
 }
 
 function zen_sanitize_copyright_license($value) {
@@ -284,8 +311,9 @@ function zen_options_page_html() {
                         <select name="zen_font_family" id="zen_font_family" style="width: 200px;">
                             <option value="inter" <?php selected('inter', zen_get_option('zen_font_family')); ?>>Inter</option>
                             <option value="space-grotesk" <?php selected('space-grotesk', zen_get_option('zen_font_family')); ?>>Space Grotesk</option>
+                            <option value="system" <?php selected('system', zen_get_option('zen_font_family')); ?>><?php esc_html_e('系统字体', 'zen'); ?></option>
                         </select>
-                        <p class="description"><?php esc_html_e('控制全站标题与正文字体搭配风格。', 'zen'); ?></p>
+                        <p class="description"><?php esc_html_e('系统字体无需加载外部字体。', 'zen'); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -368,6 +396,24 @@ function zen_options_page_html() {
                         <p class="description"><?php esc_html_e('页脚运行时间起始日期（YYYY-MM-DD）。留空则自动按首篇公开文章计算。', 'zen'); ?></p>
                     </td>
                 </tr>
+                <?php if (current_user_can('unfiltered_html')) : ?>
+                <tr>
+                    <th scope="row"><?php esc_html_e('自定义代码', 'zen'); ?></th>
+                    <td>
+                        <?php foreach (array(
+                            'head' => array('头部代码', '输出到 </head> 前。'),
+                            'body' => array('正文起始代码', '输出到 <body> 起始处。'),
+                            'footer' => array('页脚代码', '输出到 </body> 前。'),
+                        ) as $position => $field) : ?>
+                        <div style="margin-bottom: 16px;">
+                            <label for="zen_code_<?php echo esc_attr($position); ?>" style="display: block; margin-bottom: 8px;"><?php echo esc_html($field[0]); ?></label>
+                            <textarea name="zen_code_<?php echo esc_attr($position); ?>" id="zen_code_<?php echo esc_attr($position); ?>" rows="6" class="code" style="width: 100%; max-width: 800px;" spellcheck="false" placeholder="粘贴完整 HTML 或 script 代码"><?php echo esc_textarea(zen_get_option('zen_code_' . $position)); ?></textarea>
+                            <p class="description"><?php echo esc_html($field[1]); ?></p>
+                        </div>
+                        <?php endforeach; ?>
+                    </td>
+                </tr>
+                <?php endif; ?>
                 <tr>
                     <th scope="row"><?php esc_html_e('主题更新', 'zen'); ?></th>
                     <td>
