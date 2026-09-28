@@ -125,6 +125,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const highlightMargin = 200;
+    const pendingHighlights = new Set();
+    let highlightObserver;
     const wpCodeBlocks = document.querySelectorAll('.entry-content pre, pre.wp-block-code');
     wpCodeBlocks.forEach(block => {
         const code = block.querySelector('code');
@@ -133,7 +136,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (className.startsWith('language-')) code.classList.add(className);
             });
         }
-        if (typeof hljs !== 'undefined' && code && !code.dataset.highlighted) hljs.highlightElement(code);
+        if (typeof hljs !== 'undefined' && code && !code.dataset.highlighted) {
+            const rect = block.getBoundingClientRect();
+            if (typeof IntersectionObserver === 'undefined' ||
+                (rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
+                hljs.highlightElement(code);
+            } else {
+                if (!highlightObserver) {
+                    highlightObserver = new IntersectionObserver(entries => {
+                        entries.forEach(entry => {
+                            if (!entry.isIntersecting || !pendingHighlights.delete(entry.target)) return;
+                            highlightObserver.unobserve(entry.target);
+                            if (!entry.target.dataset.highlighted) hljs.highlightElement(entry.target);
+                        });
+                        if (!pendingHighlights.size) highlightObserver.disconnect();
+                    }, { rootMargin: `${highlightMargin}px 0px` });
+                }
+                pendingHighlights.add(code);
+                highlightObserver.observe(code);
+            }
+        }
 
         if (code && !block.querySelector('.zen-code-copy')) {
             block.classList.add('zen-code-block');

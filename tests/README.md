@@ -4,9 +4,20 @@
 
 ```sh
 php tests/php-regression.php
+php tests/assets-regression.php
+php tests/custom-code-regression.php
+php tests/seo-regression.php
 ```
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
+
+代码高亮回归需要 Node.js 与 `jsdom`，实际执行主题脚本及本地 Highlight.js：
+
+```sh
+node --test tests/highlight-regression.cjs
+```
+
+`jsdom` 安装在独立工具目录时，通过 `NODE_PATH` 指向其 `node_modules`。
 
 ## 浏览器
 
