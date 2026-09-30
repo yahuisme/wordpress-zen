@@ -63,6 +63,7 @@ function zen_scripts() {
         wp_add_inline_style('zen-compiled-style', '#toc-container{display:none!important}#floating-toc-btn.zen-toc-ready{display:block!important}@media(min-width:' . $zen_toc_breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready{display:none!important}}#toc-container:not(.zen-toc-ready),#floating-toc-btn:not(.zen-toc-ready){display:none!important}');
         wp_add_inline_style('zen-compiled-style', '#post-content h2,#post-content h3{scroll-margin-top:96px}.admin-bar #post-content h2,.admin-bar #post-content h3{scroll-margin-top:128px}');
         wp_add_inline_style('zen-compiled-style', '.entry-content,#main-content h1,#main-content h2{overflow-wrap:anywhere}.entry-content pre{overflow-wrap:normal}.zen-archive-row{gap:16px}.zen-archive-link{min-width:0;overflow-wrap:anywhere}');
+        wp_add_inline_style('zen-compiled-style', '.entry-content iframe,.entry-content embed,.entry-content object{max-width:100%}');
         wp_add_inline_style('zen-compiled-style', '@media (prefers-reduced-motion: reduce) { html.scroll-smooth { scroll-behavior: auto; } }');
         wp_add_inline_style('zen-compiled-style', '.zen-page-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:32px}.zen-page-links .post-page-numbers{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;border:1px solid var(--zen-border);border-radius:4px;color:var(--zen-muted)}.zen-page-links a:hover,.zen-page-links [aria-current]{color:var(--zen-text);background:var(--zen-bg-soft)}');
         wp_add_inline_style('zen-compiled-style', '.zen-post-nav-next{text-align:right}@media (max-width:639.98px){.zen-post-nav-next{text-align:left}}');
@@ -81,5 +82,36 @@ function zen_has_code_blocks() {
         return false;
     }
 
-    return has_block('core/code', $post) || preg_match('/<pre\b[^>]*>\s*(?:<code\b)?/i', $post->post_content);
+    $pending = array($post->post_content);
+    $seen_refs = array();
+    while ($pending) {
+        $content = array_pop($pending);
+        if (has_block('core/code', $content) || preg_match('/<pre\b[^>]*>/i', $content)) {
+            return true;
+        }
+        if (!has_block('core/block', $content)) {
+            continue;
+        }
+        $blocks = parse_blocks($content);
+        while ($blocks) {
+            $block = array_pop($blocks);
+            foreach ($block['innerBlocks'] as $inner_block) {
+                $blocks[] = $inner_block;
+            }
+            if ('core/block' !== $block['blockName'] || empty($block['attrs']['ref'])) {
+                continue;
+            }
+            $ref = $block['attrs']['ref'];
+            if (!is_int($ref) || $ref <= 0 || isset($seen_refs[$ref])) {
+                continue;
+            }
+            $seen_refs[$ref] = true;
+            $pattern = get_post($ref);
+            // Match native synced-pattern visibility without rendering content twice.
+            if ($pattern && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status && '' === $pattern->post_password) {
+                $pending[] = $pattern->post_content;
+            }
+        }
+    }
+    return false;
 }

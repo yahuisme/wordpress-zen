@@ -14,10 +14,18 @@ php tests/seo-regression.php
 代码高亮回归需要 Node.js 与 `jsdom`，实际执行主题脚本及本地 Highlight.js：
 
 ```sh
-node --test tests/highlight-regression.cjs
+node --test tests/highlight-regression.cjs tests/interaction-regression.cjs
 ```
 
 `jsdom` 安装在独立工具目录时，通过 `NODE_PATH` 指向其 `node_modules`。
+
+## 原生 WordPress
+
+```sh
+ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
+```
+
+仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题及默认阅读计数。测试会创建并删除自己的样板/文章、临时切换计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
 
 ## 浏览器
 
@@ -36,5 +44,13 @@ python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
 - `links`：使用 Links Template，介绍中含长网址的页面。
 
 脚本仅浏览页面，不提交后台设置。建议分别将内容宽度设为600、900、1200和1920复测。外部资源被屏蔽，不据此判断字体网络性能。
+
+基础体验测试使用同一隔离站点：
+
+```sh
+python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.json
+```
+
+额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个主菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，选择系统字体以隔离外部网络。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
 
 以上测试文件不进入主题发布 ZIP。
