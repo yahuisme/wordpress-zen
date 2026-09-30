@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // TOC Generation & Spy
-    if (article) {
+    if (article && (tocNav || drawerTocNav)) {
         const headers = article.querySelectorAll('h2, h3');
         if (headers.length > 0) {
             // 1. 初始化显示
@@ -656,6 +656,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setAudioButtonState(false);
             updateAudioUI();
         });
+
+        updateAudioUI();
+        syncAudioButton();
     });
 
     // --- 7. Back to Top ---
@@ -743,6 +746,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])')) return;
             if (searchCloseTimer) clearTimeout(searchCloseTimer);
             lastActiveElementBeforeSearch = document.activeElement;
+            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                if (mobileMenu.contains(lastActiveElementBeforeSearch)) {
+                    lastActiveElementBeforeSearch = mobileMenuBtn || searchToggle;
+                }
+                mobileMenu.classList.add('hidden');
+                mobileMenu.setAttribute('aria-hidden', 'true');
+                if (mobileMenuBtn) {
+                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
+                    mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+                }
+            }
             searchModal.classList.remove('hidden');
             requestAnimationFrame(() => {
                 searchModal.classList.remove('opacity-0');
@@ -771,16 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchToggle.setAttribute('aria-expanded', 'false');
         };
 
-        searchToggle.addEventListener('click', () => {
-            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
-                mobileMenu.classList.add('hidden');
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
-                    mobileMenuBtn.setAttribute('aria-label', '打开菜单');
-                }
-            }
-            openSearch();
-        });
+        searchToggle.addEventListener('click', openSearch);
         if (searchClose) searchClose.addEventListener('click', closeSearch);
         searchModal.addEventListener('click', (e) => {
             if (e.target === searchModal || e.target.closest('[data-search-dismiss="true"]')) closeSearch();

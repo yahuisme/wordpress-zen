@@ -450,7 +450,8 @@ function zen_track_post_view() {
         return;
     }
 
-    if (function_exists('is_bot') && is_bot()) {
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) && is_string($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+    if (preg_match('/bot\b|spider|crawler|slurp|bingpreview|facebookexternalhit|headlesschrome/i', $user_agent) || (function_exists('is_bot') && is_bot())) {
         return;
     }
 
