@@ -1,4 +1,4 @@
-name: Release Theme
+name: Release Zen
 
 on:
   workflow_dispatch:
@@ -84,14 +84,27 @@ jobs:
               match = re.search(r'^Version:\s*(\S+)', style, re.MULTILINE)
               if not match or match.group(1) != version:
                   raise SystemExit('发布包版本校验失败')
+              headers = {
+                  'Theme Name': 'Zen',
+                  'Requires at least': '6.5',
+                  'Requires PHP': '8.0',
+                  'Text Domain': 'zen',
+              }
+              for key, value in headers.items():
+                  matches = re.findall(r'^' + re.escape(key) + r':[ \t]*(.*)$', style, re.MULTILINE)
+                  if matches != [value]:
+                      raise SystemExit('发布包元数据校验失败：' + key)
+              readme = archive.read('zen/README.md').decode('utf-8')
+              if 'WordPress 6.5+、PHP 8.0+' not in readme:
+                  raise SystemExit('发布包环境要求说明不一致')
           PY
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
             echo "Release v$VERSION 已存在，跳过发布。"
           else
             gh release create "v$VERSION" zen.zip \
-              --title "Zen Theme v$VERSION" \
+              --title "Zen v$VERSION" \
               --target "${{ github.sha }}" \
               --notes-file "$NOTES_FILE"
-            echo "已发布 Zen Theme v$VERSION。"
+            echo "已发布 Zen v$VERSION。"
           fi

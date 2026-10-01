@@ -1,5 +1,13 @@
 # 回归测试
 
+## 发布包
+
+```sh
+python3 tests/package-regression.py
+```
+
+使用独立 Git 索引打包当前工作区，不修改暂存区或创建提交；执行发布工作流的 ZIP 校验，覆盖显示名、版本、环境要求、文件清单及错误元数据拒绝。需要 Python 3.9+ 与 Git。
+
 ## PHP 行为
 
 ```sh
