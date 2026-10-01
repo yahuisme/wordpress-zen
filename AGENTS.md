@@ -1,10 +1,10 @@
 # AGENTS instructions
 
-本文件为在 WordPress Zen Theme 仓库中工作的代码代理提供约束。这个仓库是 WordPress 主题，不是独立应用，也不是插件。所有改动都应服务于主题的核心目标：安静、克制、以阅读为中心的个人博客和技术文章 UI。
+本文件为在 Zen 仓库中工作的代码代理提供约束。这个仓库是 WordPress 主题，不是独立应用，也不是插件。所有改动都应服务于主题的核心目标：安静、克制、以阅读为中心的个人博客和技术文章 UI。
 
 ## Naming
 
-- 主题名使用 `WordPress Zen Theme` 或 `zen`。不要随意引入新的品牌名。
+- 主题显示名使用 `Zen`；目录、Text Domain 和 ZIP 文件名保持 `zen`、`zen` 和 `zen.zip`。
 - PHP 函数使用 `zen_` 前缀。
 - CSS 自定义组件类使用 `zen-` 前缀。
 - WordPress 模板文件名保持 WordPress 约定，例如 `single.php`、`archive.php`、`page-archives.php`。
@@ -217,7 +217,9 @@ GitHub Actions（`.github/workflows/release.yml`）通过 `workflow_dispatch` �
 
 1. 从 `style.css` 读取版本号；
 2. 用 `git archive` 打包 `zen.zip`（顶层 `zen/` 目录）；
-3. 创建名为 `Zen Theme vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`），并从 `.github/CHANGELOG.md` 提取对应版本的简要更新内容作为 Release 说明；上传 `zen.zip`。
+3. 创建名为 `Zen vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`），并从 `.github/CHANGELOG.md` 提取对应版本的简要更新内容作为 Release 说明；上传 `zen.zip`。
+
+最低环境要求为 WordPress 6.5、PHP 8.0；`style.css`、README 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
 
 版本号未变化（该 tag 已存在）时跳过，不重复发布。发布包仅包含工作流白名单中的主题运行文件；`.github/`、`AGENTS.md` 等仓库维护文件不会进入 ZIP。本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，运行时无需任何构建步骤。
 

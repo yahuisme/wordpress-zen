@@ -204,7 +204,7 @@ function zen_get_update_info() {
     );
     $response = wp_remote_get('https://api.github.com/repos/yahuisme/wordpress-zen/releases/latest', array(
         'timeout'    => 5,
-        'user-agent' => 'WordPress Zen Theme/' . wp_get_theme()->get('Version'),
+        'user-agent' => 'Zen/' . wp_get_theme()->get('Version'),
         'headers'    => array('Accept' => 'application/vnd.github+json'),
     ));
 

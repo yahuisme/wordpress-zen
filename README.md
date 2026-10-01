@@ -1,4 +1,4 @@
-# WordPress Zen Theme
+# Zen
 
 一个极简的 WordPress 主题，专注于排版、留白与沉浸式阅读。
 
@@ -9,7 +9,9 @@
 
 ## 安装
 
-在 WordPress 后台进入“外观” → “主题” → “安装主题” → “上传主题”，选择主题 ZIP 并安装启用。
+环境要求：WordPress 6.5+、PHP 8.0+。
+
+从 [Releases](https://github.com/yahuisme/wordpress-zen/releases/latest) 下载 `zen.zip`，在 WordPress 后台进入“外观” → “主题” → “安装主题” → “上传主题”，安装并启用 Zen。
 
 也可以将 `zen` 主题目录上传至 `wp-content/themes/`。
 
