@@ -40,7 +40,7 @@ test('dirty state reflects real form changes and restoring originals becomes cle
     assert.equal(unloading(dom), false);
     dom.window.close();
 });
-test('collapsed fields remain successful controls and anchor reveals the group', () => {
+test('collapsed fields remain successful controls and native disclosure works', () => {
     const dom = boot();
     const doc = dom.window.document;
     doc.querySelector('#zen-footer').open = false;
@@ -49,8 +49,8 @@ test('collapsed fields remain successful controls and anchor reveals the group',
     assert.equal(data.has('zen_footer_text'), true);
     assert.equal(data.has('zen_code_head'), true);
     assert.equal(data.getAll('zen_category_ids[]').join(), '');
-    doc.querySelector('a[href="#zen-code"]').click();
-    assert.equal(doc.querySelector('#zen-code').open, true);
+    doc.querySelector('#zen-code').open = true;
+    assert.equal(new dom.window.FormData(doc.querySelector('form')).has('zen_code_head'), true);
     assert.equal(unloading(dom), false);
     dom.window.close();
 });

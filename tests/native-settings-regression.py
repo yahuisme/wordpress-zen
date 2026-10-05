@@ -66,7 +66,8 @@ with sync_playwright() as p:
  check('all admin widths remain within viewport and sticky save stays reachable',responsive)
  def dirty():
   page.set_viewport_size({'width':1440,'height':900});settings();old=page.locator('#zen_footer_text').input_value();page.locator('#zen_footer_text').fill('unsaved');assert '有未保存' in page.locator('#zen-save-state').inner_text();page.locator('#zen_footer_text').fill(old);assert '没有未保存' in page.locator('#zen-save-state').inner_text()
-  page.locator('a[href="#zen-code"]').click();assert page.locator('#zen-code').evaluate('e=>e.open')
- check('real dirty restoration and anchor reveal behave correctly',dirty)
+  page.locator('#zen-code > summary').click();assert page.locator('#zen-code').evaluate('e=>e.open')
+  assert page.locator('.zen-options-nav,.zen-native-links,.zen-saved-links,.zen-options-intro').count()==0
+ check('real dirty restoration and clean settings header behave correctly',dirty)
  b.close()
 (e/'native-settings.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));assert all(v['passed'] for v in results),results

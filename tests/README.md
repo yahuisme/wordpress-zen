@@ -72,8 +72,10 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 python tests/design-browser-regression.py /path/to/fixture green
 python tests/native-settings-regression.py /path/to/fixture
 python tests/native-boundary-regression.py /path/to/fixture
+python tests/list-width-regression.py /path/to/fixture green
+python tests/page-review-regression.py /path/to/fixture
 ```
 
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
 
-站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。
+列表宽度测试通过原生设置保存「标准 → 紧凑 → 标准」，跨3种字体、600/900/1050/1200/1920px版面和320/390/768/1440/2560px视口，比较标题与摘要实际边界。逐页测试的 `fixture.json` 还需 `tag`、`emptycat`、`protected`、`multipage` 对象ID，覆盖15类前台页面、后台及其实际操作。站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。

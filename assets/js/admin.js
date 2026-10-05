@@ -55,16 +55,7 @@
                 event.returnValue = '';
             }
         });
-        function reveal(hash) {
-            if (!/^#zen-[a-z-]+$/.test(hash)) return;
-            var target = document.getElementById(hash.slice(1));
-            if (target && target.tagName === 'DETAILS') target.open = true;
-        }
-        document.querySelectorAll('.zen-options-nav a').forEach(function (link) {
-            link.addEventListener('click', function () { reveal(link.hash); });
-        });
-        window.addEventListener('hashchange', function () { reveal(window.location.hash); });
-        reveal(window.location.hash);
+
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
