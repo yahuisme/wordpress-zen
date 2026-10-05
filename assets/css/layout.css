@@ -447,6 +447,15 @@ body .font-serif {
     justify-content: center;
     gap: 24px;
 }
+.zen-archives-directory.zen-reading-shell {
+    width: min(100%, 680px);
+}
+.zen-archives-directory .zen-archive-row {
+    padding-block: 12px;
+}
+.zen-archives-directory > section + section {
+    margin-top: 32px;
+}
 .zen-archive-row {
     gap: 16px;
 }
