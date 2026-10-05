@@ -74,6 +74,7 @@ python tests/native-settings-regression.py /path/to/fixture
 python tests/native-boundary-regression.py /path/to/fixture
 python tests/list-width-regression.py /path/to/fixture green
 python tests/page-review-regression.py /path/to/fixture
+python tests/archive-spacing-regression.py
 ```
 
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
