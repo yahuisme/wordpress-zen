@@ -78,7 +78,7 @@ test('registered new options sanitize values and reject invalid numbers without 
     $GLOBALS['caps']['unfiltered_html'] = true;
     $GLOBALS['options'] = array();
 });
-test('single settings form groups all old and new fields with saved-only view links', function () {
+test('single settings form groups all old and new fields', function () {
     $html = render();
     preg_match_all('/\bid="([^"]+)"/', $html, $ids);
     expect(count($ids[1]) === count(array_unique($ids[1])), 'native submit buttons must not duplicate element IDs');
@@ -90,9 +90,6 @@ test('single settings form groups all old and new fields with saved-only view li
     expect((bool) preg_match('/<details[^>]*id="zen-code"[^>]*>/', $html, $code) && !str_contains($code[0], ' open'), 'risky code must start collapsed');
     expect((bool) preg_match('/<details[^>]*id="zen-layout"[^>]*>/', $html, $width) && !str_contains($width[0], ' open'), 'advanced width must start collapsed');
     expect(strpos($html, '</form>') < strpos($html, 'id="zen-about"'), 'updates must be outside form');
-    foreach (array('options-general.php', 'options-general.php#choose-from-library-button', 'nav-menus.php', 'options-reading.php', 'options-discussion.php') as $path) expect(str_contains($html, $path), 'native editor link missing: ' . $path);
-    expect(str_contains($html, '查看已保存效果') && str_contains($html, 'https://example.test/post-42/'), 'saved home/article links missing');
-    expect($GLOBALS['post_query']['post_status'] === 'publish' && $GLOBALS['post_query']['has_password'] === false, 'saved article link must be public');
     expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
     expect(str_contains($html, '缓存命中') && str_contains($html, '关闭后停止计数') && str_contains($html, '更换主题'), 'risk and count explanations missing');
     expect(!str_contains($html, '<style>'), 'admin style must be enqueued separately');
@@ -135,6 +132,16 @@ test('category choices are touch-friendly successful checkbox controls', functio
     $html = render();
     expect(!str_contains($html, 'id="zen_category_ids" multiple'), 'keyboard-only multi-select remains');
     expect(str_contains($html, 'type="checkbox" name="zen_category_ids[]"'), 'touch category choices missing');
+});
+
+test('settings header has no link clusters or explanatory text', function () {
+    $doc = new DOMDocument();
+    @$doc->loadHTML('<?xml encoding="UTF-8">' . render());
+    $xpath = new DOMXPath($doc);
+    foreach (array('zen-native-tools', 'zen-native-links', 'zen-options-nav', 'zen-saved-links', 'zen-options-intro') as $class) {
+        expect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " ' . $class . ' ")]')->length === 0, 'unnecessary top entry remains: ' . $class);
+    }
+    expect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " zen-save-bar ")]//a')->length === 0, 'save bar still has links');
 });
 
 printf("%d tests, %d failures\n", $total, $failed);

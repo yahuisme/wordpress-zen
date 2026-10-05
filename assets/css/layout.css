@@ -157,7 +157,7 @@ body .font-serif {
     opacity: 0.72;
 }
 .zen-post-excerpt {
-    max-width: 66ch;
+    max-width: none;
     margin: 0;
     color: var(--zen-muted);
     line-height: 1.65;
@@ -400,6 +400,36 @@ body .font-serif {
     background: var(--zen-text);
     color: var(--zen-bg);
     cursor: pointer;
+}
+.post-password-form label {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+.post-password-form input[type="password"] {
+    min-width: 0;
+    width: min(100%, 240px);
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--zen-border);
+    border-radius: 6px;
+    background: var(--zen-surface);
+    color: var(--zen-text);
+}
+.post-password-form input[type="submit"] {
+    min-height: 44px;
+    margin: 8px 0;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: var(--zen-text);
+    color: var(--zen-bg);
+    cursor: pointer;
+}
+.post-password-form input:focus-visible {
+    outline: 2px solid var(--zen-text);
+    outline-offset: 3px;
 }
 .zen-empty-state {
     text-align: center;

@@ -322,38 +322,16 @@ function zen_options_page_html() {
     if (!current_user_can('manage_options')) {
         return;
     }
-    $public_posts = get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 1, 'fields' => 'ids'));
     $reading_width = zen_get_option('zen_reading_width');
     ?>
     <div class="wrap zen-options">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-        <p class="zen-options-intro"><?php esc_html_e('专注阅读体验。所有分组一起保存，折叠不会丢失设置。', 'zen'); ?></p>
         <?php settings_errors(); ?>
-        <div class="zen-native-links">
-            <span><?php esc_html_e('WordPress 原生设置：', 'zen'); ?></span>
-            <?php foreach (array('options-general.php' => '站点身份', 'options-general.php#choose-from-library-button' => '站点图标', 'nav-menus.php' => '菜单', 'options-reading.php' => '阅读', 'options-discussion.php' => '讨论') as $path => $label) : ?>
-                <a href="<?php echo esc_url(admin_url($path)); ?>"><?php echo esc_html($label); ?></a>
-            <?php endforeach; ?>
-            <a href="<?php echo esc_url(admin_url('customize.php?autofocus[section]=title_tagline')); ?>"><?php esc_html_e('Logo 与标题', 'zen'); ?></a>
-        </div>
-        <p class="description"><?php esc_html_e('主导航支持一级菜单；子菜单不会展示。Logo、标题和站点图标使用 WordPress 原生设置。', 'zen'); ?></p>
-        <nav class="zen-options-nav" aria-label="<?php echo esc_attr(__('设置分组', 'zen')); ?>">
-            <?php foreach (array('reading' => '排版与阅读', 'list' => '文章列表', 'post' => '文章详情', 'footer' => '页脚', 'code' => '高级代码', 'about' => '关于更新') as $id => $label) : ?>
-                <a href="#zen-<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></a>
-            <?php endforeach; ?>
-        </nav>
         <form method="post" action="options.php" id="zen-options-form">
             <?php settings_fields('zen_options'); ?>
             <div class="zen-save-bar">
                 <?php submit_button(__('保存设置', 'zen'), 'primary', 'zen_save_top', false); ?>
                 <span id="zen-save-state" role="status" aria-live="polite" data-clean="<?php echo esc_attr(__('没有未保存的修改', 'zen')); ?>" data-dirty="<?php echo esc_attr(__('有未保存的修改', 'zen')); ?>"><?php esc_html_e('没有未保存的修改', 'zen'); ?></span>
-                <div class="zen-saved-links">
-                    <span><?php esc_html_e('查看已保存效果：', 'zen'); ?></span>
-                    <a href="<?php echo esc_url(home_url('/')); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('首页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('首页', 'zen'); ?></a>
-                    <?php if ($public_posts) : ?>
-                        <a href="<?php echo esc_url(get_permalink($public_posts[0])); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('文章（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('文章', 'zen'); ?></a>
-                    <?php endif; ?>
-                </div>
             </div>
             <details class="zen-options-group" id="zen-reading" open>
                 <summary><?php esc_html_e('排版与阅读', 'zen'); ?></summary>

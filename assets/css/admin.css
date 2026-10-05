@@ -6,24 +6,6 @@
 .admin-bar .zen-options {
     --zen-adminbar-offset: 32px;
 }
-.zen-options-intro {
-    margin: 8px 0 16px;
-}
-.zen-options .zen-native-links,
-.zen-options .zen-options-nav,
-.zen-options .zen-saved-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-}
-.zen-options .zen-native-links {
-    margin-bottom: 16px;
-}
-.zen-options .zen-options-nav {
-    padding: 16px 0;
-    border-top: 1px solid #dcdcde;
-}
 .zen-options .zen-save-bar {
     position: sticky;
     top: calc(var(--zen-adminbar-offset) + 12px);
@@ -36,9 +18,6 @@
     margin-bottom: 24px;
     background: #f6f7f7;
     border: 1px solid #c3c4c7;
-}
-.zen-options .zen-saved-links {
-    margin-left: auto;
 }
 .zen-options #zen-save-state {
     color: #50575e;
@@ -138,10 +117,6 @@
     .zen-options .zen-save-bar {
         padding: 16px;
     }
-    .zen-options .zen-saved-links {
-        margin-left: 0;
-        flex-basis: 100%;
-    }
     .zen-options .zen-options-group {
         scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
     }
@@ -158,11 +133,6 @@
     }
     .zen-options .form-table td {
         padding: 0 0 16px;
-    }
-    .zen-options .zen-options-nav a,
-    .zen-options .zen-native-links a,
-    .zen-options .zen-saved-links a {
-        padding: 8px 0;
     }
 }
 @media screen and (max-width: 600px) {
