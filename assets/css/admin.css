@@ -1,0 +1,176 @@
+/* Native WordPress controls, restrained spacing, Zen settings only. */
+.zen-options {
+    --zen-adminbar-offset: 0px;
+    max-width: 1120px;
+}
+.admin-bar .zen-options {
+    --zen-adminbar-offset: 32px;
+}
+.zen-options-intro {
+    margin: 8px 0 16px;
+}
+.zen-options .zen-native-links,
+.zen-options .zen-options-nav,
+.zen-options .zen-saved-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+.zen-options .zen-native-links {
+    margin-bottom: 16px;
+}
+.zen-options .zen-options-nav {
+    padding: 16px 0;
+    border-top: 1px solid #dcdcde;
+}
+.zen-options .zen-save-bar {
+    position: sticky;
+    top: calc(var(--zen-adminbar-offset) + 12px);
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 16px;
+    margin-bottom: 24px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+}
+.zen-options .zen-saved-links {
+    margin-left: auto;
+}
+.zen-options #zen-save-state {
+    color: #50575e;
+}
+.zen-options .zen-is-dirty #zen-save-state {
+    color: #8a4b00;
+    font-weight: 600;
+}
+.zen-options .zen-options-group {
+    margin-bottom: 16px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    scroll-margin-top: calc(var(--zen-adminbar-offset) + 104px);
+}
+.zen-options summary {
+    padding: 16px 24px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+}
+.zen-options summary:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: -2px;
+}
+.zen-options .zen-group-content {
+    padding: 0 24px 16px;
+}
+.zen-options .form-table {
+    width: 100%;
+    table-layout: fixed;
+    margin-top: 0;
+}
+.zen-options .form-table th {
+    width: 176px;
+    padding: 16px 16px 16px 0;
+}
+.zen-options .form-table td {
+    padding: 16px 0;
+}
+.zen-options .form-table .description {
+    margin-top: 8px;
+    max-width: 72ch;
+}
+.zen-options select:not([multiple]) {
+    width: 200px;
+    max-width: 100%;
+}
+.zen-options select[multiple] {
+    width: 320px;
+    max-width: 100%;
+}
+.zen-options .zen-category-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    padding: 8px 0;
+}
+.zen-options .zen-category-choices label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 28px;
+}
+.zen-options input.small-text {
+    width: 80px;
+    max-width: 100%;
+}
+.zen-options #zen_site_start_date {
+    width: 160px;
+    max-width: 100%;
+}
+.zen-options textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 800px;
+    resize: vertical;
+}
+.zen-options .zen-options-subgroup {
+    margin-top: 8px;
+    border-top: 1px solid #dcdcde;
+}
+.zen-options .zen-options-subgroup summary {
+    padding: 16px 0;
+    font-size: 13px;
+}
+.zen-options .zen-options-about {
+    padding: 24px;
+}
+.zen-options .zen-options-about h2 {
+    margin: 0 0 16px;
+    font-size: 15px;
+}
+@media screen and (max-width: 782px) {
+    .admin-bar .zen-options {
+        --zen-adminbar-offset: 46px;
+    }
+    .zen-options .zen-save-bar {
+        padding: 16px;
+    }
+    .zen-options .zen-saved-links {
+        margin-left: 0;
+        flex-basis: 100%;
+    }
+    .zen-options .zen-options-group {
+        scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
+    }
+    .zen-options summary,
+    .zen-options .zen-options-about {
+        padding: 16px;
+    }
+    .zen-options .zen-group-content {
+        padding: 0 16px 16px;
+    }
+    .zen-options .form-table th {
+        width: auto;
+        padding: 16px 0 8px;
+    }
+    .zen-options .form-table td {
+        padding: 0 0 16px;
+    }
+    .zen-options .zen-options-nav a,
+    .zen-options .zen-native-links a,
+    .zen-options .zen-saved-links a {
+        padding: 8px 0;
+    }
+}
+@media screen and (max-width: 600px) {
+    /* Core makes #wpadminbar absolute at this breakpoint. */
+    .admin-bar .zen-options {
+        --zen-adminbar-offset: 0px;
+    }
+    .zen-options .zen-save-bar {
+        gap: 8px;
+    }
+}

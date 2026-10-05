@@ -112,6 +112,10 @@ foreach (array(array(true, 0, true), array(false, 2, true), array(false, 0, fals
 function __($text, $domain = '') { return $text; }
 function esc_attr__($text, $domain = '') { return esc_attr($text); }
 function esc_html__($text, $domain = '') { return esc_html($text); }
+function has_post_thumbnail() { return false; }
+function get_the_author() { return ''; }
+function get_the_tags() { return false; }
+function get_the_modified_date($format = '') { return '2020年1月1日'; }
 function get_the_category() { return array(); }
 function get_the_date($format = '') { return '2020'; }
 function get_month_link($year, $month) { return 'https://example.test/2020/01/'; }
@@ -207,6 +211,11 @@ function esc_html_e($text, $domain = '') { echo esc_html($text); }
 function esc_textarea($text) { return esc_html($text); }
 function checked($checked, $current) {}
 function selected($selected, $current) {}
+// Admin rendering boundaries: no queries or remote update requests in this test.
+function get_posts($args) { return array(); }
+function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
+function get_categories($args) { return array(); }
+function is_wp_error($value) { return false; }
 function wp_get_theme() {
     return new class {
         public function get($key) { return '1.0.0'; }
@@ -218,8 +227,9 @@ zen_test('admin footer textarea has fluid width with a desktop cap', function ()
         'latest_version' => '1.0.0', 'url' => 'https://example.test/releases', 'error' => '',
     );
     $html = zen_capture('zen_options_page_html');
-    preg_match('/<textarea\b[^>]*id="zen_footer_text"[^>]*style="([^"]*)"/', $html, $field);
-    $style = $field[1] ?? '';
+    preg_match('/<textarea\b[^>]*id="zen_footer_text"[^>]*class="([^"]*)"/', $html, $field);
+    zen_expect(str_contains($field[1] ?? '', 'large-text'), 'footer textarea must retain native fluid control class');
+    $style = file_get_contents(ABSPATH . 'assets/css/admin.css');
     zen_expect((bool) preg_match('/(?:^|;)\s*width:\s*100%\s*;/', $style), 'textarea still forces intrinsic 800px width');
     zen_expect((bool) preg_match('/(?:^|;)\s*max-width:\s*800px\s*;/', $style), 'desktop width cap missing');
 });

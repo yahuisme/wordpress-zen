@@ -269,7 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const tocContainer = document.getElementById('toc-container'); // PC Sidebar
     const tocNav = document.getElementById('toc-nav'); // PC Nav Content
     const drawerTocNav = document.getElementById('drawer-toc-nav'); // Drawer Nav Content
-    const floatingTocBtn = document.getElementById('floating-toc-btn'); // Floating Trigger
+    const floatingTocBtn = document.getElementById('floating-toc-btn'); // Article trigger
+    const headerTocBtn = document.getElementById('header-toc-btn');
+    const tocTriggers = [floatingTocBtn, headerTocBtn].filter(Boolean);
 
     const progressBar = document.getElementById('reading-progress');
     const backToTopBtn = document.getElementById('back-to-top');
@@ -318,10 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 tocContainer.classList.add('zen-toc-ready');
                 tocContainer.classList.remove('opacity-0');
             }
-            if (floatingTocBtn) {
-                floatingTocBtn.classList.add('zen-toc-ready');
-                floatingTocBtn.classList.remove('hidden');
-            }
+            tocTriggers.forEach(trigger => {
+                trigger.hidden = false;
+                trigger.classList.add('zen-toc-ready');
+                trigger.classList.remove('hidden');
+            });
 
             const idCounts = new Map();
             document.querySelectorAll('[id]').forEach((element) => {
@@ -421,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // 没有标题，隐藏容器
             if (tocContainer) tocContainer.style.display = 'none';
-            if (floatingTocBtn) floatingTocBtn.style.display = 'none';
+            tocTriggers.forEach(trigger => { trigger.style.display = 'none'; });
         }
     }
 
@@ -432,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFocusBeforeDrawer;
     let drawerCloseTimer;
 
-    if (floatingTocBtn && drawerToc && tocOverlay) {
+    if (tocTriggers.length && drawerToc && tocOverlay) {
         trapFocus(drawerToc);
 
         const openDrawer = () => {
@@ -448,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawerToc.classList.remove('translate-x-full');
             });
             // A11y
-            floatingTocBtn.setAttribute('aria-expanded', 'true');
+            tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'true'));
             drawerToc.removeAttribute('inert');
             setBackgroundModalState();
 
@@ -466,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             drawerCloseTimer = setTimeout(() => {
                 tocOverlay.classList.add('hidden');
                 // A11y Cleanup
-                floatingTocBtn.setAttribute('aria-expanded', 'false');
+                tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
                 drawerToc.setAttribute('inert', '');
                 drawerToc.setAttribute('data-zen-original-inert', 'true');
                 drawerToc.setAttribute('data-zen-modal-inert', 'true');
@@ -477,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         };
 
-        floatingTocBtn.addEventListener('click', openDrawer);
+        tocTriggers.forEach(trigger => trigger.addEventListener('click', openDrawer));
         if (drawerClose) drawerClose.addEventListener('click', closeDrawer);
         tocOverlay.addEventListener('click', closeDrawer);
 
@@ -507,6 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileMenu.setAttribute('aria-hidden', 'true');
             mobileMenuBtn.setAttribute('aria-expanded', 'false');
             mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+            const icon = mobileMenuBtn.querySelector('i');
+            if (icon) icon.className = 'ph ph-list text-2xl';
             if (restoreFocus) mobileMenuBtn.focus();
         };
 
@@ -518,6 +523,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mobileMenu.removeAttribute('aria-hidden');
                 mobileMenuBtn.setAttribute('aria-expanded', 'true');
                 mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
+                const icon = mobileMenuBtn.querySelector('i');
+                if (icon) icon.className = 'ph ph-x text-2xl';
                 const firstLink = mobileMenu.querySelector('a');
                 if (firstLink) firstLink.focus();
             } else {
@@ -755,6 +762,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mobileMenuBtn) {
                     mobileMenuBtn.setAttribute('aria-expanded', 'false');
                     mobileMenuBtn.setAttribute('aria-label', '打开菜单');
+                    const icon = mobileMenuBtn.querySelector('i');
+                    if (icon) icon.className = 'ph ph-list text-2xl';
                 }
             }
             searchModal.classList.remove('hidden');

@@ -23,6 +23,10 @@ add_filter('wp_resource_hints', 'zen_resource_hints', 10, 2);
 function zen_setup() {
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
+    add_theme_support('custom-logo', array('height' => 80, 'width' => 240, 'flex-height' => true, 'flex-width' => true));
+    add_theme_support('editor-styles');
+    add_theme_support('align-wide');
+    add_editor_style('assets/css/reading.css');
     add_theme_support('automatic-feed-links');
 
     register_nav_menus(array(

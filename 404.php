@@ -1,12 +1,13 @@
 <?php get_header(); ?>
-
-<div class="text-center py-20">
-    <div class="text-9xl font-bold text-gray-100 dark:text-gray-800 mb-4 font-sans">404</div>
-    <h2 class="text-2xl font-bold mb-4 serif">迷路了？</h2>
-    <p class="text-gray-500 mb-8">这一页的内容似乎已经消失在数字的海洋中。</p>
-    <a href="<?php echo esc_url(home_url('/')); ?>" class="inline-block px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors">
-        返回首页
-    </a>
-</div>
-
+<section class="zen-empty-state zen-reading-shell">
+    <p class="text-sm text-gray-600 dark:text-gray-400">404</p>
+    <h1 class="zen-list-title serif">页面未找到</h1>
+    <p>链接可能已失效，也可以搜索其他内容。</p>
+    <div class="zen-inline-search"><?php get_search_form(); ?></div>
+    <div class="zen-recovery-links">
+        <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-ui-link">返回首页</a>
+        <?php $archive_url = zen_get_archives_url(); ?>
+        <?php if ($archive_url) : ?><a href="<?php echo esc_url($archive_url); ?>" class="zen-ui-link">浏览归档</a><?php endif; ?>
+    </div>
+</section>
 <?php get_footer(); ?>

@@ -1,56 +1,28 @@
 <?php
 if (!defined('ABSPATH')) exit;
-
 $args = isset($args) && is_array($args) ? $args : array();
-$zen_highlight_title = ! empty($args['highlight_title']);
-$zen_title_classes = is_home() ? 'text-xl md:text-2xl zen-home-title' : 'text-xl md:text-2xl';
-$zen_title_link_classes = is_home()
-    ? 'text-gray-900 dark:text-white hover:opacity-80 transition-opacity'
-    : 'hover:underline decoration-1 underline-offset-4 decoration-gray-400 transition-colors';
+$zen_compact = zen_get_option('zen_list_style') === 'compact';
 ?>
-
-<article id="post-<?php the_ID(); ?>" <?php post_class('group'); ?> aria-labelledby="post-title-<?php the_ID(); ?>">
-    <div class="text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-2">
-        <?php
-        $cat = zen_get_primary_category();
-        if ($cat) {
-            echo '<a href="' . esc_url(get_category_link($cat->term_id)) . '" class="zen-ui-link hover:text-gray-900 dark:hover:text-white">' . esc_html($cat->name) . '</a>';
-            echo '<span class="text-gray-300 dark:text-gray-700" aria-hidden="true">*</span>';
-        }
-
-        if (is_search()) {
-            printf(
-                '<time datetime="%1$s">%2$s</time>',
-                esc_attr(get_the_date('c')),
-                esc_html(get_the_date('Y年 n月 j日'))
-            );
-        } else {
-            zen_posted_on_link();
-        }
-        ?>
-    </div>
-
-    <h2 id="post-title-<?php the_ID(); ?>" class="<?php echo esc_attr($zen_title_classes); ?> font-bold text-gray-900 dark:text-white mb-4 leading-tight">
-        <a href="<?php the_permalink(); ?>" class="<?php echo esc_attr($zen_title_link_classes); ?>">
-            <?php
-            if ($zen_highlight_title) {
-                echo zen_highlight_search_terms(get_the_title(), get_search_query(false));
-            } else {
-                the_title();
-            }
-            ?>
+<article id="post-<?php the_ID(); ?>" <?php post_class('zen-post-item zen-post-item--' . ($zen_compact ? 'compact' : 'standard')); ?> aria-labelledby="post-title-<?php the_ID(); ?>">
+    <h2 id="post-title-<?php the_ID(); ?>" class="zen-post-title font-bold text-gray-900 dark:text-white leading-tight">
+        <a href="<?php the_permalink(); ?>" class="zen-post-title-link">
+            <?php if (!empty($args['highlight_title'])) : ?>
+                <?php echo zen_highlight_search_terms(get_the_title(), get_search_query(false)); ?>
+            <?php else : the_title(); endif; ?>
         </a>
     </h2>
-
-    <div class="text-gray-600 dark:text-gray-300 leading-relaxed mb-4 line-clamp-3">
-        <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '…')); ?>
+    <div class="zen-post-meta text-xs text-gray-600 dark:text-gray-400">
+        <?php $cat = zen_get_primary_category(); ?>
+        <?php if ($cat) : ?>
+            <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-ui-link"><?php echo esc_html($cat->name); ?></a>
+        <?php endif; ?>
+        <?php if (is_search()) : ?>
+            <time class="zen-meta-field" datetime="<?php echo esc_attr(get_the_date('c')); ?>"><?php echo esc_html(get_the_date('Y年n月j日')); ?></time>
+        <?php else : zen_posted_on_link(); endif; ?>
     </div>
-
-    <a href="<?php the_permalink(); ?>" class="zen-action-link text-sm tracking-wide dark:text-white">
-        阅读更多
-        <span class="screen-reader-text">关于 <?php the_title_attribute(); ?></span>
-        <i class="ph ph-arrow-right ml-1.5 transform transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true"></i>
-    </a>
+    <?php if (!$zen_compact) : ?>
+        <div class="zen-post-excerpt text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
+            <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '…')); ?>
+        </div>
+    <?php endif; ?>
 </article>
-
-<div class="post-divider" aria-hidden="true"></div>

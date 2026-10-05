@@ -1,0 +1,174 @@
+/* Shared article typography: loaded by both reader and WordPress editor. */
+:root {
+    --zen-reading-width: 720px;
+    --zen-font-body:
+        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+    --zen-font-heading:
+        "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, serif;
+}
+
+.entry-content,
+.editor-styles-wrapper {
+    font-family: var(--zen-font-body);
+    font-size: 18px;
+    line-height: 32px;
+    color: var(--zen-text, #172033);
+    overflow-wrap: anywhere;
+}
+
+.entry-content :where(p, li, blockquote, table),
+.editor-styles-wrapper :where(p, li, blockquote, table) {
+    font-family: var(--zen-font-body);
+    font-size: 18px;
+    line-height: 32px;
+}
+.entry-content p,
+.editor-styles-wrapper p {
+    margin: 0 0 24px;
+}
+.entry-content :where(h1, h2, h3, h4, h5, h6),
+.editor-styles-wrapper :where(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--zen-font-heading);
+    color: var(--zen-text, #172033);
+    font-weight: 600;
+    line-height: 1.4;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+}
+.entry-content h2,
+.editor-styles-wrapper h2 {
+    font-size: 26px;
+    margin: 48px 0 20px;
+}
+.entry-content h3,
+.editor-styles-wrapper h3 {
+    font-size: 22px;
+    margin: 32px 0 16px;
+}
+.entry-content h4,
+.editor-styles-wrapper h4 {
+    font-size: 19px;
+    margin: 24px 0 12px;
+}
+.entry-content a,
+.editor-styles-wrapper a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.entry-content :where(ul, ol),
+.editor-styles-wrapper :where(ul, ol) {
+    padding-inline-start: 24px;
+    margin: 24px 0;
+}
+.entry-content li,
+.editor-styles-wrapper li {
+    margin: 8px 0;
+}
+.entry-content blockquote,
+.editor-styles-wrapper blockquote {
+    border-inline-start: 2px solid var(--zen-border, #dce5ea);
+    padding-inline-start: 24px;
+    margin: 32px 0;
+    font-style: normal;
+    font-weight: 400;
+    color: var(--zen-muted, #64748b);
+}
+.entry-content blockquote p,
+.editor-styles-wrapper blockquote p {
+    margin: 0;
+}
+.entry-content blockquote p::before,
+.entry-content blockquote p::after {
+    content: none;
+}
+.entry-content :where(pre, .wp-block-code),
+.editor-styles-wrapper :where(pre, .wp-block-code) {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+    overflow-wrap: normal;
+    padding: 20px;
+    margin: 32px 0;
+    border-radius: 8px;
+    background: #202b36;
+    color: #dbe5ec;
+}
+.entry-content pre code,
+.editor-styles-wrapper pre code {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: 400;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: inherit;
+}
+.entry-content code:not(pre code),
+.editor-styles-wrapper code:not(pre code) {
+    font-size: 0.88em;
+}
+.entry-content img,
+.editor-styles-wrapper img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+.entry-content :where(figure, iframe, embed, object),
+.editor-styles-wrapper :where(figure, iframe, embed, object) {
+    max-width: 100%;
+    margin-block: 32px;
+}
+.entry-content table,
+.editor-styles-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 32px 0;
+    font-size: 16px;
+}
+.entry-content :where(th, td),
+.editor-styles-wrapper :where(th, td) {
+    text-align: start;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--zen-border, #dce5ea);
+    vertical-align: top;
+}
+.entry-content figcaption,
+.editor-styles-wrapper figcaption {
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--zen-muted, #64748b);
+    text-align: center;
+}
+.entry-content > :first-child {
+    margin-top: 0;
+}
+.entry-content > :last-child {
+    margin-bottom: 0;
+}
+.editor-styles-wrapper .wp-block {
+    max-width: var(--zen-reading-width);
+}
+.editor-styles-wrapper .wp-block[data-align="wide"] {
+    max-width: var(--zen-content-width, 900px);
+}
+.editor-styles-wrapper .wp-block[data-align="full"] {
+    max-width: none;
+}
+.editor-styles-wrapper .wp-block-post-title {
+    font-family: var(--zen-font-heading);
+    font-size: 36px;
+    line-height: 1.3;
+    font-weight: 600;
+}
+@media (max-width: 639.98px) {
+    .entry-content h2,
+    .editor-styles-wrapper h2 {
+        font-size: 24px;
+    }
+}

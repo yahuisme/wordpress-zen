@@ -2,8 +2,8 @@
 if (post_password_required()) return;
 ?>
 
-<section id="comments" class="mt-24 max-w-zen mx-auto scroll-mt-24">
-    <div class="pt-12 border-t border-gray-100 dark:border-gray-800">
+<section id="comments" class="zen-comments zen-reading-shell scroll-mt-24">
+    <div class="zen-comments-inner">
         <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">讨论</p>
@@ -22,6 +22,20 @@ if (post_password_required()) return;
                 <a href="#respond" class="zen-action-link text-sm dark:text-white">写评论 <i class="ph ph-arrow-down" aria-hidden="true"></i></a>
             <?php endif; ?>
         </header>
+
+        <?php if (have_comments()) : ?>
+            <ol class="comment-list">
+                <?php wp_list_comments(array('style' => 'ol', 'short_ping' => true, 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
+            </ol>
+            <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
+            <nav class="comment-pagination flex justify-between gap-4" aria-label="评论分页">
+                <div class="nav-previous"><?php previous_comments_link('&larr; 较早的评论'); ?></div>
+                <div class="nav-next"><?php next_comments_link('较新的评论 &rarr;'); ?></div>
+            </nav>
+            <?php endif; ?>
+        <?php elseif (!comments_open()) : ?>
+            <p class="text-sm text-gray-500 dark:text-gray-400">评论已关闭。</p>
+        <?php endif; ?>
 
         <?php if (comments_open()) : ?>
             <?php
@@ -48,7 +62,7 @@ if (post_password_required()) return;
             $args = array(
                 'fields' => $fields,
                 'comment_field' => '<p class="comment-form-comment"><label for="comment">你的想法 ' . $comment_required . '</label><textarea id="comment" name="comment" rows="2" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" placeholder="写点什么..."></textarea></p>',
-                'class_container' => 'comment-respond zen-comment-panel p-5 sm:p-7 mb-12',
+                'class_container' => 'comment-respond zen-comment-panel p-5 sm:p-7',
                 'class_submit' => 'zen-submit',
                 'label_submit' => '发布评论',
                 'submit_button' => '<button name="%1$s" type="submit" id="%2$s" class="%3$s"><span>%4$s</span><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i></button>',
@@ -68,26 +82,6 @@ if (post_password_required()) return;
             ?>
         <?php endif; ?>
 
-        <?php if (have_comments()) : ?>
-                <ol class="comment-list">
-                    <?php
-                    wp_list_comments(array(
-                        'style'       => 'ol',
-                        'short_ping'  => true,
-                        'avatar_size' => 48,
-                        'callback'    => 'zen_comment_callback',
-                    ));
-                    ?>
-                </ol>
 
-                <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
-                    <nav class="comment-pagination mt-10 flex justify-between gap-4 border-t border-gray-100 dark:border-gray-800 pt-6" aria-label="评论分页">
-                        <div class="nav-previous"><?php previous_comments_link('&larr; 较早的评论'); ?></div>
-                        <div class="nav-next"><?php next_comments_link('较新的评论 &rarr;'); ?></div>
-                    </nav>
-                <?php endif; ?>
-            <?php elseif (!comments_open()) : ?>
-                <p class="text-sm text-gray-500 dark:text-gray-400 py-6">评论已关闭。</p>
-            <?php endif; ?>
     </div>
 </section>

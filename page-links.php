@@ -6,7 +6,7 @@ get_header(); ?>
 
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
-    <header class="mb-12 text-center">
+    <header class="zen-article-header zen-reading-shell">
         <h1 class="text-3xl font-bold mb-6 serif"><?php the_title(); ?></h1>
         <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto prose dark:prose-invert entry-content">
             <?php the_content(); ?>
@@ -51,7 +51,7 @@ get_header(); ?>
                 }
                 $fallback_initial = function_exists('mb_substr') ? mb_substr($bookmark->link_name, 0, 1) : substr($bookmark->link_name, 0, 1);
                 ?>
-                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="noopener noreferrer" class="zen-link-card group flex items-center p-4 rounded-lg transition-all">
+                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="noopener noreferrer" class="zen-link-card group flex items-center p-4 rounded-lg transition-all"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr($bookmark->link_name . ' (在新窗口打开)'); ?>"<?php endif; ?>>
                     <?php if ($bookmark->link_image) : ?>
                         <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="<?php echo esc_attr($bookmark->link_name); ?>" width="56" height="56" loading="lazy" decoding="async" class="w-14 h-14 rounded-full object-cover mr-4 grayscale group-hover:grayscale-0 transition-all duration-300">
                     <?php else : ?>
@@ -66,7 +66,7 @@ get_header(); ?>
                         </h3>
                         <p class="text-sm text-gray-500 truncate"><?php echo esc_html($bookmark->link_description); ?></p>
                     </div>
-                    <i class="ph ph-arrow-up-right text-gray-300 group-hover:text-gray-600 dark:text-gray-600 dark:group-hover:text-gray-300 transition-colors" aria-hidden="true"></i>
+
                 </a>
                 <?php
             }

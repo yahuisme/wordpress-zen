@@ -1,6 +1,48 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+function zen_get_archives_url() {
+    $pages = get_pages(array(
+        'meta_key' => '_wp_page_template',
+        'meta_value' => 'page-archives.php',
+        'post_status' => 'publish',
+        'number' => 1,
+    ));
+    return !empty($pages) ? get_permalink($pages[0]->ID) : '';
+}
+
+function zen_get_posts_url() {
+    $posts_page = (int) get_option('page_for_posts');
+    return get_option('show_on_front') === 'page' && $posts_page ? get_permalink($posts_page) : home_url('/');
+}
+
+function zen_category_navigation() {
+    $ids = zen_get_option('zen_category_ids');
+    $args = array('hide_empty' => true);
+    if (is_array($ids) && !empty($ids)) {
+        $args['include'] = $ids;
+        $args['orderby'] = 'include';
+        $args['hide_empty'] = false;
+    }
+    $categories = get_categories($args);
+    $current = is_category() ? get_queried_object_id() : 0;
+    ?>
+    <nav class="zen-category-nav" aria-label="文章分类">
+        <a class="zen-ui-link" href="<?php echo esc_url(zen_get_posts_url()); ?>"<?php if (is_home()) echo ' aria-current="page"'; ?>>全部</a>
+        <?php if (!empty($categories)) : ?>
+        <details class="zen-category-disclosure">
+            <summary>分类</summary>
+            <div class="zen-category-links" aria-label="分类链接">
+                <?php foreach ($categories as $category) : ?>
+                <a class="zen-ui-link" href="<?php echo esc_url(get_category_link($category->term_id)); ?>"<?php if ((int) $category->term_id === $current) echo ' aria-current="page"'; ?>><?php echo esc_html($category->name); ?></a>
+                <?php endforeach; ?>
+            </div>
+        </details>
+        <?php endif; ?>
+    </nav>
+    <?php
+}
+
 function zen_get_primary_category() {
     $categories = get_the_category();
     return ! empty($categories) ? $categories[0] : null;
@@ -12,11 +54,11 @@ function zen_posted_on_link() {
     $label = sprintf(__('查看 %s 的所有文章', 'zen'), get_the_date('Y年n月'));
 
     printf(
-        '<a href="%1$s" class="zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="%2$s"><time datetime="%3$s">%4$s</time></a>',
+        '<a href="%1$s" class="zen-meta-field zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="%2$s"><time datetime="%3$s">%4$s</time></a>',
         esc_url(get_month_link($year, $month)),
         esc_attr($label),
         esc_attr(get_the_date('c')),
-        esc_html(get_the_date('Y年 n月 j日'))
+        esc_html(get_the_date('Y年n月j日'))
     );
 }
 

@@ -4,12 +4,12 @@ Template Name: Archives Template
 */
 get_header(); ?>
 
-<header class="mb-12 text-center">
+<header class="zen-article-header zen-reading-shell">
     <h1 class="text-3xl font-bold mb-2 serif"><?php the_title(); ?></h1>
-    <div class="text-gray-600 dark:text-gray-400">文章时光机</div>
+
 </header>
 
-<div class="max-w-zen-narrow mx-auto space-y-8 animate-fade-in">
+<div class="zen-archives-directory zen-reading-shell">
     <?php
     $archives_posts = get_transient('zen_archives_public_posts');
 
@@ -37,7 +37,7 @@ get_header(); ?>
                     'title' => get_the_title($archive_post),
                     'url' => get_permalink($archive_post),
                     'year' => get_the_date('Y', $archive_post),
-                    'date' => get_the_date('m-d', $archive_post),
+                    'date' => get_the_date('Y年n月j日', $archive_post),
                 );
             }
 
@@ -64,14 +64,14 @@ get_header(); ?>
 
                 <section>
                     <h3 class="text-xl font-bold mb-4 text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-2"><?php echo esc_html($year_current); ?></h3>
-                    <ul class="space-y-4">
+                    <ul class="zen-post-list">
             <?php } ?>
 
-            <li class="zen-archive-row flex items-baseline justify-between group">
+            <li class="zen-archive-row zen-post-item flex items-baseline justify-between group">
                 <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
                     <?php echo esc_html($archive_post['title']); ?>
                 </a>
-                <span class="text-sm text-gray-600 dark:text-gray-500 shrink-0 font-mono"><?php echo esc_html($archive_post['date']); ?></span>
+                <span class="zen-meta-field text-sm text-gray-600 dark:text-gray-500"><?php echo esc_html(preg_match('/^\d{2}-\d{2}$/', $archive_post['date']) ? get_the_date('Y年n月j日', $archive_post['id']) : $archive_post['date']); ?></span>
             </li>
 
             <?php $year_prev = $year_current; ?>

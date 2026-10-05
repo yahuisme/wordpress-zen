@@ -29,20 +29,12 @@
   content: "\e95c";}
 .ph.ph-arrow-up:before {
   content: "\e97d";}
-.ph.ph-arrow-up-right:before {
-  content: "\e97f";}
 .ph.ph-check:before {
   content: "\ea30";}
 .ph.ph-circle-half:before {
   content: "\ea39";}
-.ph.ph-clock:before {
-  content: "\ea42";}
-.ph.ph-clock-counter-clockwise:before {
-  content: "\ea46";}
 .ph.ph-copy:before {
   content: "\ea6b";}
-.ph.ph-eye:before {
-  content: "\ead2";}
 .ph.ph-list:before {
   content: "\ebca";}
 .ph.ph-list-bullets:before {
@@ -61,7 +53,5 @@
   content: "\ecb8";}
 .ph.ph-sun:before {
   content: "\ed3e";}
-.ph.ph-tag:before {
-  content: "\ed4a";}
 .ph.ph-x:before {
   content: "\eddb";}
