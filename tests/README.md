@@ -15,6 +15,9 @@ php tests/php-regression.php
 php tests/assets-regression.php
 php tests/custom-code-regression.php
 php tests/seo-regression.php
+php tests/template-design-regression.php
+php tests/design-assets-regression.php
+php tests/admin-options.php
 ```
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
@@ -22,7 +25,7 @@ php tests/seo-regression.php
 代码高亮回归需要 Node.js 与 `jsdom`，实际执行主题脚本及本地 Highlight.js：
 
 ```sh
-node --test tests/highlight-regression.cjs tests/interaction-regression.cjs
+node --test tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs
 ```
 
 `jsdom` 安装在独立工具目录时，通过 `NODE_PATH` 指向其 `node_modules`。
@@ -33,7 +36,7 @@ node --test tests/highlight-regression.cjs tests/interaction-regression.cjs
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
 ```
 
-仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题及默认阅读计数。测试会创建并删除自己的样板/文章、临时切换计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
+仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。测试会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
 
 ## 浏览器
 
@@ -62,3 +65,15 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个主菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，选择系统字体以隔离外部网络。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
 
 以上测试文件不进入主题发布 ZIP。
+
+## 原生设置与设计回归
+
+```sh
+python tests/design-browser-regression.py /path/to/fixture green
+python tests/native-settings-regression.py /path/to/fixture
+python tests/native-boundary-regression.py /path/to/fixture
+```
+
+只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
+
+站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。

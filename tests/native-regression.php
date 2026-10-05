@@ -32,6 +32,8 @@ function zen_fixture_post($content, $overrides = array()) {
     return $id;
 }
 try {
+    $zen_saved_count_option = get_option('zen_show_reading_count', null);
+    update_option('zen_show_reading_count', 1);
     $code = '<!-- wp:code --><pre class="wp-block-code"><code>const answer = 42;</code></pre><!-- /wp:code -->';
     $pattern = zen_fixture_post($code);
     $post_id = zen_fixture_post('<!-- wp:block {"ref":' . $pattern . '} /-->', array('post_type' => 'post'));
@@ -90,6 +92,8 @@ try {
         else update_option('zen_show_reading_count', $saved_count_option);
     }
 } finally {
+    if (isset($zen_saved_count_option)) update_option('zen_show_reading_count', $zen_saved_count_option);
+    else delete_option('zen_show_reading_count');
     foreach (array_reverse($ids) as $id) wp_delete_post($id, true);
     wp_reset_postdata();
 }

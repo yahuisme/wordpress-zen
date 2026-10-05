@@ -4,7 +4,7 @@ Theme URI: https://github.com/yahuisme/wordpress-zen
 Author: RyanZ
 Author URI: https://ryanz.de/
 Description: 一个极简的 WordPress 主题，专注于排版、留白与沉浸式阅读。
-Version: 1.5.2
+Version: 1.5.3
 Requires at least: 6.5
 Requires PHP: 8.0
 License: GNU General Public License v3
@@ -14,6 +14,7 @@ Tags: one-column, accessibility-ready, blog, custom-menu, dark-mode
 */
 
 /*
- * 主题样式位于 assets/css/style.css（编译产物，本仓库无构建流程）。
+ * 主题样式位于 assets/css/style.css（可读兼容基础）、reading.css（共享正文排版）
+ * 与 layout.css（前台布局），后台使用 admin.css。无生产构建依赖。
  * 本文件仅提供主题元数据，未在前台加载。
  */

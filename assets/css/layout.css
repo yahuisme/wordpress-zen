@@ -1,0 +1,509 @@
+/* Zen's readable layer. The compiled utility sheet remains the compatibility base. */
+:root {
+    --zen-space-1: 8px;
+    --zen-space-2: 16px;
+    --zen-space-3: 24px;
+    --zen-space-4: 32px;
+    --zen-space-5: 48px;
+}
+
+body,
+body button,
+body input,
+body textarea,
+body select {
+    font-family: var(--zen-font-body);
+}
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6,
+body .serif,
+body .font-serif {
+    font-family: var(--zen-font-heading);
+}
+
+.zen-site-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    color: var(--zen-text);
+}
+.zen-site-logo {
+    width: auto;
+    max-width: 120px;
+    max-height: 40px;
+    object-fit: contain;
+}
+.zen-site-title {
+    font-size: 22px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+.zen-site-header > div:first-child {
+    min-height: 80px;
+    height: auto;
+    padding-block: 16px;
+    gap: 16px;
+}
+.zen-header-actions {
+    flex-shrink: 0;
+}
+.zen-header-tool {
+    min-width: 40px;
+    min-height: 40px;
+}
+.zen-header-toc {
+    font-size: 12px;
+}
+.zen-site-footer > div {
+    height: auto;
+    min-height: 80px;
+    padding-block: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.max-w-zen {
+    max-width: var(--zen-content-width);
+}
+.max-w-zen-narrow {
+    max-width: var(--zen-archives-width);
+}
+.zen-reading-shell,
+.zen-reading-shell .entry-content,
+.zen-reading-shell .zen-comments-shell {
+    width: min(100%, var(--zen-reading-width));
+    margin-inline: auto;
+}
+.zen-reading-shell .entry-content {
+    max-width: none;
+}
+.zen-reading-shell .alignwide {
+    width: min(100vw - 32px, var(--zen-content-width));
+    max-width: var(--zen-content-width);
+    margin-inline-start: calc(
+        (100% - min(100vw - 32px, var(--zen-content-width))) / 2
+    );
+}
+.zen-reading-shell .alignfull {
+    width: 100vw;
+    max-width: 100vw;
+    margin-inline: calc(50% - 50vw);
+}
+.zen-reading-shell .wp-block-image img,
+.zen-reading-shell .wp-block-embed,
+.zen-reading-shell .wp-block-table {
+    max-width: 100%;
+}
+
+.zen-site-intro {
+    max-width: 42rem;
+    margin: 0 auto var(--zen-space-4);
+    color: var(--zen-muted);
+    text-align: center;
+}
+.zen-post-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+}
+.zen-post-item,
+.zen-post-title,
+.zen-article-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.zen-post-item {
+    padding-block: var(--zen-space-4);
+    border-bottom: 1px solid var(--zen-border-soft);
+}
+.zen-post-item:first-child {
+    padding-top: 0;
+}
+.zen-post-item:last-child {
+    border-bottom: 0;
+}
+.zen-post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 12px;
+    color: var(--zen-muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+.zen-post-meta > * {
+    min-width: 0;
+}
+.zen-post-meta time,
+.zen-post-meta .zen-meta-nowrap {
+    white-space: nowrap;
+}
+.zen-post-title {
+    margin: 0 0 10px;
+    font-family: var(--zen-font-heading);
+    font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.6rem);
+    line-height: 1.35;
+}
+.zen-post-title a {
+    color: var(--zen-text);
+    text-decoration: none;
+}
+.zen-post-title a:hover {
+    opacity: 0.72;
+}
+.zen-post-excerpt {
+    max-width: 66ch;
+    margin: 0;
+    color: var(--zen-muted);
+    line-height: 1.65;
+}
+.zen-category-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: baseline;
+    margin-bottom: var(--zen-space-4);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--zen-border-soft);
+}
+.zen-category-nav a {
+    color: var(--zen-muted);
+    text-decoration: none;
+}
+.zen-category-nav a[aria-current="page"] {
+    color: var(--zen-text);
+    font-weight: 600;
+}
+
+.zen-article-header {
+    width: min(100%, var(--zen-reading-width));
+    margin: 0 auto var(--zen-space-5);
+}
+.zen-article-header .zen-post-meta {
+    justify-content: center;
+}
+.zen-post-nav-next {
+    text-align: right;
+}
+
+#toc-container.zen-desktop-toc {
+    display: none !important;
+}
+#floating-toc-btn.zen-inline-toc-btn {
+    position: static;
+    display: none;
+}
+#header-toc-btn.zen-header-toc {
+    display: none;
+}
+#floating-toc-btn.zen-toc-ready {
+    display: inline-flex;
+}
+#header-toc-btn.zen-toc-ready {
+    display: inline-flex;
+}
+#toc-container.zen-desktop-toc {
+    position: fixed;
+    top: 128px;
+    left: calc(50% + var(--zen-reading-width) / 2 + 32px);
+    width: 224px;
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+}
+.zen-toc-title {
+    margin: 0 0 16px 12px;
+    color: var(--zen-muted);
+    font: 500 12px/1.4 var(--zen-font-body);
+}
+#toc-nav {
+    border-left: 1px solid var(--zen-border);
+}
+.zen-inline-toc-btn {
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 4px 12px;
+    margin-top: 4px;
+    border: 1px solid var(--zen-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--zen-muted);
+}
+.zen-article-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.zen-reading-shell .zen-article-title {
+    font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.5rem);
+    line-height: 1.35;
+    margin-bottom: 20px;
+    text-align: center;
+    text-wrap: balance;
+}
+.zen-post-meta > a,
+.zen-meta-field {
+    white-space: nowrap;
+}
+.zen-featured-media {
+    margin-bottom: 32px;
+}
+.zen-featured-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+.zen-article-notes {
+    display: grid;
+    gap: 6px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--zen-border-soft);
+    line-height: 1.65;
+}
+.zen-permalink {
+    overflow-wrap: anywhere;
+}
+.zen-post-taxonomy {
+    margin-top: 24px;
+    padding-top: 0;
+    border: 0;
+}
+.zen-post-navigation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--zen-border-soft);
+}
+.zen-post-navigation a {
+    display: grid;
+    gap: 8px;
+    overflow-wrap: anywhere;
+}
+.zen-post-nav-label {
+    font-size: 12px;
+    color: var(--zen-muted);
+}
+.zen-post-nav-title {
+    font-size: 15px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.zen-reading-shell #comments {
+    margin-top: 48px;
+    width: 100%;
+}
+.zen-reading-shell #comments > div {
+    padding-top: 24px;
+}
+.zen-reading-shell #comments h2 {
+    font-size: 30px;
+}
+.zen-reading-shell .comment-list {
+    margin-bottom: 32px;
+}
+.zen-comment-panel::before,
+.dark .zen-comment-panel::before {
+    display: none;
+}
+.zen-comment-panel {
+    box-shadow: none;
+    background: var(--zen-surface);
+}
+.dark .zen-comment-panel {
+    box-shadow: none;
+    background: var(--zen-surface);
+}
+.zen-tag-pill {
+    box-shadow: none;
+    font-weight: 500;
+}
+.zen-tag-pill:hover {
+    box-shadow: none;
+}
+.toc-link {
+    display: block;
+    padding-block: 6px;
+    color: var(--zen-muted);
+    text-decoration: none;
+    line-height: 1.45;
+}
+.toc-link.active,
+.toc-link:hover,
+.toc-link:focus-visible {
+    color: var(--zen-text);
+}
+
+
+.zen-post-item--compact {
+    padding-block: 20px;
+}
+.zen-category-disclosure {
+    flex: 1;
+    min-width: 0;
+}
+.zen-category-disclosure > summary {
+    width: fit-content;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--zen-muted);
+}
+.zen-category-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    padding-top: 16px;
+}
+.zen-list-header {
+    text-align: center;
+    margin: 0 auto 40px;
+}
+.zen-list-title {
+    font-size: clamp(1.8rem, 1.3rem + 1vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0 0 20px;
+}
+.zen-inline-search {
+    max-width: 36rem;
+    margin: 24px auto;
+}
+.zen-inline-search .search-form {
+    display: flex;
+    gap: 8px;
+}
+.zen-inline-search .search-form label {
+    flex: 1;
+    min-width: 0;
+}
+.zen-inline-search input[type="search"] {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--zen-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--zen-text);
+    background: var(--zen-surface);
+}
+.zen-inline-search .search-submit {
+    padding: 10px 16px;
+    border-radius: 6px;
+    background: var(--zen-text);
+    color: var(--zen-bg);
+    cursor: pointer;
+}
+.zen-empty-state {
+    text-align: center;
+    padding: 40px 0;
+}
+.zen-empty-state h2 {
+    margin-bottom: 12px;
+}
+.zen-empty-state p {
+    color: var(--zen-muted);
+    margin-bottom: 20px;
+}
+.zen-recovery-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+}
+.zen-archive-row {
+    gap: 16px;
+}
+.zen-archive-link {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.zen-page-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+.zen-page-links .post-page-numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    border: 1px solid var(--zen-border);
+    border-radius: 4px;
+}
+.zen-noscript-menu {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px;
+}
+.zen-noscript-nav {
+    display: none;
+}
+#post-content h2,
+#post-content h3,
+#comments {
+    scroll-margin-top: 112px;
+}
+.admin-bar #post-content h2,
+.admin-bar #post-content h3,
+.admin-bar #comments {
+    scroll-margin-top: 144px;
+}
+.zen-mobile-menu {
+    top: 100%;
+}
+@media (max-width: 639.98px) {
+    .zen-noscript-nav {
+        display: block;
+    }
+    .zen-header-tool {
+        min-width: 36px;
+        min-height: 44px;
+        width: 36px;
+    }
+    .zen-header-actions {
+        gap: 0;
+    }
+    .zen-header-tools {
+        gap: 0;
+    }
+    .zen-site-title {
+        font-size: 19px;
+    }
+    .zen-site-logo {
+        max-width: 56px;
+        max-height: 32px;
+    }
+    .zen-post-navigation {
+        grid-template-columns: 1fr;
+    }
+    .zen-post-nav-next {
+        text-align: left;
+    }
+    .zen-article-header .zen-post-meta {
+        justify-content: center;
+        row-gap: 8px;
+    }
+    .zen-article-header .zen-post-meta > * {
+        white-space: nowrap;
+    }
+    .zen-post-nav-next {
+        text-align: left;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .zen-post-title a {
+        transition: none;
+    }
+}

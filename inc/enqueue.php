@@ -1,87 +1,78 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-/**
- * Frontend assets.
- */
+/** One typography contract for the reader and the native block editor. */
+function zen_typography() {
+    $family = zen_get_option('zen_font_family');
+    $system = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+    $serif = '"Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, serif';
+    $fonts = '';
+    if ('space-grotesk' === $family) {
+        $body = '"Space Grotesk", "Noto Sans SC", ' . $system;
+        $heading = $body;
+        $fonts = 'family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700';
+    } elseif ('inter' === $family) {
+        $body = 'Inter, "Noto Sans SC", ' . $system;
+        $heading = '"Noto Serif SC", ' . $serif;
+        $fonts = 'family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700';
+    } else {
+        $body = $system;
+        $heading = $serif;
+    }
+    return array('body' => $body, 'heading' => $heading, 'fonts' => $fonts ? 'https://fonts.googleapis.com/css2?' . $fonts . '&display=swap' : '');
+}
+
+function zen_design_variables() {
+    $type = zen_typography();
+    $site = max(600, min(1920, (int) zen_get_option('zen_content_width')));
+    $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
+    return ':root{--zen-content-width:' . $site . 'px;--zen-content-half:' . round($site / 2) . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px;--zen-font-body:' . $type['body'] . ';--zen-font-heading:' . $type['heading'] . '}';
+}
+
 function zen_scripts() {
     $ver = wp_get_theme()->get('Version');
-
-    $font_family = zen_get_option('zen_font_family');
-    $font_query  = $font_family === 'space-grotesk'
-        ? 'family=Space+Grotesk:wght@400;500;600;700'
-        : 'family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400';
-    $font_stack  = $font_family === 'space-grotesk'
-        ? '"Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif'
-        : 'Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif';
-    $heading_stack = $font_family === 'space-grotesk'
-        ? $font_stack
-        : '"Noto Serif SC", "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
-    $heading_weight = $font_family === 'space-grotesk' ? ' body h1, body h2, body h3 { font-weight: 600 !important; }' : '';
-    $font_query .= '&family=Noto+Sans+SC:wght@400;500;600;700;800';
-
-    if ($font_family !== 'space-grotesk') {
-        $font_query .= '&family=Noto+Serif+SC:wght@400;500;600;700;800';
-    }
-
-    $font_query .= '&display=swap';
-    if ($font_family === 'system') {
-        $font_stack = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
-        $heading_stack = '"Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
-    } else {
-        wp_enqueue_style('zen-google-fonts', 'https://fonts.googleapis.com/css2?' . $font_query, array(), null);
+    $type = zen_typography();
+    if ($type['fonts']) {
+        wp_enqueue_style('zen-google-fonts', $type['fonts'], array(), null);
     }
     wp_enqueue_style('phosphor-icons', get_template_directory_uri() . '/assets/css/phosphor-icons.css', array(), $ver);
-
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
         wp_enqueue_style('highlight-css', get_template_directory_uri() . '/assets/css/github-dark.min.css', array(), $ver);
         wp_enqueue_script('highlight-js', get_template_directory_uri() . '/assets/js/highlight.min.js', array(), $ver, true);
     }
-
-    $main_dependencies = wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array();
-    wp_enqueue_script(
-        'zen-main',
-        get_template_directory_uri() . '/js/main.js',
-        $main_dependencies,
-        $ver,
-        true
-    );
-
+    wp_enqueue_script('zen-main', get_template_directory_uri() . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), $ver, true);
     wp_localize_script('zen-main', 'zenSettings', array(
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
-        'search_shortcut'    => (int) zen_get_option('zen_show_search_shortcut'),
+        'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),
     ));
-
-    $compiled_css = get_template_directory() . '/assets/css/style.css';
-    if (file_exists($compiled_css)) {
-        wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), $ver);
-        wp_add_inline_style('zen-compiled-style', 'body, body button, body input, body textarea, body select, body .comment-reply-title small { font-family: ' . $font_stack . '; } body h1, body h2, body h3, body h4, body h5, body h6, body .font-serif, body .serif { font-family: ' . $heading_stack . '; }' . $heading_weight);
-        $zen_content_width = max(600, min(1920, (int) zen_get_option('zen_content_width')));
-        wp_add_inline_style('zen-compiled-style', ':root{--zen-content-width:' . $zen_content_width . 'px;--zen-content-half:' . round($zen_content_width / 2) . 'px;--zen-archives-width:' . round($zen_content_width * 0.75) . 'px}.max-w-zen{max-width:var(--zen-content-width)}.max-w-zen-narrow{max-width:var(--zen-archives-width)}');
-        // Reserve both side gutters for the 224px TOC and its 32px gap.
-        $zen_toc_breakpoint = max(1360, $zen_content_width + 512);
-        wp_add_inline_style('zen-compiled-style', '#toc-container{display:none!important}#floating-toc-btn.zen-toc-ready{display:block!important}@media(min-width:' . $zen_toc_breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready{display:none!important}}#toc-container:not(.zen-toc-ready),#floating-toc-btn:not(.zen-toc-ready){display:none!important}');
-        wp_add_inline_style('zen-compiled-style', '#post-content h2,#post-content h3{scroll-margin-top:96px}.admin-bar #post-content h2,.admin-bar #post-content h3{scroll-margin-top:128px}');
-        wp_add_inline_style('zen-compiled-style', '.entry-content,#main-content h1,#main-content h2{overflow-wrap:anywhere}.entry-content pre{overflow-wrap:normal}.zen-archive-row{gap:16px}.zen-archive-link{min-width:0;overflow-wrap:anywhere}');
-        wp_add_inline_style('zen-compiled-style', '.entry-content iframe,.entry-content embed,.entry-content object{max-width:100%}');
-        wp_add_inline_style('zen-compiled-style', '@media (prefers-reduced-motion: reduce) { html.scroll-smooth { scroll-behavior: auto; } }');
-        wp_add_inline_style('zen-compiled-style', '.zen-page-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:32px}.zen-page-links .post-page-numbers{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;border:1px solid var(--zen-border);border-radius:4px;color:var(--zen-muted)}.zen-page-links a:hover,.zen-page-links [aria-current]{color:var(--zen-text);background:var(--zen-bg-soft)}');
-        wp_add_inline_style('zen-compiled-style', '.zen-post-nav-next{text-align:right}@media (max-width:639.98px){.zen-post-nav-next{text-align:left}}');
-    }
-
+    wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), $ver);
+    wp_enqueue_style('zen-reading-style', get_template_directory_uri() . '/assets/css/reading.css', array('zen-compiled-style'), $ver);
+    wp_enqueue_style('zen-layout-style', get_template_directory_uri() . '/assets/css/layout.css', array('zen-reading-style'), $ver);
+    wp_add_inline_style('zen-reading-style', zen_design_variables());
+    $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
+    $breakpoint = max(1200, $reading + 560);
+    wp_add_inline_style('zen-layout-style', '@media(min-width:' . $breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready,#header-toc-btn.zen-toc-ready{display:none}}');
     if (is_singular() && comments_open() && get_option('thread_comments')) {
         wp_enqueue_script('comment-reply');
     }
 }
 add_action('wp_enqueue_scripts', 'zen_scripts');
 
+function zen_editor_settings($settings) {
+    $type = zen_typography();
+    $settings['styles'][] = array('css' => zen_design_variables());
+    if ($type['fonts']) {
+        $settings['styles'][] = array('css' => '@import url("' . $type['fonts'] . '");');
+    }
+    return $settings;
+}
+add_filter('block_editor_settings_all', 'zen_editor_settings');
+
 function zen_has_code_blocks() {
     $post = get_post();
-
     if (!$post) {
         return false;
     }
-
     $pending = array($post->post_content);
     $seen_refs = array();
     while ($pending) {
@@ -107,7 +98,6 @@ function zen_has_code_blocks() {
             }
             $seen_refs[$ref] = true;
             $pattern = get_post($ref);
-            // Match native synced-pattern visibility without rendering content twice.
             if ($pattern && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status && '' === $pattern->post_password) {
                 $pending[] = $pattern->post_content;
             }

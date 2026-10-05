@@ -1,59 +1,36 @@
 <?php get_header(); ?>
-
-<header class="mb-12 text-center animate-fade-in">
-    <div class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
-        <?php
-        if (is_category()) { echo '分类专栏'; }
-        elseif (is_tag()) { echo '话题标签'; }
-        elseif (is_author()) { echo '作者专栏'; }
-        elseif (is_date()) { echo '历史足迹'; }
-        else { echo '归档'; }
-        ?>
-    </div>
-
-    <h1 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900 dark:text-white">
-        <?php
-        if (is_category()) {
-            echo esc_html(single_cat_title('', false));
-        } elseif (is_tag()) {
-            echo esc_html(single_tag_title('', false));
-        } elseif (is_author()) {
-            echo esc_html(get_the_author());
-        } elseif (is_day()) {
-            echo esc_html(get_the_date());
-        } elseif (is_month()) {
-            echo esc_html(get_the_date('Y年 n月'));
-        } elseif (is_year()) {
-            echo esc_html(get_the_date('Y年'));
-        } else {
-            the_archive_title('', false);
-        }
-        ?>
-    </h1>
-
+<header class="zen-list-header">
+    <p class="text-sm text-gray-600 dark:text-gray-400"><?php
+        if (is_category()) echo '分类';
+        elseif (is_tag()) echo '标签';
+        elseif (is_author()) echo '作者';
+        else echo '归档';
+    ?></p>
+    <h1 class="zen-list-title font-bold serif"><?php
+        if (is_category()) echo esc_html(single_cat_title('', false));
+        elseif (is_tag()) echo esc_html(single_tag_title('', false));
+        elseif (is_author()) echo esc_html(get_the_author());
+        elseif (is_day()) echo esc_html(get_the_date('Y年n月j日'));
+        elseif (is_month()) echo esc_html(get_the_date('Y年n月'));
+        elseif (is_year()) echo esc_html(get_the_date('Y年'));
+        else the_archive_title();
+    ?></h1>
     <?php $archive_description = get_the_archive_description(); ?>
     <?php if ($archive_description) : ?>
-        <div class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mt-4 prose dark:prose-invert">
-            <?php echo wp_kses_post($archive_description); ?>
-        </div>
+    <div class="prose dark:prose-invert text-gray-600 dark:text-gray-400"><?php echo wp_kses_post($archive_description); ?></div>
     <?php endif; ?>
 </header>
-
-<div class="space-y-12 max-w-zen mx-auto animate-fade-in">
+<?php if (is_category()) zen_category_navigation(); ?>
+<div class="zen-post-list">
     <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
         <?php get_template_part('template-parts/content', 'excerpt'); ?>
-
-    <?php endwhile; ?>
-
-        <?php zen_pagination(); ?>
-
-    <?php else : ?>
-        <div class="text-center py-20">
-            <h2 class="text-xl font-bold mb-2">此处空空如也</h2>
-            <p class="text-gray-500">该专栏或话题下暂时没有文章。</p>
-            <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-ui-link inline-block mt-4 hover:text-gray-900 dark:hover:text-white">返回首页</a>
+    <?php endwhile; else : ?>
+        <div class="zen-empty-state">
+            <h2 class="text-xl font-bold">暂无文章</h2>
+            <p>此归档下暂时没有文章。</p>
+            <a href="<?php echo esc_url(zen_get_posts_url()); ?>" class="zen-ui-link">查看全部文章</a>
         </div>
     <?php endif; ?>
 </div>
-
+<?php zen_pagination(); ?>
 <?php get_footer(); ?>

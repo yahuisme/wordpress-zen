@@ -40,6 +40,7 @@ async function page(t, html, prepare = () => {}) {
         }
         observe(target) { this.targets.push(target); }
     };
+    window.matchMedia = () => ({ matches: false, addEventListener() {} });
     prepare(window);
     window.eval(main);
     document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -113,6 +114,36 @@ for (const modifier of ['ctrlKey', 'metaKey']) {
         assert.equal(document.body.style.overflow, '');
     });
 }
+
+test('mobile menu communicates its close state with the shipped icon', async t => {
+    const { document } = await page(t, searchMarkup.replace('>Menu</button>', '><i class="ph ph-list"></i></button>'));
+    const trigger = document.getElementById('mobile-menu-btn');
+    trigger.click();
+    assert.ok(trigger.querySelector('.ph-x'), 'opened menu uses a close glyph');
+    trigger.click();
+    assert.ok(trigger.querySelector('.ph-list'), 'closed menu uses the list glyph');
+});
+
+test('both local and header directory triggers share state and restore the activating control', async t => {
+    const { document, flush } = await page(t, `
+        <header><button id="header-toc-btn" hidden>Directory</button></header>
+        <main><button id="floating-toc-btn" hidden>Directory</button>
+        <nav id="toc-nav"></nav><article id="post-content"><h2>One</h2></article>
+        <div id="toc-overlay" class="hidden opacity-0"></div>
+        <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><nav id="drawer-toc-nav"></nav></aside></main>`);
+    const local = document.getElementById('floating-toc-btn');
+    const header = document.getElementById('header-toc-btn');
+    assert.equal(local.hidden, false);
+    assert.equal(header.hidden, false);
+    header.focus(); header.click(); flush();
+    assert.equal(document.activeElement.id, 'drawer-toc-close');
+    assert.equal(header.getAttribute('aria-expanded'), 'true');
+    assert.equal(local.getAttribute('aria-expanded'), 'true');
+    document.getElementById('drawer-toc-close').click(); flush();
+    assert.equal(document.activeElement, header);
+    assert.equal(header.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.body.style.overflow, '');
+});
 
 test('audio initializes from metadata and playback already available before DOMContentLoaded', async t => {
     const { document } = await page(t, '<audio controls></audio>', window => {

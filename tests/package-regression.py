@@ -14,6 +14,8 @@ validator_match = re.search(r"<<'PY'\n(.*?)\n          PY", workflow, re.S)
 version_match = re.search(r'^Version:\s*(\S+)', (ROOT / 'style.css').read_text(), re.M)
 assert file_match and validator_match and version_match, 'Release workflow contract missing'
 files = file_match.group(1).split()
+for asset in ('assets/css/admin.css', 'assets/css/reading.css', 'assets/css/layout.css', 'assets/js/admin.js'):
+    assert asset in files, 'Design/runtime asset missing from package: ' + asset
 validator = '\n'.join(line[10:] for line in validator_match.group(1).splitlines())
 version = version_match.group(1)
 assert '--title "Zen v$VERSION"' in workflow

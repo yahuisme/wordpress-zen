@@ -36,21 +36,12 @@
 <header role="banner" class="zen-site-header w-full transition-colors backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-zen mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
 
-        <div class="flex items-center gap-4 min-w-0">
-            <a href="<?php echo esc_url(home_url('/')); ?>" class="block shrink-0 group zen-ui-link rounded-full" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - 首页">
-                <?php
-                $avatar_url = get_avatar_url(get_option('admin_email'));
-                if ($avatar_url) :
-                ?>
-                <img src="<?php echo esc_url($avatar_url); ?>"
-                     alt=""
-                     class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700 group-hover:ring-gray-300 dark:group-hover:ring-gray-500 transition-all duration-300">
-                <?php endif; ?>
-            </a>
-            <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-ui-link min-w-0 truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white font-serif hover:opacity-80">
-                <?php echo esc_html(get_bloginfo('name')); ?>
-            </a>
-        </div>
+        <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-site-brand zen-ui-link" aria-label="<?php echo esc_attr(get_bloginfo('name') . ' - 首页'); ?>">
+            <?php if (has_custom_logo()) : ?>
+                <?php echo wp_get_attachment_image((int) get_theme_mod('custom_logo'), 'full', false, array('class' => 'zen-site-logo', 'alt' => get_bloginfo('name'))); ?>
+            <?php endif; ?>
+            <span class="zen-site-title font-serif font-bold"><?php echo esc_html(get_bloginfo('name')); ?></span>
+        </a>
 
         <div class="zen-header-actions flex items-center">
 
@@ -68,6 +59,9 @@
             </nav>
 
             <div class="zen-header-tools">
+                <?php if (is_singular('post') && zen_get_option('zen_show_toc')) : ?>
+                <button id="header-toc-btn" type="button" class="zen-header-tool zen-header-toc zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden>目录</button>
+                <?php endif; ?>
                 <button id="theme-toggle" type="button"
                         class="zen-theme-toggle zen-header-tool zen-icon-btn"
                         aria-label="切换主题"
@@ -84,6 +78,7 @@
                     <i class="ph ph-magnifying-glass text-xl md:text-lg" aria-hidden="true"></i>
                 </button>
 
+                <?php if (has_nav_menu('primary')) : ?>
                 <button id="mobile-menu-btn" type="button"
                         class="zen-header-tool zen-icon-btn md:hidden"
                         aria-expanded="false"
@@ -91,10 +86,12 @@
                     <span class="screen-reader-text">打开/关闭菜单</span>
                     <i class="ph ph-list text-2xl" aria-hidden="true"></i>
                 </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
+    <?php if (has_nav_menu('primary')) : ?>
     <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute top-20 left-0 w-full p-4 shadow-lg animate-fade-in z-40" aria-hidden="true">
         <nav aria-label="移动端菜单" class="flex flex-col gap-4 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
             <?php
@@ -109,6 +106,12 @@
             ?>
         </nav>
     </div>
+    <noscript>
+        <nav class="zen-noscript-nav" aria-label="主菜单（无脚本）">
+            <?php wp_nav_menu(array('theme_location' => 'primary', 'container' => false, 'menu_class' => 'zen-noscript-menu', 'fallback_cb' => false, 'depth' => 1)); ?>
+        </nav>
+    </noscript>
+    <?php endif; ?>
 </header>
 
 <div id="search-modal"
