@@ -32,7 +32,8 @@ with sync_playwright() as p:
   assert set(option('zen_category_ids'))=={f['categories'][0],f['categories'][2]},option('zen_category_ids')
   assert option('zen_show_site_intro')=='0' or option('zen_show_site_intro')==0
   page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-excerpt').count()==0
-  page.locator('.zen-category-disclosure summary').click();assert page.locator('.zen-category-links a').count()==2
+  links=page.locator('.zen-category-track > a');assert links.count()==3
+  assert all(link.is_visible() for link in links.all())
   page.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');assert page.locator('#post-content').evaluate('e=>Math.round(e.getBoundingClientRect().width)')==800,page.locator('#post-content').evaluate('e=>({width:e.getBoundingClientRect().width,var:getComputedStyle(e).getPropertyValue("--zen-reading-width")})')
   assert '版权声明' not in page.locator('main').inner_text() and '浏览次数' not in page.locator('.zen-post-meta').inner_text()
  check('saved reading width list intro categories and license drive frontend',edited)

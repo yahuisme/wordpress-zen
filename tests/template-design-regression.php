@@ -79,13 +79,15 @@ function get_categories($args) {
     }
     return isset($args['number']) ? array_slice($all, 0, $args['number']) : $all;
 }
-test('home intro is optional native description and complete categories are expandable', function () {
+test('home intro is optional and complete categories are directly visible', function () {
     $GLOBALS['options']['zen_show_site_intro'] = 1;
     $GLOBALS['options']['zen_category_ids'] = array();
     $GLOBALS['loop_left'] = 0;
     $html = render('index.php');
     check(str_contains($html, '记录技术与日常'), 'native site description missing');
-    check(str_contains($html, '<details') && str_contains($html, '分类8'), 'complete expandable category navigation missing');
+    check(!str_contains($html, '<details') && !str_contains($html, '<summary') && str_contains($html, '分类8'), 'categories must be visible without expanding a control');
+    preg_match('/<nav class="zen-category-nav"[^>]*>(.*?)<\/nav>/s', $html, $nav);
+    check(substr_count($nav[1] ?? '', '<a ') === 9, 'all eight categories plus all-posts link must render');
     check(!str_contains($html, '面包屑'), 'category choices are not breadcrumbs');
     check(str_contains($html, 'zen-post-list'), 'shared list wrapper missing');
     check(($GLOBALS['category_args']['hide_empty'] ?? null) === true, 'only nonempty categories should be requested by default');

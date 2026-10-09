@@ -28,7 +28,7 @@ get_header(); ?>
                 'order' => 'DESC',
                 'no_found_rows' => false,
                 'update_post_meta_cache' => false,
-                'update_post_term_cache' => false,
+                'update_post_term_cache' => str_contains((string) get_option('permalink_structure'), '%category%'),
             ));
 
             foreach ($archives_query->posts as $archive_post) {

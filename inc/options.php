@@ -265,8 +265,30 @@ function zen_get_update_info() {
     return $result;
 }
 
+function zen_reading_block_text($blocks, $ancestors = array()) {
+    $text = '';
+    foreach ($blocks as $block) {
+        if ('core/block' === $block['blockName']) {
+            $ref = $block['attrs']['ref'] ?? 0;
+            if (!is_int($ref) || $ref <= 0 || isset($ancestors[$ref])) continue;
+            $pattern = get_post($ref);
+            if (!$pattern || 'wp_block' !== $pattern->post_type || 'publish' !== $pattern->post_status || '' !== $pattern->post_password) continue;
+            $path = $ancestors;
+            $path[$ref] = true;
+            $text .= zen_reading_block_text(parse_blocks($pattern->post_content), $path);
+        } else {
+            $text .= $block['innerHTML'];
+            $text .= zen_reading_block_text($block['innerBlocks'], $ancestors);
+        }
+    }
+    return $text;
+}
+
 function zen_get_reading_time($post_id = 0) {
     $content = get_post_field('post_content', $post_id ? $post_id : get_the_ID());
+    if (has_block('core/block', $content)) {
+        $content = zen_reading_block_text(parse_blocks($content));
+    }
     $content = strip_shortcodes($content);
     $content = preg_replace('/<!--\s*wp:.*?-->/s', ' ', $content);
     $content = trim(wp_strip_all_tags($content));
