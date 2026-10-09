@@ -17,6 +17,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const reduceMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     const reduceMotion = reduceMotionQuery ? reduceMotionQuery.matches : false;
 
+    document.querySelectorAll('.zen-category-nav').forEach((nav) => {
+        const track = nav.querySelector('.zen-category-track');
+        const prev = nav.querySelector('.zen-category-prev');
+        const next = nav.querySelector('.zen-category-next');
+        if (!track || !prev || !next) return;
+        const update = () => {
+            const padding = nav.classList.contains('has-overflow') ? 32 : 0;
+            nav.classList.toggle('has-overflow', track.scrollWidth - padding > track.clientWidth + 1);
+            prev.hidden = track.scrollLeft <= 1;
+            next.hidden = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+        };
+        [prev, next].forEach((button, index) => {
+            button.addEventListener('click', () => track.scrollBy({
+                left: (index ? 1 : -1) * Math.max(64, track.clientWidth - 96),
+                behavior: reduceMotion ? 'auto' : 'smooth',
+            }));
+        });
+        track.addEventListener('focusin', (event) => {
+            if (event.target.matches('a')) {
+                track.scrollLeft = Math.max(0, event.target.offsetLeft - track.clientWidth / 2 + event.target.offsetWidth / 2);
+                update();
+            }
+        });
+        track.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        if (window.ResizeObserver) new ResizeObserver(update).observe(track);
+        update();
+        const current = track.querySelector('[aria-current="page"]');
+        if (current && nav.classList.contains('has-overflow')) {
+            track.scrollLeft = Math.max(0, current.offsetLeft - track.clientWidth / 2 + current.offsetWidth / 2);
+            update();
+        }
+        if (document.fonts) document.fonts.ready.then(update);
+    });
+
     const getStoredThemeMode = () => {
         try {
             const storedMode = window.localStorage.getItem(themeStorageKey);

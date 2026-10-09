@@ -28,17 +28,14 @@ function zen_category_navigation() {
     $current = is_category() ? get_queried_object_id() : 0;
     ?>
     <nav class="zen-category-nav" aria-label="文章分类">
+        <button class="zen-category-arrow zen-category-prev" type="button" aria-label="向左滚动分类" hidden><span aria-hidden="true">‹</span></button>
+        <div class="zen-category-track">
         <a class="zen-ui-link" href="<?php echo esc_url(zen_get_posts_url()); ?>"<?php if (is_home()) echo ' aria-current="page"'; ?>>全部</a>
-        <?php if (!empty($categories)) : ?>
-        <details class="zen-category-disclosure">
-            <summary>分类</summary>
-            <div class="zen-category-links" aria-label="分类链接">
-                <?php foreach ($categories as $category) : ?>
-                <a class="zen-ui-link" href="<?php echo esc_url(get_category_link($category->term_id)); ?>"<?php if ((int) $category->term_id === $current) echo ' aria-current="page"'; ?>><?php echo esc_html($category->name); ?></a>
-                <?php endforeach; ?>
-            </div>
-        </details>
-        <?php endif; ?>
+        <?php foreach ($categories as $category) : ?>
+        <a class="zen-ui-link" href="<?php echo esc_url(get_category_link($category->term_id)); ?>"<?php if ((int) $category->term_id === $current) echo ' aria-current="page"'; ?>><?php echo esc_html($category->name); ?></a>
+        <?php endforeach; ?>
+        </div>
+        <button class="zen-category-arrow zen-category-next" type="button" aria-label="向右滚动分类" hidden><span aria-hidden="true">›</span></button>
     </nav>
     <?php
 }
@@ -185,6 +182,10 @@ add_action('trashed_post', 'zen_clear_archives_cache');
 add_action('untrashed_post', 'zen_clear_archives_cache');
 add_action('add_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
+add_action('edited_category', 'zen_clear_archives_cache');
+add_action('delete_category', 'zen_clear_archives_cache');
+add_action('update_option_permalink_structure', 'zen_clear_archives_cache');
+add_action('update_option_home', 'zen_clear_archives_cache');
 
 function zen_get_site_uptime() {
     $uptime = get_transient('zen_site_uptime');
