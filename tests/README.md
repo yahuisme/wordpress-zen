@@ -34,9 +34,12 @@ node --test tests/highlight-regression.cjs tests/interaction-regression.cjs test
 
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/php-native-regression.php /path/to/isolated/wp-load.php
 ```
 
-仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。测试会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
+仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。`native-regression.php` 会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
+
+`php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
 
 ## 浏览器
 
@@ -65,6 +68,16 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个主菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，选择系统字体以隔离外部网络。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
 
 以上测试文件不进入主题发布 ZIP。
+
+## 定向修复验收
+
+```sh
+python tests/repair-ui-regression.py /path/to/fixture
+```
+
+复用上述隔离 fixture，另需 `long` 指向使用超长分类名的文章，`normal` 末尾包含 `/tone.wav` 原生音频，文件放在 `runtime/tone.wav`。覆盖登录管理栏、长分类元信息、无脚本中间断点、搜索空白关闭、目录双向高亮、数字必填校验和音频透明命中区。可在末尾传 `adminbar`、`metadata`、`noscript`、`search`、`toc`、`toc-anchor`、`required` 或 `audio` 单独补测。音频测试以原始本地 WAV 响应字节范围请求，补足 PHP 开发服务器不支持 Range 的限制；不伪造媒体状态。
+
+浏览器单实例串行，仍须外部已验证 cgroup 内存硬限制；已有有效结果不因交付重复运行。
 
 ## 原生设置与设计回归
 

@@ -14,6 +14,8 @@ $zen_test_failed = 0;
 
 function zen_test($name, $callback) {
     global $zen_test_total, $zen_test_failed;
+    // Optional focused rerun: php tests/php-regression.php 'search|bookmark'.
+    if (isset($GLOBALS['argv'][1]) && !preg_match('/' . $GLOBALS['argv'][1] . '/i', $name)) return;
     $zen_test_total++;
     try {
         $callback();
@@ -40,7 +42,7 @@ function zen_capture($callback) {
 function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
     $GLOBALS['zen_test_hooks'][$hook][] = $callback;
 }
-function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false); }
 function esc_attr($value) { return esc_html($value); }
 function esc_url($value) { return esc_html($value); }
 // Identity sanitizer only for trusted fixed fixtures, not a wp_kses security test.
@@ -84,6 +86,30 @@ zen_test('search highlights zero without losing escaping or duplicate handling',
     zen_expect(substr_count($html, '<mark ') === 3, 'zero terms are missing');
     zen_expect(str_contains($html, '&lt;b&gt;') && !str_contains($html, '<b>'), 'title must stay escaped');
     zen_expect(!str_contains(zen_highlight_search_terms('plain', '   '), '<mark'), 'empty query must not highlight');
+});
+
+zen_test('search highlights decoded text without matching entity syntax or exposing markup', function () {
+    foreach (array('&#038;', '&amp;', '&#x26;') as $entity) {
+        foreach (array('&' => 1, '038' => 0, 'amp' => 0, 'x26' => 0) as $query => $marks) {
+            $html = zen_highlight_search_terms('A ' . $entity . ' B', (string) $query);
+            zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'A & B', 'visible entity changed');
+            zen_expect(substr_count($html, '<mark ') === $marks, 'entity syntax was highlighted');
+        }
+    }
+    $html = zen_highlight_search_terms('&lt;img src=x onerror=alert(1)&gt; &amp;lt;', '<img &lt;');
+    zen_expect(!str_contains($html, '<img') && !str_contains($html, '<script'), 'encoded markup became executable');
+    zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '<img src=x onerror=alert(1)> &lt;', 'one-layer decoding changed literal entity text');
+});
+
+zen_test('search keeps Unicode literal regex matches overlap precedence and query bounds', function () {
+    $html = zen_highlight_search_terms('中文 C++ [a] WORLD world', '中文 C++ [a] world world');
+    zen_expect(substr_count($html, '<mark ') === 5, 'Unicode, regex literal or case matching changed');
+    zen_expect(substr_count(zen_highlight_search_terms('world', 'wor world'), '<mark ') === 1, 'longest overlap must win');
+    zen_expect(!str_contains(zen_highlight_search_terms('0', str_repeat('x', 301)), '<mark '), 'oversized query should be ignored');
+    zen_expect(!str_contains(zen_highlight_search_terms('&amp;', "\xFF"), '<mark '), 'invalid UTF-8 query must fail closed');
+    zen_expect(zen_highlight_search_terms('', '&') === '', 'empty title should remain empty');
+    $terms = array_map(function ($n) { return 'term' . str_pad((string) $n, 2, '0', STR_PAD_LEFT); }, range(1, 21));
+    zen_expect(!str_contains(zen_highlight_search_terms('term21', implode(' ', $terms)), '<mark '), 'query term limit must remain 20');
 });
 
 function get_header() {}

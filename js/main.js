@@ -419,42 +419,51 @@ document.addEventListener('DOMContentLoaded', () => {
             fillTocNav(tocNav);
             fillTocNav(drawerTocNav);
 
-            // 4. Scroll Spy (滚动监听)
-            if (typeof IntersectionObserver === 'undefined') {
-                if (tocContainer) tocContainer.classList.remove('opacity-0');
-            } else {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        // 清除所有高亮
-                        document.querySelectorAll('.toc-link').forEach(link => {
-                            link.classList.remove('active');
-                            link.removeAttribute('aria-current');
-                        });
-
-                        // 高亮对应 ID 的所有链接 (Sidebar 和 Drawer 同时高亮)
-                        const activeLinks = Array.from(document.querySelectorAll('.toc-link')).filter(link => link.dataset.target === entry.target.id);
-                        activeLinks.forEach(activeLink => {
-                            activeLink.classList.add('active');
-                            activeLink.setAttribute('aria-current', 'location');
-
-                            // 仅对 PC 侧边栏进行自动滚动定位，防止在 Drawer 打开时造成页面跳动
-                            if (tocNav && activeLink.parentElement === tocNav) {
-                                const navRect = tocNav.getBoundingClientRect();
-                                const linkRect = activeLink.getBoundingClientRect();
-                                if (linkRect.bottom > navRect.bottom || linkRect.top < navRect.top) {
-                                    activeLink.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
-                                }
-                            }
-                        });
-                    }
+            // Select by reading position in both scroll directions, including long sections.
+            const tocTargets = tocItems.map(item => document.getElementById(item.id)).filter(Boolean);
+            const tocLinks = Array.from(document.querySelectorAll('.toc-link'));
+            let activeTocId;
+            let tocTicking = false;
+            const updateToc = () => {
+                tocTicking = false;
+                const siteHeader = document.querySelector('.zen-site-header');
+                const anchorOffset = parseFloat(getComputedStyle(tocTargets[0]).scrollMarginTop) || 0;
+                const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+                const readingTop = Math.max((siteHeader ? siteHeader.getBoundingClientRect().bottom : 80) + 24, anchorOffset + scrollPadding) + 1;
+                let active = tocTargets[0];
+                for (const target of tocTargets) {
+                    if (target.getBoundingClientRect().top <= readingTop) active = target;
+                    else break;
+                }
+                if (!active || active.id === activeTocId) return;
+                activeTocId = active.id;
+                tocLinks.forEach(link => {
+                    const current = link.dataset.target === activeTocId;
+                    link.classList.toggle('active', current);
+                    if (current) link.setAttribute('aria-current', 'location');
+                    else link.removeAttribute('aria-current');
                 });
-            }, { rootMargin: '-100px 0px -70% 0px' });
-
-            headers.forEach(header => observer.observe(header));
-            const commentsSection = document.getElementById('comments');
-            if (commentsSection) observer.observe(commentsSection);
-            }
+                if (tocContainer && tocContainer.getClientRects().length) {
+                    const link = tocLinks.find(item => item.dataset.target === activeTocId && tocNav && tocNav.contains(item));
+                    if (link) {
+                        const bounds = tocContainer.getBoundingClientRect();
+                        const rect = link.getBoundingClientRect();
+                        if (rect.top < bounds.top || rect.bottom > bounds.bottom) {
+                            tocContainer.scrollTop += rect.top - bounds.top - bounds.height / 2;
+                        }
+                    }
+                }
+            };
+            const requestTocUpdate = () => {
+                if (!tocTicking) {
+                    tocTicking = true;
+                    requestAnimationFrame(updateToc);
+                }
+            };
+            window.addEventListener('scroll', requestTocUpdate, { passive: true });
+            window.addEventListener('resize', requestTocUpdate);
+            window.addEventListener('load', requestTocUpdate);
+            requestTocUpdate();
 
         } else {
             // 没有标题，隐藏容器
@@ -510,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawerToc.setAttribute('data-zen-modal-inert', 'true');
                 setBackgroundModalState();
                 const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden)');
-                if (!anotherModalOpen && lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus();
+                if (!anotherModalOpen && lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus({ preventScroll: true });
                 drawerCloseTimer = null;
             }, 300);
         };
@@ -832,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchToggle.addEventListener('click', openSearch);
         if (searchClose) searchClose.addEventListener('click', closeSearch);
         searchModal.addEventListener('click', (e) => {
-            if (e.target === searchModal || e.target.closest('[data-search-dismiss="true"]')) closeSearch();
+            if (e.target === searchModal || e.target.matches('.zen-search-shell') || e.target.closest('[data-search-dismiss="true"]')) closeSearch();
         });
 
         document.addEventListener('keydown', (e) => {

@@ -49,9 +49,14 @@ get_header(); ?>
                 if ('' === $link_target) {
                     $link_target = '_self';
                 }
+                $rel_tokens = preg_split('/\s+/', strtolower((string) ($bookmark->link_rel ?? '')), -1, PREG_SPLIT_NO_EMPTY);
+                $rel_tokens = array_filter($rel_tokens, function ($token) {
+                    return 'opener' !== $token && preg_match('/^[a-z][a-z0-9_-]*$/D', $token);
+                });
+                $link_rel = implode(' ', array_unique(array_merge($rel_tokens, array('noopener', 'noreferrer'))));
                 $fallback_initial = function_exists('mb_substr') ? mb_substr($bookmark->link_name, 0, 1) : substr($bookmark->link_name, 0, 1);
                 ?>
-                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="noopener noreferrer" class="zen-link-card group flex items-center p-4 rounded-lg transition-all"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr($bookmark->link_name . ' (在新窗口打开)'); ?>"<?php endif; ?>>
+                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="<?php echo esc_attr($link_rel); ?>" class="zen-link-card group flex items-center p-4 rounded-lg transition-all"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr($bookmark->link_name . ' (在新窗口打开)'); ?>"<?php endif; ?>>
                     <?php if ($bookmark->link_image) : ?>
                         <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="<?php echo esc_attr($bookmark->link_name); ?>" width="56" height="56" loading="lazy" decoding="async" class="w-14 h-14 rounded-full object-cover mr-4 grayscale group-hover:grayscale-0 transition-all duration-300">
                     <?php else : ?>
