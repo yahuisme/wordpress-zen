@@ -49,6 +49,19 @@ body .font-serif {
     padding-block: 16px;
     gap: 16px;
 }
+.admin-bar .zen-site-header {
+    top: 32px;
+}
+@media (max-width: 782px) {
+    .admin-bar .zen-site-header {
+        top: 46px;
+    }
+}
+@media (max-width: 600px) {
+    .admin-bar .zen-site-header {
+        top: 0;
+    }
+}
 .zen-header-actions {
     flex-shrink: 0;
 }
@@ -526,10 +539,12 @@ body .font-serif {
 .zen-mobile-menu {
     top: 100%;
 }
-@media (max-width: 639.98px) {
+@media (max-width: 767px) {
     .zen-noscript-nav {
         display: block;
     }
+}
+@media (max-width: 639.98px) {
     .zen-header-tool {
         min-width: 36px;
         min-height: 44px;
@@ -564,6 +579,30 @@ body .font-serif {
     .zen-post-nav-next {
         text-align: left;
     }
+}
+.zen-audio-progress-container {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    background: transparent;
+    overflow: visible;
+}
+.zen-audio-progress-container::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: calc(50% - 0.18rem);
+    height: 0.36rem;
+    border-radius: 999px;
+    background: var(--zen-border);
+}
+.zen-audio-progress-bar {
+    height: 0.36rem;
+}
+.zen-post-meta .zen-meta-category {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 @media (prefers-reduced-motion: reduce) {
     .zen-post-title a {

@@ -95,7 +95,8 @@ function zen_highlight_search_terms($text, $query = '') {
     }, $terms);
 
     $pattern = '/(' . implode('|', $terms) . ')/iu';
-    $parts = preg_split($pattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+    $plain_text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $parts = preg_split($pattern, $plain_text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 
     if (false === $parts) {
         return esc_html($text);
@@ -103,10 +104,12 @@ function zen_highlight_search_terms($text, $query = '') {
 
     $output = '';
     foreach ($parts as $part) {
+        // Preserve literal entity-like text after decoding exactly one layer.
+        $escaped_part = esc_html(str_replace('&', '&amp;', $part));
         if (preg_match($pattern, $part)) {
-            $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . esc_html($part) . '</mark>';
+            $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . $escaped_part . '</mark>';
         } else {
-            $output .= esc_html($part);
+            $output .= $escaped_part;
         }
     }
 
@@ -184,6 +187,14 @@ add_action('add_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
+function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
+    if ('category' === $taxonomy && 'post' === get_post_type($object_id)
+        && str_contains((string) get_option('permalink_structure'), '%category%')) {
+        delete_transient('zen_archives_public_posts');
+    }
+}
+add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
+add_action('deleted_term_relationships', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
 add_action('update_option_permalink_structure', 'zen_clear_archives_cache');
 add_action('update_option_home', 'zen_clear_archives_cache');
 

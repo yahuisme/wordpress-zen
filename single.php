@@ -7,7 +7,7 @@
         <div class="zen-post-meta text-sm text-gray-600 dark:text-gray-400">
             <?php $cat = zen_get_primary_category(); ?>
             <?php if ($cat) : ?>
-            <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-ui-link"><?php echo esc_html($cat->name); ?></a>
+            <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-meta-category zen-ui-link"><?php echo esc_html($cat->name); ?></a>
             <?php endif; ?>
             <?php zen_posted_on_link(); ?>
             <?php if (zen_get_option('zen_show_reading_count')) : ?>

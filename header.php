@@ -24,7 +24,7 @@
 
     <?php wp_head(); ?>
 </head>
-<body <?php body_class('transition-colors duration-300 min-h-screen flex flex-col relative'); ?>>
+<body <?php body_class('transition-colors duration-300 min-h-screen flex flex-col'); ?>>
 <?php wp_body_open(); ?>
 
 <a href="#main-content" class="skip-link">跳至主要内容</a>
