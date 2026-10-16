@@ -84,6 +84,22 @@ test('native validation opens collapsed invalid controls before submission', () 
     assert.equal(unloading(dom), false);
     dom.window.close();
 });
+test('empty numeric settings are invalid and reveal their collapsed ancestors', () => {
+    const dom = boot();
+    const doc = dom.window.document;
+    for (const id of ['zen_reading_width', 'zen_content_width', 'zen_excerpt_length']) {
+        doc.getElementById('zen-layout').open = false;
+        const control = doc.getElementById(id);
+        const original = control.value;
+        edit(dom, id, '');
+        assert.equal(control.checkValidity(), false, id);
+        for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+            if (parent.tagName === 'DETAILS') assert.equal(parent.open, true, id);
+        }
+        edit(dom, id, original);
+    }
+    dom.window.close();
+});
 test('a canceled submit retains the real dirty unload warning', () => {
     const dom = boot();
     edit(dom, 'zen_footer_text', 'unsaved');

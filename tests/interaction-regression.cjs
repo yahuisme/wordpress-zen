@@ -187,19 +187,28 @@ test('disabled TOC preserves heading IDs without a TOC observer or disabling art
 });
 
 for (const navId of ['toc-nav', 'drawer-toc-nav']) {
-    test(`enabled TOC still generates links and observes headings with ${navId}`, async t => {
-        const { document, observers } = await page(t, `
+    test(`enabled TOC updates ${navId} from the nearest heading in both scroll directions`, async t => {
+        let position = 0;
+        const { window, document, flush } = await page(t, `
             <nav id="${navId}"></nav>
             <article id="post-content"><h2>One</h2><h3 id="existing">Two</h3></article>
-            <section id="comments"></section>`);
+            <section id="comments"></section>`, window => {
+            [...window.document.querySelectorAll('h2, h3, #comments')].forEach((heading, index) => {
+                heading.getBoundingClientRect = () => ({ top: index * 600 - position });
+            });
+        });
+        flush();
         const headings = [...document.querySelectorAll('h2, h3')];
         assert.deepEqual(headings.map(heading => heading.id), ['section-0', 'existing']);
         const links = [...document.querySelectorAll('.toc-link')];
         assert.deepEqual(links.map(link => link.getAttribute('href')), ['#section-0', '#existing', '#comments']);
-        assert.equal(observers.length, 1);
-        assert.deepEqual(observers[0].targets, [...headings, document.getElementById('comments')]);
-        observers[0].callback([{ target: headings[1], isIntersecting: true }]);
-        assert.equal(links[1].getAttribute('aria-current'), 'location');
+        for (const [scroll, active] of [[0, 0], [650, 1], [300, 0], [1250, 2]]) {
+            position = scroll;
+            window.dispatchEvent(new window.Event('scroll'));
+            flush();
+            assert.equal(links[active].getAttribute('aria-current'), 'location');
+            assert.equal(links.filter(link => link.classList.contains('active')).length, 1);
+        }
     });
 }
 

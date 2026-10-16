@@ -385,7 +385,7 @@ function zen_options_page_html() {
                                     <?php endforeach; ?>
                                     <option value="custom" <?php selected(false, in_array((int) $reading_width, array(600, 720, 800, 960), true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
                                 </select>
-                                <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" class="small-text" aria-describedby="zen-reading-width-help"> px
+                                <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text" aria-describedby="zen-reading-width-help"> px
                                 <p class="description" id="zen-reading-width-help"><?php esc_html_e('正文最大宽度，默认 720px；自定义范围 600–960px。选择预设或直接输入。', 'zen'); ?></p>
                             </td>
                         </tr>
@@ -397,7 +397,7 @@ function zen_options_page_html() {
                         <summary><?php esc_html_e('高级版面宽度', 'zen'); ?></summary>
                         <table class="form-table" role="presentation"><tr>
                             <th scope="row"><label for="zen_content_width"><?php esc_html_e('整体内容宽度', 'zen'); ?></label></th>
-                            <td><input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="1" class="small-text"> px
+                            <td><input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="1" required class="small-text"> px
                             <p class="description"><?php esc_html_e('整体版面最大宽度，默认 900px（600–1920px）。保留原有值，不等同于正文宽度。', 'zen'); ?></p></td>
                         </tr></table>
                     </details>
@@ -413,7 +413,7 @@ function zen_options_page_html() {
                             <option value="compact" <?php selected('compact', zen_get_option('zen_list_style')); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
                         </select></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
-                        <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" class="small-text"> 字
+                        <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text"> 字
                         <p class="description"><?php esc_html_e('标准列表的自动摘要字数（1–300 字）。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
