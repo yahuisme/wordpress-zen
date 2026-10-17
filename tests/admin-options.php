@@ -31,6 +31,8 @@ function is_wp_error($value) { return false; }
 function get_transient($key) { return $GLOBALS['update_info'] ?? array('latest_version' => '1.5.2', 'url' => 'https://example.test/releases', 'error' => ''); }
 function wp_get_theme() { return new class { function get($key) { return '1.5.2'; } }; }
 function get_theme_file_uri($path) { return 'https://example.test/theme' . $path; }
+function get_template_directory() { return ABSPATH; }
+function get_template_directory_uri() { return 'https://example.test/theme'; }
 function wp_enqueue_style(...$args) { $GLOBALS['assets'][] = $args; }
 function wp_enqueue_script(...$args) { $GLOBALS['assets'][] = $args; }
 require ABSPATH . 'inc/options.php';
