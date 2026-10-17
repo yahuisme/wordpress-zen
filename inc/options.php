@@ -261,7 +261,9 @@ function zen_get_update_info() {
         }
     }
 
-    set_transient($transient_key, $result, 12 * HOUR_IN_SECONDS);
+    // 成功时缓存 12 小时；失败时只缓存 30 分钟，便于快速重试。
+    $cache_ttl = $result['error'] ? 30 * MINUTE_IN_SECONDS : 12 * HOUR_IN_SECONDS;
+    set_transient($transient_key, $result, $cache_ttl);
     return $result;
 }
 
@@ -334,9 +336,10 @@ function zen_options_admin_assets($hook) {
     if ('toplevel_page_zen-options' !== $hook) {
         return;
     }
-    $version = wp_get_theme()->get('Version');
-    wp_enqueue_style('zen-admin', get_theme_file_uri('/assets/css/admin.css'), array(), $version);
-    wp_enqueue_script('zen-admin', get_theme_file_uri('/assets/js/admin.js'), array(), $version, true);
+    $dir = get_template_directory();
+    $uri = get_template_directory_uri();
+    wp_enqueue_style('zen-admin', $uri . '/assets/css/admin.css', array(), filemtime($dir . '/assets/css/admin.css'));
+    wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', array(), filemtime($dir . '/assets/js/admin.js'), true);
 }
 add_action('admin_enqueue_scripts', 'zen_options_admin_assets');
 
@@ -527,6 +530,23 @@ function zen_track_post_view() {
     if (!$post_id) {
         return;
     }
+
+    // 短时 IP 去重：同 IP + 文章 5 分钟内只计一次浏览，防止恶意刷新。
+    $ip = '';
+    if (!empty($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR'])) {
+        $ip = $_SERVER['REMOTE_ADDR'];
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && is_string($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $forwarded = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+        if (filter_var($forwarded, FILTER_VALIDATE_IP)) {
+            $ip = $forwarded;
+        }
+    }
+    $dedupe_key = 'zen_viewed_' . $post_id . '_' . md5($ip);
+    if (false !== get_transient($dedupe_key)) {
+        return;
+    }
+    set_transient($dedupe_key, 1, 5 * MINUTE_IN_SECONDS);
 
     $count = (int) get_post_meta($post_id, 'zen_view_count', true);
     update_post_meta($post_id, 'zen_view_count', $count + 1);
