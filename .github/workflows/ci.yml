@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  php-tests:
+    name: PHP 回归
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+      - run: for f in tests/*.php; do php -l "$f"; done
+      - run: |
+          for f in tests/php-regression.php tests/assets-regression.php tests/custom-code-regression.php tests/seo-regression.php tests/template-design-regression.php tests/design-assets-regression.php tests/admin-options.php; do
+            php "$f"
+          done
+
+  node-tests:
+    name: Node 回归
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install jsdom
+      - run: node --test tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs
+        env:
+          NODE_PATH: node_modules
+
+  python-tests:
+    name: Python 回归
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python tests/package-regression.py
