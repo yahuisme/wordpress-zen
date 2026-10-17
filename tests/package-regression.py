@@ -9,28 +9,46 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / '.github/workflows/release.yml').read_text()
-file_match = re.search(r'RELEASE_FILES=\(\n(.*?)\n          \)', workflow, re.S)
 validator_match = re.search(r"<<'PY'\n(.*?)\n          PY", workflow, re.S)
 version_match = re.search(r'^Version:\s*(\S+)', (ROOT / 'style.css').read_text(), re.M)
-assert file_match and validator_match and version_match, 'Release workflow contract missing'
-files = file_match.group(1).split()
-for asset in ('assets/css/admin.css', 'assets/css/reading.css', 'assets/css/layout.css', 'assets/js/admin.js'):
-    assert asset in files, 'Design/runtime asset missing from package: ' + asset
+assert validator_match and version_match, 'Release workflow contract missing'
 validator = '\n'.join(line[10:] for line in validator_match.group(1).splitlines())
 version = version_match.group(1)
 assert '--title "Zen v$VERSION"' in workflow
+assert 'GH_TOKEN: ${{ github.token }}' in workflow, 'Must use github.token'
+assert 'uses: actions/checkout@v4' in workflow, 'Must pin checkout@v4'
 assert '  workflow_dispatch:' in workflow and not re.search(r'^  (push|pull_request):', workflow, re.M)
+
+# 发布文件集由 .gitattributes 的 export-ignore 规则决定。
+# 开发文件不得出现在发布包中。
+forbidden_prefixes = ('zen/tests/', 'zen/.github/', 'zen/AGENTS.md')
+# 所有纳入版本控制的主题文件都应出现在发布包中。
+tracked = subprocess.check_output(['git', 'ls-files'], cwd=ROOT, text=True).split()
+gitattributes = (ROOT / '.gitattributes').read_text()
+ignored = set()
+for line in gitattributes.splitlines():
+    m = re.match(r'^(\S+)\s+export-ignore', line)
+    if m:
+        pattern = m.group(1).lstrip('/')
+        for f in tracked:
+            if f == pattern or f.startswith(pattern.rstrip('/') + '/'):
+                ignored.add(f)
+expected_files = [f for f in tracked if f not in ignored]
+assert 'assets/css/admin.css' in expected_files, 'Design asset missing from expected files'
+assert 'assets/css/reading.css' in expected_files
+assert 'assets/css/layout.css' in expected_files
+assert 'assets/js/admin.js' in expected_files
 
 with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     temp = Path(temp)
     # An isolated Git index packages local edits without staging or committing them.
     env = dict(os.environ, GIT_INDEX_FILE=str(temp / 'index'))
     subprocess.run(['git', 'read-tree', 'HEAD'], cwd=ROOT, env=env, check=True)
-    subprocess.run(['git', 'add', '--', *files], cwd=ROOT, env=env, check=True)
+    subprocess.run(['git', 'add', '--'] + expected_files, cwd=ROOT, env=env, check=True)
     tree = subprocess.check_output(['git', 'write-tree'], cwd=ROOT, env=env, text=True).strip()
     package = temp / 'zen.zip'
     subprocess.run(['git', 'archive', '--format=zip', '--prefix=zen/', tree,
-                    '-o', str(package), '--', *files], cwd=ROOT, check=True)
+                    '-o', str(package), '--'] + expected_files, cwd=ROOT, check=True)
     original = package.read_bytes()
 
     def validate():
@@ -41,7 +59,7 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     assert result.returncode == 0, result.stderr
     with zipfile.ZipFile(package) as archive:
         members = {name: archive.read(name) for name in archive.namelist() if not name.endswith('/')}
-    assert len(members) == len(files)
+    assert len(members) == len(expected_files)
     for name, data in members.items():
         assert data == (ROOT / name.removeprefix('zen/')).read_bytes(), name
     print(f'PASS release ZIP: {len(members)} files match source; metadata accepted')
