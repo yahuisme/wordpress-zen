@@ -8,3 +8,8 @@
 # 临时文件
 *.log
 *.tmp
+
+# 测试依赖（CI 中按需安装）
+node_modules/
+package.json
+package-lock.json

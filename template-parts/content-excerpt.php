@@ -22,7 +22,7 @@ $zen_compact = zen_get_option('zen_list_style') === 'compact';
     </div>
     <?php if (!$zen_compact) : ?>
         <div class="zen-post-excerpt text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-            <?php echo esc_html(wp_trim_words(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'), '…')); ?>
+            <?php echo esc_html(zen_trim_excerpt(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'))); ?>
         </div>
     <?php endif; ?>
 </article>

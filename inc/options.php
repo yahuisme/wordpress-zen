@@ -267,14 +267,25 @@ function zen_get_update_info() {
     return $result;
 }
 
+function zen_get_published_block_pattern($ref) {
+    if (!is_int($ref) || $ref <= 0) {
+        return null;
+    }
+    $pattern = get_post($ref);
+    if (!$pattern || 'wp_block' !== $pattern->post_type || 'publish' !== $pattern->post_status || '' !== $pattern->post_password) {
+        return null;
+    }
+    return $pattern;
+}
+
 function zen_reading_block_text($blocks, $ancestors = array()) {
     $text = '';
     foreach ($blocks as $block) {
         if ('core/block' === $block['blockName']) {
             $ref = $block['attrs']['ref'] ?? 0;
-            if (!is_int($ref) || $ref <= 0 || isset($ancestors[$ref])) continue;
-            $pattern = get_post($ref);
-            if (!$pattern || 'wp_block' !== $pattern->post_type || 'publish' !== $pattern->post_status || '' !== $pattern->post_password) continue;
+            if (isset($ancestors[$ref])) continue;
+            $pattern = zen_get_published_block_pattern($ref);
+            if (!$pattern) continue;
             $path = $ancestors;
             $path[$ref] = true;
             $text .= zen_reading_block_text(parse_blocks($pattern->post_content), $path);

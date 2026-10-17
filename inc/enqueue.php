@@ -98,8 +98,8 @@ function zen_has_code_blocks() {
                 continue;
             }
             $seen_refs[$ref] = true;
-            $pattern = get_post($ref);
-            if ($pattern && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status && '' === $pattern->post_password) {
+            $pattern = zen_get_published_block_pattern($ref);
+            if ($pattern) {
                 $pending[] = $pattern->post_content;
             }
         }

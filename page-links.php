@@ -8,7 +8,7 @@ get_header(); ?>
 
     <header class="zen-article-header zen-reading-shell">
         <h1 class="text-3xl font-bold mb-6 serif"><?php the_title(); ?></h1>
-        <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto prose dark:prose-invert entry-content">
+        <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto entry-content">
             <?php the_content(); ?>
         </div>
         <?php wp_link_pages(array(

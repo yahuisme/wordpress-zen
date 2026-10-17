@@ -45,7 +45,7 @@
     </div>
     <?php endif; ?>
 
-    <article id="post-content" class="prose prose-lg prose-zinc dark:prose-invert focus:outline-none entry-content">
+    <article id="post-content" class="focus:outline-none entry-content">
         <?php the_content(); ?>
     </article>
     <?php wp_link_pages(array(

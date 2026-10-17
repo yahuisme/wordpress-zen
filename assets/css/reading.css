@@ -172,3 +172,14 @@
         font-size: 24px;
     }
 }
+.zen-comment-text {
+    font-family: var(--zen-font-body);
+    font-size: 15px;
+    line-height: 1.75;
+}
+.zen-comment-text p {
+    margin: 0 0 0.75em;
+}
+.zen-comment-text > :last-child {
+    margin-bottom: 0;
+}

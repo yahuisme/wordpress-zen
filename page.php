@@ -9,7 +9,7 @@
         </h1>
     </header>
 
-    <article class="prose prose-lg prose-zinc dark:prose-invert focus:outline-none entry-content">
+    <article class="focus:outline-none entry-content">
         <?php the_content(); ?>
     </article>
 

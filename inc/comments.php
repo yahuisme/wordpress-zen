@@ -53,7 +53,7 @@ function zen_comment_callback($comment, $args, $depth) {
                         </div>
                     </header>
 
-                    <div class="prose prose-sm prose-zinc dark:prose-invert max-w-none break-words leading-relaxed text-gray-700 dark:text-gray-300">
+                    <div class="zen-comment-text max-w-none break-words leading-relaxed text-gray-700 dark:text-gray-300">
                         <?php
                         // Custom callbacks bypass Walker_Comment's pending-comment filter.
                         $walker = new Walker_Comment();

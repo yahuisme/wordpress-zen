@@ -17,7 +17,7 @@
     ?></h1>
     <?php $archive_description = get_the_archive_description(); ?>
     <?php if ($archive_description) : ?>
-    <div class="prose dark:prose-invert text-gray-600 dark:text-gray-400"><?php echo wp_kses_post($archive_description); ?></div>
+    <div class="text-gray-600 dark:text-gray-400"><?php echo wp_kses_post($archive_description); ?></div>
     <?php endif; ?>
 </header>
 <?php if (is_category()) zen_category_navigation(); ?>

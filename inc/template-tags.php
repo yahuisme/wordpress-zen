@@ -1,6 +1,23 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+/**
+ * CJK-aware excerpt trim: wp_trim_words splits on spaces, so unspaced
+ * CJK text is treated as a single word and never truncated.
+ */
+function zen_trim_excerpt($text, $length, $more = '…') {
+    $text = trim(preg_replace('/\s+/u', ' ', (string) $text));
+    if ($text === '') {
+        return '';
+    }
+    if (preg_match('/[\x{4E00}-\x{9FFF}\x{3040}-\x{30FF}\x{AC00}-\x{D7AF}]/u', $text)) {
+        return mb_strlen($text, 'UTF-8') > $length
+            ? mb_substr($text, 0, $length, 'UTF-8') . $more
+            : $text;
+    }
+    return wp_trim_words($text, $length, $more);
+}
+
 function zen_get_archives_url() {
     $pages = get_pages(array(
         'meta_key' => '_wp_page_template',

@@ -235,6 +235,7 @@ body .font-serif {
 .zen-article-header {
     width: min(100%, var(--zen-reading-width));
     margin: 0 auto var(--zen-space-5);
+    text-align: center;
 }
 .zen-article-header .zen-post-meta {
     justify-content: center;
@@ -245,6 +246,12 @@ body .font-serif {
 
 #toc-container.zen-desktop-toc {
     display: none !important;
+    position: fixed;
+    top: 128px;
+    left: calc(50% + var(--zen-reading-width) / 2 + 32px);
+    width: 224px;
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
 }
 #floating-toc-btn.zen-inline-toc-btn {
     position: static;
@@ -258,14 +265,6 @@ body .font-serif {
 }
 #header-toc-btn.zen-toc-ready {
     display: inline-flex;
-}
-#toc-container.zen-desktop-toc {
-    position: fixed;
-    top: 128px;
-    left: calc(50% + var(--zen-reading-width) / 2 + 32px);
-    width: 224px;
-    max-height: calc(100dvh - 160px);
-    overflow-y: auto;
 }
 .zen-toc-title {
     margin: 0 0 16px 12px;
@@ -285,10 +284,6 @@ body .font-serif {
     border-radius: 6px;
     font-size: 13px;
     color: var(--zen-muted);
-}
-.zen-article-header {
-    text-align: center;
-    margin-bottom: 32px;
 }
 .zen-reading-shell .zen-article-title {
     font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.5rem);
@@ -575,9 +570,6 @@ body .font-serif {
     }
     .zen-article-header .zen-post-meta > * {
         white-space: nowrap;
-    }
-    .zen-post-nav-next {
-        text-align: left;
     }
 }
 .zen-audio-progress-container {

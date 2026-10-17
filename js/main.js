@@ -133,6 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // --- 0. Global Escape dispatcher: single keydown listener for all modals ---
+    const escapeHandlers = [];
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            escapeHandlers.forEach((handler) => handler());
+        }
+    });
+
     // --- 1. 代码高亮 + 一键复制 ---
     const copyTextToClipboard = (text) => {
         if (navigator.clipboard && window.isSecureContext) {
@@ -294,9 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lightbox.addEventListener('click', (e) => {
             if (e.target === lightbox) closeLightbox();
         });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeLightbox();
-        });
+        escapeHandlers.push(closeLightbox);
     }
 
     // --- 3. TOC 目录 (Universal Logic) ---
@@ -548,14 +554,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
 
-    if (mobileMenuBtn && mobileMenu) {
-        const closeMobileMenu = (restoreFocus = true) => {
-            mobileMenu.classList.add('hidden');
-            mobileMenu.setAttribute('aria-hidden', 'true');
+    const closeMobileMenuVisuals = () => {
+        if (!mobileMenu) return;
+        mobileMenu.classList.add('hidden');
+        mobileMenu.setAttribute('aria-hidden', 'true');
+        if (mobileMenuBtn) {
             mobileMenuBtn.setAttribute('aria-expanded', 'false');
             mobileMenuBtn.setAttribute('aria-label', '打开菜单');
             const icon = mobileMenuBtn.querySelector('i');
             if (icon) icon.className = 'ph ph-list text-2xl';
+        }
+    };
+
+    if (mobileMenuBtn && mobileMenu) {
+        const closeMobileMenu = (restoreFocus = true) => {
+            closeMobileMenuVisuals();
             if (restoreFocus) mobileMenuBtn.focus();
         };
 
@@ -580,10 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target.closest('a')) closeMobileMenu(false);
         });
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
-                closeMobileMenu();
-            }
+        escapeHandlers.push(() => {
+            if (!mobileMenu.classList.contains('hidden')) closeMobileMenu();
         });
     }
 
@@ -801,14 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mobileMenu.contains(lastActiveElementBeforeSearch)) {
                     lastActiveElementBeforeSearch = mobileMenuBtn || searchToggle;
                 }
-                mobileMenu.classList.add('hidden');
-                mobileMenu.setAttribute('aria-hidden', 'true');
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
-                    mobileMenuBtn.setAttribute('aria-label', '打开菜单');
-                    const icon = mobileMenuBtn.querySelector('i');
-                    if (icon) icon.className = 'ph ph-list text-2xl';
-                }
+                closeMobileMenuVisuals();
             }
             searchModal.classList.remove('hidden');
             requestAnimationFrame(() => {
@@ -844,10 +848,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === searchModal || e.target.matches('.zen-search-shell') || e.target.closest('[data-search-dismiss="true"]')) closeSearch();
         });
 
+        escapeHandlers.push(() => {
+            if (!searchModal.classList.contains('hidden')) closeSearch();
+        });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !searchModal.classList.contains('hidden')) {
-                closeSearch();
-            }
             if (zenSearchShortcut && (e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
                 if (searchModal.classList.contains('hidden')) openSearch(); else closeSearch();
