@@ -1,5 +1,15 @@
 # Zen Theme 更新记录
 
+## 1.5.5
+
+- 新增 CI 工作流，push/PR 自动运行 PHP、Node 与 Python 回归测试。
+- 新增 .gitattributes 与 .gitignore，发布包自动排除开发文件。
+- release.yml 改用 github.token 与 actions/checkout@v4，发布文件列表由 .gitattributes 驱动。
+- CHANGELOG.md 移至仓库根目录，便于 GitHub 自动渲染。
+- 浏览量统计新增 IP 短时去重，防止恶意刷新刷数。
+- 前台与后台资源加载改用 filemtime 缓存破坏。
+- 主题更新检查失败时缩短缓存时间，便于快速重试。
+
 ## 1.5.4
 
 - 修复待审核评论预览的外链与回复边界，保持原生审核保护。
