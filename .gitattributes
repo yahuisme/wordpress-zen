@@ -1,4 +1,6 @@
 # 开发文件不进入 git archive / 发布包
+/.gitattributes export-ignore
+/.gitignore export-ignore
 /.github export-ignore
 /tests export-ignore
 /AGENTS.md export-ignore
