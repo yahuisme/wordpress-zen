@@ -1,0 +1,10 @@
+# IDE / OS
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+
+# 临时文件
+*.log
+*.tmp
