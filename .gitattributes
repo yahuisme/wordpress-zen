@@ -1,0 +1,5 @@
+# 开发文件不进入 git archive / 发布包
+/.github export-ignore
+/tests export-ignore
+/AGENTS.md export-ignore
+/CHANGELOG.md export-ignore
