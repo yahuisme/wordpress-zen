@@ -30,24 +30,25 @@ function zen_design_variables() {
 }
 
 function zen_scripts() {
-    $ver = wp_get_theme()->get('Version');
     $type = zen_typography();
     if ($type['fonts']) {
         wp_enqueue_style('zen-google-fonts', $type['fonts'], array(), null);
     }
-    wp_enqueue_style('phosphor-icons', get_template_directory_uri() . '/assets/css/phosphor-icons.css', array(), $ver);
+    $dir = get_template_directory();
+    $uri = get_template_directory_uri();
+    wp_enqueue_style('phosphor-icons', $uri . '/assets/css/phosphor-icons.css', array(), filemtime($dir . '/assets/css/phosphor-icons.css'));
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
-        wp_enqueue_style('highlight-css', get_template_directory_uri() . '/assets/css/github-dark.min.css', array(), $ver);
-        wp_enqueue_script('highlight-js', get_template_directory_uri() . '/assets/js/highlight.min.js', array(), $ver, true);
+        wp_enqueue_style('highlight-css', $uri . '/assets/css/github-dark.min.css', array(), filemtime($dir . '/assets/css/github-dark.min.css'));
+        wp_enqueue_script('highlight-js', $uri . '/assets/js/highlight.min.js', array(), filemtime($dir . '/assets/js/highlight.min.js'), true);
     }
-    wp_enqueue_script('zen-main', get_template_directory_uri() . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), $ver, true);
+    wp_enqueue_script('zen-main', $uri . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), filemtime($dir . '/js/main.js'), true);
     wp_localize_script('zen-main', 'zenSettings', array(
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),
     ));
-    wp_enqueue_style('zen-compiled-style', get_template_directory_uri() . '/assets/css/style.css', array(), $ver);
-    wp_enqueue_style('zen-reading-style', get_template_directory_uri() . '/assets/css/reading.css', array('zen-compiled-style'), $ver);
-    wp_enqueue_style('zen-layout-style', get_template_directory_uri() . '/assets/css/layout.css', array('zen-reading-style'), $ver);
+    wp_enqueue_style('zen-compiled-style', $uri . '/assets/css/style.css', array(), filemtime($dir . '/assets/css/style.css'));
+    wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array('zen-compiled-style'), filemtime($dir . '/assets/css/reading.css'));
+    wp_enqueue_style('zen-layout-style', $uri . '/assets/css/layout.css', array('zen-reading-style'), filemtime($dir . '/assets/css/layout.css'));
     wp_add_inline_style('zen-reading-style', zen_design_variables());
     $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
     $breakpoint = max(1200, $reading + 560);
