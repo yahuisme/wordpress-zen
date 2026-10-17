@@ -11,6 +11,7 @@ python3 tests/package-regression.py
 ## PHP 行为
 
 ```sh
+php tests/audit-closeout.php
 php tests/php-regression.php
 php tests/assets-regression.php
 php tests/custom-code-regression.php

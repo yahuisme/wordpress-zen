@@ -542,17 +542,14 @@ function zen_track_post_view() {
         return;
     }
 
-    // 短时 IP 去重：同 IP + 文章 5 分钟内只计一次浏览，防止恶意刷新。
-    $ip = '';
-    if (!empty($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR'])) {
-        $ip = $_SERVER['REMOTE_ADDR'];
+    // Trust the server-resolved peer only, never client-supplied forwarding headers.
+    // Reverse proxies should resolve trusted client IPs in the web server config.
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (!is_string($ip) || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return;
     }
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && is_string($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $forwarded = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
-        if (filter_var($forwarded, FILTER_VALIDATE_IP)) {
-            $ip = $forwarded;
-        }
-    }
+    // Canonicalize IPv6 so equivalent spellings share the five-minute bucket.
+    $ip = inet_ntop(inet_pton($ip));
     $dedupe_key = 'zen_viewed_' . $post_id . '_' . md5($ip);
     if (false !== get_transient($dedupe_key)) {
         return;

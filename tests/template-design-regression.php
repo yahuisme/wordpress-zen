@@ -307,10 +307,10 @@ test('friend links label new-window destinations and keep image-free initial fal
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
 test('archive directory has shared list item rhythm and unified Chinese dates', function () {
-    $GLOBALS['transients']['zen_archives_public_posts'] = array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '10-05'));
+    $GLOBALS['transients']['zen_archives_public_posts_v2'] = array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026年10月5日'));
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
-    check(str_contains($html, '2026年10月5日'), 'cached legacy archive dates are not unified');
+    check(str_contains($html, '2026年10月5日'), 'cached archive dates are not unified');
     check(str_contains($html, 'zen-reading-shell') && !str_contains($html, '时光机'), 'archive shell or concise copy missing');
 });
 

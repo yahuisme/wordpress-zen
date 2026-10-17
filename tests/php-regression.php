@@ -219,7 +219,7 @@ zen_test('links introduction uses existing entry-content wrapping', function () 
 });
 
 zen_test('archive rows expose scoped wrapping classes', function () {
-    $GLOBALS['zen_test_transients']['zen_archives_public_posts'] = array(array(
+    $GLOBALS['zen_test_transients']['zen_archives_public_posts_v2'] = array(array(
         'id' => 1, 'title' => str_repeat('LongTitle', 30), 'url' => 'https://example.test/fixture/',
         'year' => '2020', 'date' => '01-02',
     ));

@@ -76,7 +76,10 @@ try {
         zen_track_post_view();
         zen_native_check(zen_get_reading_count($post_id) === $before, 'crawler excluded: ' . $agent);
     }
+    $agent_index = 0;
     foreach (array('Mozilla/5.0 Chrome/130.0 Safari/537.36', 'Mozilla/5.0 (iPhone) Version/18.0 Mobile Safari/604.1', '') as $agent) {
+        // Distinct peers isolate user-agent behavior from five-minute deduplication.
+        $_SERVER['REMOTE_ADDR'] = '192.0.2.' . ++$agent_index;
         $_SERVER['HTTP_USER_AGENT'] = $agent;
         zen_track_post_view();
         $before++;

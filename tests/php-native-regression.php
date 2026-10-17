@@ -199,7 +199,7 @@ function zen_php_category_cache() {
         finally { wp_reset_query(); }
     };
     $cached_url = function () use ($post_id) {
-        foreach ((array) get_transient('zen_archives_public_posts') as $row) {
+        foreach ((array) get_transient('zen_archives_public_posts_v2') as $row) {
             if (isset($row['id']) && (int) $row['id'] === $post_id) return $row['url'];
         }
         return '';
@@ -219,46 +219,46 @@ function zen_php_category_cache() {
         wp_set_post_categories($post_id, array($terms[1]));
         $new = get_permalink($post_id);
         zen_php_check($old !== $new && get_post($post_id)->post_modified_gmt === $saved_modified, 'category-cache: relation-only replacement changes permalink without saving post');
-        zen_php_check(false === get_transient('zen_archives_public_posts'), 'category-cache: replacing category evicts warm archive');
+        zen_php_check(false === get_transient('zen_archives_public_posts_v2'), 'category-cache: replacing category evicts warm archive');
         $html = $render();
         zen_php_check($cached_url() === $new && str_contains($html, esc_url($new)), 'category-cache: archive regenerates current category URL');
         wp_add_object_terms($post_id, $terms[0], 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts'), 'category-cache: appending category evicts warm archive');
+        zen_php_check(false === get_transient('zen_archives_public_posts_v2'), 'category-cache: appending category evicts warm archive');
         $render();
         wp_remove_object_terms($post_id, $terms[0], 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts'), 'category-cache: direct relationship removal evicts warm archive');
+        zen_php_check(false === get_transient('zen_archives_public_posts_v2'), 'category-cache: direct relationship removal evicts warm archive');
         $render();
         zen_php_check($cached_url() === get_permalink($post_id), 'category-cache: removal regeneration matches native permalink');
         wp_set_object_terms($post_id, array(), 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts'), 'category-cache: removing all categories evicts warm archive');
+        zen_php_check(false === get_transient('zen_archives_public_posts_v2'), 'category-cache: removing all categories evicts warm archive');
         $render();
         zen_php_check($cached_url() === get_permalink($post_id), 'category-cache: uncategorized archive regenerates native fallback URL');
-        $before = get_transient('zen_archives_public_posts');
+        $before = get_transient('zen_archives_public_posts_v2');
         wp_set_object_terms($post_id, array(), 'category');
-        zen_php_check(get_transient('zen_archives_public_posts') === $before, 'category-cache: unchanged relationships keep populated cache');
+        zen_php_check(get_transient('zen_archives_public_posts_v2') === $before, 'category-cache: unchanged relationships keep populated cache');
         $tag = wp_insert_term('Zen cache tag', 'post_tag');
         if (is_wp_error($tag)) throw new RuntimeException($tag->get_error_message());
         try {
             wp_set_object_terms($post_id, array($tag['term_id']), 'post_tag');
-            zen_php_check(get_transient('zen_archives_public_posts') === $before, 'category-cache: tag relationship does not evict archive');
+            zen_php_check(get_transient('zen_archives_public_posts_v2') === $before, 'category-cache: tag relationship does not evict archive');
         } finally { wp_delete_term($tag['term_id'], 'post_tag'); }
         register_taxonomy_for_object_type('category', 'page');
         try {
             wp_set_object_terms($page, array($terms[0]), 'category');
-            zen_php_check(get_transient('zen_archives_public_posts') === $before, 'category-cache: non-post relationship does not evict archive');
+            zen_php_check(get_transient('zen_archives_public_posts_v2') === $before, 'category-cache: non-post relationship does not evict archive');
         } finally {
             wp_set_object_terms($page, array(), 'category');
             unregister_taxonomy_for_object_type('category', 'page');
         }
         update_option('permalink_structure', '/%postname%/');
         $render();
-        $before = get_transient('zen_archives_public_posts');
+        $before = get_transient('zen_archives_public_posts_v2');
         wp_set_post_categories($post_id, array($terms[0]));
-        zen_php_check(get_transient('zen_archives_public_posts') === $before, 'category-cache: category-independent permalinks keep populated cache');
+        zen_php_check(get_transient('zen_archives_public_posts_v2') === $before, 'category-cache: category-independent permalinks keep populated cache');
     } finally {
         if (null === $saved_structure) delete_option('permalink_structure'); else update_option('permalink_structure', $saved_structure);
         foreach ($terms as $term) wp_delete_term($term, 'category');
-        delete_transient('zen_archives_public_posts');
+        delete_transient('zen_archives_public_posts_v2');
     }
 }
 try {

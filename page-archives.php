@@ -11,7 +11,7 @@ get_header(); ?>
 
 <div class="zen-archives-directory zen-reading-shell">
     <?php
-    $archives_posts = get_transient('zen_archives_public_posts');
+    $archives_posts = get_transient('zen_archives_public_posts_v2');
 
     if (false === $archives_posts) {
         $archives_posts = array();
@@ -47,7 +47,7 @@ get_header(); ?>
             unset($archives_query);
         } while ($archive_has_more);
 
-        set_transient('zen_archives_public_posts', $archives_posts, HOUR_IN_SECONDS);
+        set_transient('zen_archives_public_posts_v2', $archives_posts, HOUR_IN_SECONDS);
     }
 
     $year_prev = null;
@@ -71,7 +71,7 @@ get_header(); ?>
                 <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
                     <?php echo esc_html($archive_post['title']); ?>
                 </a>
-                <span class="zen-meta-field text-sm text-gray-600 dark:text-gray-500"><?php echo esc_html(preg_match('/^\d{2}-\d{2}$/', $archive_post['date']) ? get_the_date('Y年n月j日', $archive_post['id']) : $archive_post['date']); ?></span>
+                <span class="zen-meta-field text-sm text-gray-600 dark:text-gray-500"><?php echo esc_html($archive_post['date']); ?></span>
             </li>
 
             <?php $year_prev = $year_current; ?>

@@ -133,11 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- 0. Global Escape dispatcher: single keydown listener for all modals ---
+    // One document listener; component-level Tab/arrow handlers stay local.
     const escapeHandlers = [];
+    let searchShortcutHandler;
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             escapeHandlers.forEach((handler) => handler());
+        } else if (searchShortcutHandler) {
+            searchShortcutHandler(event);
         }
     });
 
@@ -543,11 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        drawerToc.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeDrawer();
-            }
-        });
+        escapeHandlers.push(closeDrawer);
     }
 
     // --- 5. Mobile Menu ---
@@ -851,11 +850,11 @@ document.addEventListener('DOMContentLoaded', () => {
         escapeHandlers.push(() => {
             if (!searchModal.classList.contains('hidden')) closeSearch();
         });
-        document.addEventListener('keydown', (e) => {
-            if (zenSearchShortcut && (e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
+        searchShortcutHandler = (event) => {
+            if (zenSearchShortcut && (event.metaKey || event.ctrlKey) && event.key === 'k') {
+                event.preventDefault();
                 if (searchModal.classList.contains('hidden')) openSearch(); else closeSearch();
             }
-        });
+        };
     }
 });

@@ -50,6 +50,23 @@ async function page(t, html, prepare = () => {}) {
     return { window, document, observers, flush, press };
 }
 
+test('global keyboard handling registers one document listener', async t => {
+    let listeners = 0;
+    const { document, press, flush } = await page(t, searchMarkup, window => {
+        const add = window.document.addEventListener.bind(window.document);
+        window.document.addEventListener = (type, ...args) => {
+            if (type === 'keydown') ++listeners;
+            return add(type, ...args);
+        };
+    });
+    assert.equal(listeners, 1);
+    document.getElementById('outside').focus();
+    press('k', { ctrlKey: true }); flush();
+    assert.equal(document.getElementById('search-modal').classList.contains('hidden'), false);
+    press('Escape'); flush();
+    assert.equal(document.getElementById('search-modal').classList.contains('hidden'), true);
+});
+
 const searchMarkup = `
     <header>
         <button id="mobile-menu-btn" aria-expanded="false">Menu</button>
@@ -125,7 +142,7 @@ test('mobile menu communicates its close state with the shipped icon', async t =
 });
 
 test('both local and header directory triggers share state and restore the activating control', async t => {
-    const { document, flush } = await page(t, `
+    const { document, flush, press } = await page(t, `
         <header><button id="header-toc-btn" hidden>Directory</button></header>
         <main><button id="floating-toc-btn" hidden>Directory</button>
         <nav id="toc-nav"></nav><article id="post-content"><h2>One</h2></article>
@@ -139,7 +156,7 @@ test('both local and header directory triggers share state and restore the activ
     assert.equal(document.activeElement.id, 'drawer-toc-close');
     assert.equal(header.getAttribute('aria-expanded'), 'true');
     assert.equal(local.getAttribute('aria-expanded'), 'true');
-    document.getElementById('drawer-toc-close').click(); flush();
+    press('Escape'); flush();
     assert.equal(document.activeElement, header);
     assert.equal(header.getAttribute('aria-expanded'), 'false');
     assert.equal(document.body.style.overflow, '');

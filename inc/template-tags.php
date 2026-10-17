@@ -187,7 +187,7 @@ function zen_pagination() {
 }
 
 function zen_clear_archives_cache() {
-    delete_transient('zen_archives_public_posts');
+    delete_transient('zen_archives_public_posts_v2');
     delete_transient('zen_site_uptime');
 }
 add_action('save_post_post', 'zen_clear_archives_cache');
@@ -207,7 +207,7 @@ add_action('delete_category', 'zen_clear_archives_cache');
 function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
     if ('category' === $taxonomy && 'post' === get_post_type($object_id)
         && str_contains((string) get_option('permalink_structure'), '%category%')) {
-        delete_transient('zen_archives_public_posts');
+        delete_transient('zen_archives_public_posts_v2');
     }
 }
 add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
