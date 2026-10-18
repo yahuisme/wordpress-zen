@@ -55,6 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -69,8 +72,11 @@ jobs:
           php tests/php-native-regression.php "$RUNNER_TEMP/zen-native/wp-load.php"
       - name: Run serialized browser regression
         run: |
-          php -S 127.0.0.1:18765 -t "$RUNNER_TEMP/zen-native" "$RUNNER_TEMP/zen-native/router.php" > "$RUNNER_TEMP/zen-native/server.log" 2>&1 &
+          python -m pip install --disable-pip-version-check --quiet playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          export ZEN_CHROMIUM="$(python -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')"
+          php -S 127.0.0.1:18765 -t "$RUNNER_TEMP/zen-native" > "$RUNNER_TEMP/zen-native/server.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18765/ >/dev/null && break || sleep 1; done
+          for i in $(seq 1 30); do curl -fsS 'http://127.0.0.1:18765/?p='"$(jq -r .normal "$RUNNER_TEMP/zen-native/fixture.json")" >/dev/null && break || sleep 1; done
           python tests/browser-regression.py http://127.0.0.1:18765 "$RUNNER_TEMP/zen-native/fixture.json"

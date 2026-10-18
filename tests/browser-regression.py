@@ -6,6 +6,7 @@ longtitle (long unbroken title), archives, links (long URL introduction).
 Run Chromium serially inside the host's verified test memory limit.
 """
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,7 +19,7 @@ case = sys.argv[3] if len(sys.argv) > 3 else 'all'
 results = []
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+    browser = playwright.chromium.launch(executable_path=os.environ.get('ZEN_CHROMIUM', '/usr/bin/chromium'), args=['--no-sandbox', '--disable-dev-shm-usage'])
     context = browser.new_context(viewport={'width': 1440, 'height': 900}, reduced_motion='reduce')
     context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
     page = context.new_page()
