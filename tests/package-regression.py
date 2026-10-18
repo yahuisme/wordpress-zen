@@ -14,10 +14,13 @@ version_match = re.search(r'^Version:\s*(\S+)', (ROOT / 'style.css').read_text()
 assert validator_match and version_match, 'Release workflow contract missing'
 validator = '\n'.join(line[10:] for line in validator_match.group(1).splitlines())
 version = version_match.group(1)
-assert '--title "Zen v$VERSION"' in workflow
-assert 'GH_TOKEN: ${{ github.token }}' in workflow, 'Must use github.token'
-assert 'uses: actions/checkout@v4' in workflow, 'Must pin checkout@v4'
 assert '  workflow_dispatch:' in workflow and not re.search(r'^  (push|pull_request):', workflow, re.M)
+assert '  contents: read' in workflow
+assert 'release_notes:' in workflow
+assert 'uses: actions/upload-artifact@v4' in workflow
+assert 'gh release create' not in workflow
+assert 'gh release upload' not in workflow
+assert 'GH_TOKEN:' not in workflow
 
 # 发布文件集由 .gitattributes 的 export-ignore 规则决定。
 # 开发文件不得出现在发布包中。

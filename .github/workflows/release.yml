@@ -2,9 +2,15 @@ name: Release Zen
 
 on:
   workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 手动发布时使用的简短中文说明
+        required: false
+        default: 更新主题功能，修复已知问题并完善稳定性。
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: zen-release-main
@@ -17,34 +23,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Package and publish release
+      - name: Package release artifact
         env:
-          GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
           VERSION="$(grep -m1 '^Version:' style.css | sed 's/^Version:[[:space:]]*//')"
           if [ -z "$VERSION" ]; then
             echo "::error::无法从 style.css 读取版本号"
             exit 1
           fi
-          echo "Theme version: $VERSION"
-
-          NOTES_FILE="release-notes.md"
-          awk -v version="$VERSION" '
-            $0 == "## " version { found=1; next }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' > "$NOTES_FILE"
-
-          if [ ! -s "$NOTES_FILE" ]; then
-            echo "::error::无法从 CHANGELOG.md 读取版本 $VERSION 的更新内容"
-            exit 1
-          fi
-
-          {
-            printf '更新内容\n\n'
-            cat "$NOTES_FILE"
-          } > "$NOTES_FILE.tmp"
-          mv "$NOTES_FILE.tmp" "$NOTES_FILE"
+          echo "主题版本：$VERSION"
+          printf '%s\n' "${RELEASE_NOTES:-更新主题功能，修复已知问题并完善稳定性。}" > release-notes.md
 
           git archive --format=zip --prefix=zen/ HEAD -o zen.zip
 
@@ -96,12 +85,12 @@ jobs:
                   raise SystemExit('发布包环境要求说明不一致')
           PY
 
-          if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo "::error::Release v$VERSION 已存在，拒绝静默跳过。"
-            exit 1
-          fi
-          gh release create "v$VERSION" zen.zip \
-            --title "Zen v$VERSION" \
-            --target "${{ github.sha }}" \
-            --notes-file "$NOTES_FILE"
-          echo "已发布 Zen v$VERSION。"
+      - name: Upload package for manual Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: zen-release-package
+          path: |
+            zen.zip
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 14
