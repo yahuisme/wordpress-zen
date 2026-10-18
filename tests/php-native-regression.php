@@ -156,7 +156,9 @@ function zen_php_search() {
 }
 function zen_php_links() {
     require_once ABSPATH . 'wp-admin/includes/bookmark.php';
+    $saved_post = $GLOBALS['post'] ?? null;
     $page = zen_php_post(array('post_type' => 'page', 'post_title' => 'Links fixture'));
+    $GLOBALS['post'] = get_post($page);
     $ids = array();
     $cases = array('me friend nofollow', "Me\tfriend  NOFOLLOW noopener nofollow", '', 'external sponsored ugc opener bad"token');
     try {

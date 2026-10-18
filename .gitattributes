@@ -5,3 +5,6 @@
 /tests export-ignore
 /AGENTS.md export-ignore
 /CHANGELOG.md export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/tests/isolated-router.php export-ignore

@@ -9,9 +9,9 @@ if (!defined('ABSPATH')) exit;
  */
 
 /**
- * Read a theme option with a default.
+ * Return the complete option schema and conservative defaults.
  */
-function zen_get_option($key) {
+function zen_get_option_defaults() {
     static $defaults;
 
     if ($defaults === null) {
@@ -48,6 +48,14 @@ function zen_get_option($key) {
         );
     }
 
+    return $defaults;
+}
+
+/**
+ * Read a theme option with a default.
+ */
+function zen_get_option($key) {
+    $defaults = zen_get_option_defaults();
     return get_option($key, isset($defaults[$key]) ? $defaults[$key] : '');
 }
 
@@ -140,6 +148,30 @@ function zen_register_options() {
 }
 add_action('admin_init', 'zen_register_options');
 
+/**
+ * Restore only Zen-owned settings through the native admin-post boundary.
+ */
+function zen_reset_options() {
+    if (!current_user_can('manage_options')) {
+        wp_die(esc_html__('你没有执行此操作的权限。', 'zen'), '', array('response' => 403));
+    }
+    check_admin_referer('zen_reset_options');
+
+    foreach (array_keys(zen_get_option_defaults()) as $key) {
+        delete_option($key);
+    }
+    delete_transient('zen_theme_update_info');
+    delete_transient('zen_site_uptime');
+    delete_transient('zen_archives_public_posts_v2');
+
+    wp_safe_redirect(add_query_arg(array(
+        'page'      => 'zen-options',
+        'zen_reset' => '1',
+    ), admin_url('admin.php')));
+    exit;
+}
+add_action('admin_post_zen_reset_options', 'zen_reset_options');
+
 // Raw markup is intentional: only unfiltered_html users may save these fields.
 foreach (array('wp_head' => 'head', 'wp_body_open' => 'body', 'wp_footer' => 'footer') as $zen_hook => $zen_position) {
     add_action($zen_hook, function () use ($zen_position) {
@@ -227,7 +259,7 @@ function zen_sanitize_site_start_date($value) {
     return zen_get_option('zen_site_start_date');
 }
 
-function zen_get_update_info() {
+function zen_fetch_update_info() {
     $transient_key = 'zen_theme_update_info';
 
     $cached = get_transient($transient_key);
@@ -266,6 +298,35 @@ function zen_get_update_info() {
     set_transient($transient_key, $result, $cache_ttl);
     return $result;
 }
+
+function zen_get_update_info() {
+    $cached = get_transient('zen_theme_update_info');
+    return false !== $cached ? $cached : array(
+        'latest_version' => '',
+        'url'            => 'https://github.com/yahuisme/wordpress-zen/releases',
+        'error'          => '',
+    );
+}
+
+function zen_ajax_update_info() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('你没有查看更新信息的权限。', 'zen')), 403);
+    }
+    check_ajax_referer('zen_update_info', 'nonce');
+    $update = zen_fetch_update_info();
+    $version = wp_get_theme()->get('Version');
+    if ($update['error']) {
+        $message = $update['error'];
+    } elseif (!$update['latest_version']) {
+        $message = __('暂未获得有效的最新版本信息。', 'zen');
+    } elseif (version_compare($update['latest_version'], $version, '>')) {
+        $message = sprintf(__('有新版本 v%s 可供下载。', 'zen'), $update['latest_version']);
+    } else {
+        $message = sprintf(__('当前版本 v%s 已是最新版本。', 'zen'), $version);
+    }
+    wp_send_json_success(array('message' => $message, 'url' => $update['url']));
+}
+add_action('wp_ajax_zen_update_info', 'zen_ajax_update_info');
 
 function zen_get_published_block_pattern($ref) {
     if (!is_int($ref) || $ref <= 0) {
@@ -351,6 +412,10 @@ function zen_options_admin_assets($hook) {
     $uri = get_template_directory_uri();
     wp_enqueue_style('zen-admin', $uri . '/assets/css/admin.css', array(), filemtime($dir . '/assets/css/admin.css'));
     wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', array(), filemtime($dir . '/assets/js/admin.js'), true);
+    wp_localize_script('zen-admin', 'zenAdminSettings', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('zen_update_info'),
+    ));
 }
 add_action('admin_enqueue_scripts', 'zen_options_admin_assets');
 
@@ -365,9 +430,13 @@ function zen_options_page_html() {
         <?php settings_errors(); ?>
         <form method="post" action="options.php" id="zen-options-form">
             <?php settings_fields('zen_options'); ?>
+            <?php if (isset($_GET['zen_reset']) && '1' === $_GET['zen_reset']) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Zen 设置已恢复默认值。', 'zen'); ?></p></div>
+            <?php endif; ?>
             <div class="zen-save-bar">
                 <?php submit_button(__('保存设置', 'zen'), 'primary', 'zen_save_top', false); ?>
                 <span id="zen-save-state" role="status" aria-live="polite" data-clean="<?php echo esc_attr(__('没有未保存的修改', 'zen')); ?>" data-dirty="<?php echo esc_attr(__('有未保存的修改', 'zen')); ?>"><?php esc_html_e('没有未保存的修改', 'zen'); ?></span>
+                <button type="submit" form="zen-reset-form" class="button" data-zen-confirm="<?php echo esc_attr(__('确定恢复 Zen 全部设置的默认值吗？此操作不可撤销。', 'zen')); ?>"><?php esc_html_e('恢复默认设置', 'zen'); ?></button>
             </div>
             <details class="zen-options-group" id="zen-reading" open>
                 <summary><?php esc_html_e('排版与阅读', 'zen'); ?></summary>
@@ -387,7 +456,7 @@ function zen_options_page_html() {
                                 <?php foreach (array('system' => '系统排版', 'inter' => '现代衬线', 'space-grotesk' => '现代无衬线') as $value => $label) : ?>
                                     <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_font_family')); ?>><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
-                            </select><p class="description" id="zen-font-help"><?php esc_html_e('系统排版不加载外部字体；现代衬线使用 Inter 正文与 Noto Serif SC 标题，现代无衬线使用 Space Grotesk 组合。后两者从 Google Fonts 加载字体，会向其发送字体请求。', 'zen'); ?></p></td>
+                            </select><p class="description" id="zen-font-help"><?php esc_html_e('系统排版不加载外部字体；Inter 使用无衬线正文与 Noto Serif SC 标题，Space Grotesk 使用几何无衬线组合。后两者从 Google Fonts 加载字体，会向其发送字体请求。', 'zen'); ?></p></td>
                         </tr>
                         <tr>
                             <th scope="row"><label for="zen_reading_width"><?php esc_html_e('正文宽度', 'zen'); ?></label></th>
@@ -493,22 +562,23 @@ function zen_options_page_html() {
             </details>
             <?php submit_button(__('保存设置', 'zen')); ?>
         </form>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="zen-reset-form" class="zen-reset-form">
+            <input type="hidden" name="action" value="zen_reset_options">
+            <?php wp_nonce_field('zen_reset_options'); ?>
+        </form>
         <section class="zen-options-group zen-options-about" id="zen-about" aria-labelledby="zen-about-title">
             <h2 id="zen-about-title"><?php esc_html_e('关于更新', 'zen'); ?></h2>
             <?php
             $version = wp_get_theme()->get('Version');
             $update = zen_get_update_info();
             ?>
-            <p><?php echo esc_html(sprintf(__('当前版本 v%s。更新检查结果缓存 12 小时，不会自动安装。', 'zen'), $version)); ?></p>
-            <?php if ($update['error']) : ?>
-                <p><?php echo esc_html($update['error']); ?></p>
-            <?php elseif (!$update['latest_version']) : ?>
-                <p><?php esc_html_e('暂未获得有效的最新版本信息。', 'zen'); ?></p>
-            <?php elseif (version_compare($update['latest_version'], $version, '>')) : ?>
-                <p><?php echo esc_html(sprintf(__('有新版本 v%s 可供下载。', 'zen'), $update['latest_version'])); ?></p>
-            <?php else : ?>
-                <p><?php echo esc_html(sprintf(__('当前版本 v%s 已是最新版本。', 'zen'), $version)); ?></p>
-            <?php endif; ?>
+            <p id="zen-update-status"
+               data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>"
+               data-nonce="<?php echo esc_attr(wp_create_nonce('zen_update_info')); ?>"
+               data-loading="<?php echo esc_attr(__('正在检查更新…', 'zen')); ?>"
+               data-error="<?php echo esc_attr(__('更新检查失败。', 'zen')); ?>">
+                <?php echo esc_html(sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version)); ?>
+            </p>
             <a class="button button-secondary" href="<?php echo esc_url($update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
         </section>
     </div>

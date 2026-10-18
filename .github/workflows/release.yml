@@ -97,11 +97,11 @@ jobs:
           PY
 
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo "Release v$VERSION 已存在，跳过发布。"
-          else
-            gh release create "v$VERSION" zen.zip \
-              --title "Zen v$VERSION" \
-              --target "${{ github.sha }}" \
-              --notes-file "$NOTES_FILE"
-            echo "已发布 Zen v$VERSION。"
+            echo "::error::Release v$VERSION 已存在，拒绝静默跳过。"
+            exit 1
           fi
+          gh release create "v$VERSION" zen.zip \
+            --title "Zen v$VERSION" \
+            --target "${{ github.sha }}" \
+            --notes-file "$NOTES_FILE"
+          echo "已发布 Zen v$VERSION。"

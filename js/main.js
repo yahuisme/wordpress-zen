@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+const zenInit = () => {
 
     const colorSchemeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     const themeToggle = document.getElementById('theme-toggle');
@@ -857,4 +857,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', zenInit, { once: true });
+} else {
+    zenInit();
+}

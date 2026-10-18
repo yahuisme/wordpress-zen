@@ -101,6 +101,12 @@ zen_test('search highlights decoded text without matching entity syntax or expos
     zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '<img src=x onerror=alert(1)> &lt;', 'one-layer decoding changed literal entity text');
 });
 
+zen_test('search highlighting escapes decoded ampersands exactly once', function () {
+    $html = zen_highlight_search_terms('Tom &amp; Jerry', 'Jerry');
+    zen_expect(str_contains($html, 'Tom &amp; <mark'), 'ampersand was double-escaped');
+    zen_expect(!str_contains($html, '&amp;amp;'), 'double entity escaping leaked to the visitor');
+});
+
 zen_test('search keeps Unicode literal regex matches overlap precedence and query bounds', function () {
     $html = zen_highlight_search_terms('中文 C++ [a] WORLD world', '中文 C++ [a] world world');
     zen_expect(substr_count($html, '<mark ') === 5, 'Unicode, regex literal or case matching changed');
@@ -232,6 +238,8 @@ function current_user_can($capability) { return true; }
 function get_admin_page_title() { return 'Zen settings'; }
 function settings_errors() {}
 function settings_fields($group) {}
+function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="fixture">'; }
+function wp_create_nonce($action) { return 'fixture-nonce'; }
 function submit_button($label) {}
 function esc_html_e($text, $domain = '') { echo esc_html($text); }
 function esc_textarea($text) { return esc_html($text); }

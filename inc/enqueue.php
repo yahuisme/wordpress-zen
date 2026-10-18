@@ -14,7 +14,7 @@ function zen_typography() {
     } elseif ('inter' === $family) {
         $body = 'Inter, "Noto Sans SC", ' . $system;
         $heading = '"Noto Serif SC", ' . $serif;
-        $fonts = 'family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700';
+        $fonts = 'family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700';
     } else {
         $body = $system;
         $heading = $serif;
@@ -39,9 +39,9 @@ function zen_scripts() {
     wp_enqueue_style('phosphor-icons', $uri . '/assets/css/phosphor-icons.css', array(), filemtime($dir . '/assets/css/phosphor-icons.css'));
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
         wp_enqueue_style('highlight-css', $uri . '/assets/css/github-dark.min.css', array(), filemtime($dir . '/assets/css/github-dark.min.css'));
-        wp_enqueue_script('highlight-js', $uri . '/assets/js/highlight.min.js', array(), filemtime($dir . '/assets/js/highlight.min.js'), true);
+        wp_enqueue_script('highlight-js', $uri . '/assets/js/highlight.min.js', array(), filemtime($dir . '/assets/js/highlight.min.js'), array('in_footer' => true, 'strategy' => 'defer'));
     }
-    wp_enqueue_script('zen-main', $uri . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), filemtime($dir . '/js/main.js'), true);
+    wp_enqueue_script('zen-main', $uri . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), filemtime($dir . '/js/main.js'), array('in_footer' => true, 'strategy' => 'defer'));
     wp_localize_script('zen-main', 'zenSettings', array(
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),

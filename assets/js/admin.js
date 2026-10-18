@@ -49,6 +49,31 @@
             }
         }, true);
         form.addEventListener('submit', function (event) { submission = event; });
+        document.querySelectorAll('[data-zen-confirm]').forEach(function (button) {
+            if (!button.form) return;
+            button.form.addEventListener('submit', function (event) {
+                if (!window.confirm(button.dataset.zenConfirm)) event.preventDefault();
+            });
+        });
+        var updateStatus = document.getElementById('zen-update-status');
+        var adminSettings = window.zenAdminSettings || {};
+        if (updateStatus && adminSettings.ajaxUrl && adminSettings.nonce) {
+            updateStatus.textContent = updateStatus.dataset.loading || updateStatus.textContent;
+            window.fetch(adminSettings.ajaxUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({ action: 'zen_update_info', nonce: adminSettings.nonce }).toString()
+            }).then(function (response) {
+                if (!response.ok) throw new Error('update request failed');
+                return response.json();
+            }).then(function (payload) {
+                if (!payload || !payload.success || !payload.data || typeof payload.data.message !== 'string') throw new Error('invalid update response');
+                updateStatus.textContent = payload.data.message;
+            }).catch(function () {
+                updateStatus.textContent = updateStatus.dataset.error || '更新检查失败。';
+            });
+        }
         window.addEventListener('beforeunload', function (event) {
             if ((!submission || submission.defaultPrevented) && dirty()) {
                 event.preventDefault();

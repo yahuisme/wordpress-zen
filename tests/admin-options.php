@@ -20,6 +20,7 @@ function sanitize_text_field($text) { return strip_tags($text); }
 function absint($value) { return abs((int) $value); }
 function settings_errors() {}
 function settings_fields($group) { echo '<input type="hidden" name="option_page" value="' . $group . '"><input type="hidden" name="_wpnonce" value="fixture">'; }
+function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="fixture-reset">'; }
 function submit_button($label, $type = 'primary', $name = 'submit', $wrap = true) { echo '<button type="submit" name="' . esc_attr($name) . '" id="' . esc_attr($name) . '" class="button button-primary">' . esc_html($label) . '</button>'; }
 function get_admin_page_title() { return 'Zen 主题设置'; }
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
@@ -28,13 +29,15 @@ function get_posts($args) { $GLOBALS['post_query'] = $args; return $GLOBALS['pub
 function get_permalink($post) { return 'https://example.test/post-' . $post . '/'; }
 function get_categories($args) { return array((object) array('term_id' => 2, 'name' => '设计'), (object) array('term_id' => 9, 'name' => '<研究>')); }
 function is_wp_error($value) { return false; }
-function get_transient($key) { return $GLOBALS['update_info'] ?? array('latest_version' => '1.5.2', 'url' => 'https://example.test/releases', 'error' => ''); }
+function get_transient($key) { return array_key_exists('update_info', $GLOBALS) ? $GLOBALS['update_info'] : false; }
+function wp_create_nonce($action) { return 'fixture-nonce'; }
 function wp_get_theme() { return new class { function get($key) { return '1.5.2'; } }; }
 function get_theme_file_uri($path) { return 'https://example.test/theme' . $path; }
 function get_template_directory() { return ABSPATH; }
 function get_template_directory_uri() { return 'https://example.test/theme'; }
 function wp_enqueue_style(...$args) { $GLOBALS['assets'][] = $args; }
 function wp_enqueue_script(...$args) { $GLOBALS['assets'][] = $args; }
+function wp_localize_script(...$args) {}
 require ABSPATH . 'inc/options.php';
 $failed = 0; $total = 0;
 function test($name, $callback) { global $failed, $total; $total++; try { $callback(); echo "PASS $name\n"; } catch (Throwable $e) { $failed++; echo "FAIL $name: {$e->getMessage()}\n"; } }
@@ -84,7 +87,7 @@ test('single settings form groups all old and new fields', function () {
     $html = render();
     preg_match_all('/\bid="([^"]+)"/', $html, $ids);
     expect(count($ids[1]) === count(array_unique($ids[1])), 'native submit buttons must not duplicate element IDs');
-    expect(substr_count($html, '<form ') === 1 && str_contains($html, 'id="zen-options-form"'), 'one real settings form required');
+    expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');
     foreach (array('reading', 'list', 'post', 'footer', 'code', 'about') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
     foreach (array_keys($GLOBALS['settings']) as $key) expect(str_contains($html, 'name="' . $key . ($key === 'zen_category_ids' ? '[]' : '') . '"'), "$key input omitted");
@@ -94,6 +97,7 @@ test('single settings form groups all old and new fields', function () {
     expect(strpos($html, '</form>') < strpos($html, 'id="zen-about"'), 'updates must be outside form');
     expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
     expect(str_contains($html, '缓存命中') && str_contains($html, '关闭后停止计数') && str_contains($html, '更换主题'), 'risk and count explanations missing');
+    expect(str_contains($html, '恢复默认设置') && str_contains($html, 'zen_reset_options'), 'reset settings action missing');
     expect(!str_contains($html, '<style>'), 'admin style must be enqueued separately');
 });
 test('limited permissions hide code editors without leaking or removing saved code', function () {
@@ -111,7 +115,7 @@ test('no post yields no invented article link and failed updates never claim suc
     $GLOBALS['update_info'] = array('latest_version' => '', 'url' => 'https://example.test/releases', 'error' => '连接失败');
     $html = render();
     expect(!str_contains($html, 'https://example.test/post-'), 'nonexistent article link invented');
-    expect(str_contains($html, '连接失败') && !str_contains($html, '已是最新'), 'update failure disguised as success');
+    expect(str_contains($html, '正在检查更新') && !str_contains($html, '已是最新'), 'update status must remain pending before AJAX response');
     $GLOBALS['update_info']['error'] = '';
     expect(!str_contains(render(), '已是最新'), 'unknown version disguised as success');
     unset($GLOBALS['public_posts'], $GLOBALS['update_info']);

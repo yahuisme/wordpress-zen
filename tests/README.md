@@ -25,13 +25,24 @@ php tests/admin-options.php
 
 代码高亮回归需要 Node.js 与 `jsdom`，实际执行主题脚本及本地 Highlight.js：
 
+JavaScript 依赖已锁定在仓库根目录的 `package-lock.json`，可直接运行：
+
 ```sh
-node --test tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs
+npm ci
+npm run test:js
 ```
 
-`jsdom` 安装在独立工具目录时，通过 `NODE_PATH` 指向其 `node_modules`。
+在共享工具环境中也可继续通过 `NODE_PATH` 指向兼容版本的 `jsdom`。
 
 ## 原生 WordPress
+
+准备可销毁的 WordPress + SQLite 环境：
+
+```sh
+ZEN_CI_RUNTIME=/var/tmp/project-tests/zen-native bash tests/ci-native-setup.sh
+```
+
+脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点；运行结束后删除 `ZEN_CI_RUNTIME`。它不读取生产配置，也不使用生产数据库。
 
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php

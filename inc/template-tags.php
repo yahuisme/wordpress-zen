@@ -121,8 +121,9 @@ function zen_highlight_search_terms($text, $query = '') {
 
     $output = '';
     foreach ($parts as $part) {
-        // Preserve literal entity-like text after decoding exactly one layer.
-        $escaped_part = esc_html(str_replace('&', '&amp;', $part));
+        // Keep entity-like text literal after decoding exactly one input layer.
+        $part = preg_replace('/&(?=(?:[A-Za-z][A-Za-z0-9]+|#\d+|#x[0-9A-Fa-f]+);)/', '&amp;', $part);
+        $escaped_part = esc_html($part);
         if (preg_match($pattern, $part)) {
             $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . $escaped_part . '</mark>';
         } else {
@@ -221,8 +222,12 @@ function zen_get_site_uptime() {
         $start_date_str = zen_get_option('zen_site_start_date');
         $start_timestamp = 0;
 
-        if (!empty($start_date_str) && strtotime($start_date_str)) {
-            $start_timestamp = strtotime($start_date_str . ' 00:00:00');
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+        if (!empty($start_date_str) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date_str)) {
+            $start_date = DateTimeImmutable::createFromFormat('!Y-m-d', $start_date_str, $timezone);
+            if ($start_date && $start_date->format('Y-m-d') === $start_date_str) {
+                $start_timestamp = $start_date->getTimestamp();
+            }
         } else {
             $first_posts = get_posts(array(
                 'numberposts' => 1,
@@ -232,16 +237,16 @@ function zen_get_site_uptime() {
                 'fields'      => 'ids',
             ));
             if (!empty($first_posts)) {
-                $start_timestamp = get_post_time('U', true, $first_posts[0]);
+                $start_timestamp = (int) get_post_time('U', true, $first_posts[0]);
             }
         }
 
-        $now = time();
+        $now = (new DateTimeImmutable('now', $timezone))->getTimestamp();
         if ($start_timestamp > 0 && $start_timestamp <= $now) {
-            $year = gmdate('Y', $start_timestamp);
+            $year = wp_date('Y', $start_timestamp, $timezone);
             $days = max(1, (int) floor(($now - $start_timestamp) / DAY_IN_SECONDS));
         } else {
-            $year = gmdate('Y', $now);
+            $year = wp_date('Y', $now, $timezone);
             $days = 1;
         }
 

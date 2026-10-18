@@ -22,6 +22,9 @@
 .zen-options #zen-save-state {
     color: #50575e;
 }
+.zen-options .zen-reset-form {
+    margin: 0;
+}
 .zen-options .zen-is-dirty #zen-save-state {
     color: #8a4b00;
     font-weight: 600;

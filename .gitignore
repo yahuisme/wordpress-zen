@@ -9,7 +9,5 @@
 *.log
 *.tmp
 
-# 测试依赖（CI 中按需安装）
+# 测试依赖（安装在仓库本地，仅用于 CI 与开发测试）
 node_modules/
-package.json
-package-lock.json
