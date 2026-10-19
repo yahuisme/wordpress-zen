@@ -21,6 +21,8 @@ assert 'uses: actions/upload-artifact@v4' in workflow
 assert 'gh release create' not in workflow
 assert 'gh release upload' not in workflow
 assert 'GH_TOKEN:' not in workflow
+assert '    timeout-minutes: 15' in workflow, 'Manual packaging needs a bounded job timeout'
+assert '          compression-level: 0' in workflow, 'Do not recompress the release ZIP'
 
 # 发布文件集由 .gitattributes 的 export-ignore 规则决定。
 # 开发文件不得出现在发布包中。

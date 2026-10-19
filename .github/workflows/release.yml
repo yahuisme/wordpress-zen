@@ -19,6 +19,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,4 +94,5 @@ jobs:
             zen.zip
             release-notes.md
           if-no-files-found: error
+          compression-level: 0
           retention-days: 14
