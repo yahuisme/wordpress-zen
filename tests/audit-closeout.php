@@ -40,7 +40,7 @@ check($counts[43] === 2, 'logged-in user excluded');
 $logged_in = false; $_SERVER['HTTP_USER_AGENT'] = 'Googlebot/2.1'; zen_track_post_view();
 check($counts[43] === 2, 'crawler excluded');
 $footer = file_get_contents(dirname(__DIR__) . '/footer.php');
-check(str_contains($footer, 'Since <?php') && str_contains($footer, '?> Days'), 'English footer design');
+check(str_contains($footer, 'Since <?php') && str_contains($footer, 'Days'), 'English footer design');
 check(str_contains($footer, "esc_html($" . "zen_uptime['days'])"), 'dynamic escaped uptime');
 $archive = file_get_contents(dirname(__DIR__) . '/page-archives.php');
 check(!str_contains($archive, 'preg_match'), 'archive dead date branch');
@@ -49,13 +49,17 @@ function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES)
 function esc_url($value) { return esc_html($value); }
 function date_i18n($format) { return '2026'; }
 function get_bloginfo($key) { return '<Fixture>'; }
-function zen_get_site_uptime() { return array('year' => '2022', 'days' => 123); }
+function zen_get_site_uptime() { return array('year' => '2022', 'days' => $GLOBALS['uptime_days'] ?? 123); }
 function has_nav_menu($location) { return false; }
 function wp_footer() {}
 ob_start(); require dirname(__DIR__) . '/footer.php'; $html = ob_get_clean();
 check(str_contains($html, 'Since 2022 · 123 Days'), 'rendered dynamic English footer');
 check(str_contains($html, '&lt;Fixture&gt;'), 'footer escaping retained');
+$GLOBALS['uptime_days'] = 1;
+ob_start(); require dirname(__DIR__) . '/footer.php'; $singular = ob_get_clean();
+check(str_contains($singular, 'Since 2022 · 1 Day</div>'), 'singular English uptime');
 define('HOUR_IN_SECONDS', 3600);
+function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
 function the_title() { echo 'Archive'; }

@@ -201,7 +201,9 @@ function zen_php_category_cache() {
         finally { wp_reset_query(); }
     };
     $cached_url = function () use ($post_id) {
-        foreach ((array) get_transient('zen_archives_public_posts_v2') as $row) {
+        $cache = (array) get_transient('zen_archives_public_posts_v2');
+        $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
+        foreach ($cache[$context] ?? array() as $row) {
             if (isset($row['id']) && (int) $row['id'] === $post_id) return $row['url'];
         }
         return '';

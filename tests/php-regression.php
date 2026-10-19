@@ -118,6 +118,7 @@ zen_test('search keeps Unicode literal regex matches overlap precedence and quer
     zen_expect(!str_contains(zen_highlight_search_terms('term21', implode(' ', $terms)), '<mark '), 'query term limit must remain 20');
 });
 
+function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
 function have_posts() { return empty($GLOBALS['zen_test_loop_done']); }
@@ -225,10 +226,10 @@ zen_test('links introduction uses existing entry-content wrapping', function () 
 });
 
 zen_test('archive rows expose scoped wrapping classes', function () {
-    $GLOBALS['zen_test_transients']['zen_archives_public_posts_v2'] = array(array(
+    $GLOBALS['zen_test_transients']['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array(
         'id' => 1, 'title' => str_repeat('LongTitle', 30), 'url' => 'https://example.test/fixture/',
         'year' => '2020', 'date' => '01-02',
-    ));
+    )));
     $html = zen_render_template('page-archives.php');
     zen_expect((bool) preg_match('/<li class="[^"]*\bzen-archive-row\b/', $html), 'archive row class missing');
     zen_expect((bool) preg_match('/<a\b[^>]*class="[^"]*\bzen-archive-link\b/', $html), 'archive link class missing');

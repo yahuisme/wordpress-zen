@@ -19,6 +19,8 @@ php tests/seo-regression.php
 php tests/template-design-regression.php
 php tests/design-assets-regression.php
 php tests/admin-options.php
+php tests/reset-regression.php
+php tests/archive-context-regression.php
 ```
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
@@ -39,10 +41,10 @@ npm run test:js
 准备可销毁的 WordPress + SQLite 环境：
 
 ```sh
-ZEN_CI_RUNTIME=/var/tmp/project-tests/zen-native bash tests/ci-native-setup.sh
+ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh
 ```
 
-脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点；运行结束后删除 `ZEN_CI_RUNTIME`。它不读取生产配置，也不使用生产数据库。
+脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点。它不读取生产配置，也不使用生产数据库；测试后自行删除 `ZEN_CI_RUNTIME`。
 
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
@@ -78,6 +80,14 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 ```
 
 额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个主菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，选择系统字体以隔离外部网络。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
+
+原生内容块定向验收：
+
+```sh
+python tests/native-content-regression.py /path/to/fixture
+```
+
+复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
 
 以上测试文件不进入主题发布 ZIP。
 

@@ -58,6 +58,7 @@ function paginate_links($args) { return array(); }
 function get_pagenum_link($number) { return '/?paged=' . $number; }
 function get_query_var($name) { return 1; }
 $GLOBALS['wp_query'] = (object) array('max_num_pages' => 1, 'found_posts' => 0);
+function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
 function have_posts() { return !empty($GLOBALS['loop_left']); }
@@ -307,7 +308,7 @@ test('friend links label new-window destinations and keep image-free initial fal
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
 test('archive directory has shared list item rhythm and unified Chinese dates', function () {
-    $GLOBALS['transients']['zen_archives_public_posts_v2'] = array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026年10月5日'));
+    $GLOBALS['transients']['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026年10月5日')));
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
     check(str_contains($html, '2026年10月5日'), 'cached archive dates are not unified');

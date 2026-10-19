@@ -51,8 +51,8 @@
     font-size: 19px;
     margin: 24px 0 12px;
 }
-.entry-content a,
-.editor-styles-wrapper a {
+.entry-content a:not(.wp-element-button):not(.wp-block-button__link),
+.editor-styles-wrapper a:not(.wp-element-button):not(.wp-block-button__link) {
     color: inherit;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -61,7 +61,12 @@
 .editor-styles-wrapper :where(ul, ol) {
     padding-inline-start: 24px;
     margin: 24px 0;
+    list-style-type: revert;
 }
+:is(.entry-content, .editor-styles-wrapper) ol[type="a"] { list-style-type: lower-alpha; }
+:is(.entry-content, .editor-styles-wrapper) ol[type="A"] { list-style-type: upper-alpha; }
+:is(.entry-content, .editor-styles-wrapper) ol[type="i"] { list-style-type: lower-roman; }
+:is(.entry-content, .editor-styles-wrapper) ol[type="I"] { list-style-type: upper-roman; }
 .entry-content li,
 .editor-styles-wrapper li {
     margin: 8px 0;
@@ -122,6 +127,30 @@
 .editor-styles-wrapper :where(figure, iframe, embed, object) {
     max-width: 100%;
     margin-block: 32px;
+}
+/* Preserve native embed ratios without Core padding and theme margins competing. */
+.wp-embed-aspect-21-9 { --zen-embed-ratio: 21 / 9; }
+.wp-embed-aspect-18-9 { --zen-embed-ratio: 18 / 9; }
+.wp-embed-aspect-16-9 { --zen-embed-ratio: 16 / 9; }
+.wp-embed-aspect-4-3 { --zen-embed-ratio: 4 / 3; }
+.wp-embed-aspect-1-1 { --zen-embed-ratio: 1 / 1; }
+.wp-embed-aspect-9-16 { --zen-embed-ratio: 9 / 16; }
+.wp-embed-aspect-1-2 { --zen-embed-ratio: 1 / 2; }
+:is(.entry-content, .editor-styles-wrapper) :is(.is-type-video, .wp-has-aspect-ratio) .wp-block-embed__wrapper {
+    position: relative;
+    aspect-ratio: var(--zen-embed-ratio, 16 / 9);
+}
+:is(.entry-content, .editor-styles-wrapper) :is(.is-type-video, .wp-has-aspect-ratio) .wp-block-embed__wrapper::before {
+    display: none;
+}
+:is(.entry-content, .editor-styles-wrapper) .wp-block-embed__wrapper :is(iframe, embed, object) {
+    margin: 0;
+}
+:is(.entry-content, .editor-styles-wrapper) :is(.is-type-video, .wp-has-aspect-ratio) .wp-block-embed__wrapper :is(iframe, embed, object) {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
 }
 .entry-content table,
 .editor-styles-wrapper table {

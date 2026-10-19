@@ -1707,12 +1707,6 @@ header[role="banner"] nav a:active {
     background: #05070a;
     box-shadow: 0 14px 36px var(--zen-shadow);
 }
-.wp-block-embed.is-type-video .wp-block-embed__wrapper,
-.wp-embed-aspect-16-9 .wp-block-embed__wrapper,
-.wp-embed-aspect-18-9 .wp-block-embed__wrapper,
-.wp-embed-aspect-21-9 .wp-block-embed__wrapper {
-    aspect-ratio: 16/9;
-}
 .wp-block-embed__wrapper embed,
 .wp-block-embed__wrapper iframe,
 .wp-block-embed__wrapper object {
@@ -1720,23 +1714,6 @@ header[role="banner"] nav a:active {
     width: 100% !important;
     max-width: 100%;
     border: 0;
-}
-.wp-block-embed.is-type-video .wp-block-embed__wrapper embed,
-.wp-block-embed.is-type-video .wp-block-embed__wrapper iframe,
-.wp-block-embed.is-type-video .wp-block-embed__wrapper object,
-.wp-embed-aspect-16-9 .wp-block-embed__wrapper embed,
-.wp-embed-aspect-16-9 .wp-block-embed__wrapper iframe,
-.wp-embed-aspect-16-9 .wp-block-embed__wrapper object,
-.wp-embed-aspect-18-9 .wp-block-embed__wrapper embed,
-.wp-embed-aspect-18-9 .wp-block-embed__wrapper iframe,
-.wp-embed-aspect-18-9 .wp-block-embed__wrapper object,
-.wp-embed-aspect-21-9 .wp-block-embed__wrapper embed,
-.wp-embed-aspect-21-9 .wp-block-embed__wrapper iframe,
-.wp-embed-aspect-21-9 .wp-block-embed__wrapper object {
-    position: absolute;
-    inset: 0;
-    width: 100% !important;
-    height: 100% !important;
 }
 .entry-content figure.wp-block-embed .wp-block-embed__wrapper,
 .entry-content figure.wp-block-embed iframe {

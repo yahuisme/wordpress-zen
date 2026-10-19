@@ -206,8 +206,9 @@ add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
 function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
-    if ('category' === $taxonomy && 'post' === get_post_type($object_id)
-        && str_contains((string) get_option('permalink_structure'), '%category%')) {
+    if ('post' === get_post_type($object_id)
+        && ('language' === $taxonomy || ('category' === $taxonomy
+            && str_contains((string) get_option('permalink_structure'), '%category%')))) {
         delete_transient('zen_archives_public_posts_v2');
     }
 }
@@ -215,6 +216,11 @@ add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_rela
 add_action('deleted_term_relationships', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
 add_action('update_option_permalink_structure', 'zen_clear_archives_cache');
 add_action('update_option_home', 'zen_clear_archives_cache');
+function zen_clear_uptime_cache() {
+    delete_transient('zen_site_uptime');
+}
+add_action('update_option_timezone_string', 'zen_clear_uptime_cache');
+add_action('update_option_gmt_offset', 'zen_clear_uptime_cache');
 
 function zen_get_site_uptime() {
     $uptime = get_transient('zen_site_uptime');

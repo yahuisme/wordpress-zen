@@ -4,7 +4,7 @@
     <div class="max-w-zen mx-auto px-4 sm:px-6 py-6 md:h-20 md:py-0 flex flex-col md:flex-row items-center justify-between text-xs text-gray-600 dark:text-gray-400 gap-y-3">
         <div class="text-center md:text-left">
             <?php $zen_uptime = zen_get_site_uptime(); ?>
-            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days']); ?> Days</div>
+            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days']); ?> <?php echo 1 === (int) $zen_uptime['days'] ? 'Day' : 'Days'; ?></div>
         </div>
         <?php
         $zen_footer_text = zen_get_option('zen_footer_text');

@@ -157,8 +157,12 @@ function zen_reset_options() {
     }
     check_admin_referer('zen_reset_options');
 
+    $can_reset_code = current_user_can('unfiltered_html');
+    $failed = false;
+    $missing = new stdClass();
     foreach (array_keys(zen_get_option_defaults()) as $key) {
-        delete_option($key);
+        if (!$can_reset_code && in_array($key, array('zen_code_head', 'zen_code_body', 'zen_code_footer'), true)) continue;
+        if (get_option($key, $missing) !== $missing && !delete_option($key)) $failed = true;
     }
     delete_transient('zen_theme_update_info');
     delete_transient('zen_site_uptime');
@@ -166,7 +170,7 @@ function zen_reset_options() {
 
     wp_safe_redirect(add_query_arg(array(
         'page'      => 'zen-options',
-        'zen_reset' => '1',
+        'zen_reset' => $failed ? 'error' : ($can_reset_code ? '1' : 'partial'),
     ), admin_url('admin.php')));
     exit;
 }
@@ -344,7 +348,7 @@ function zen_reading_block_text($blocks, $ancestors = array()) {
     foreach ($blocks as $block) {
         if ('core/block' === $block['blockName']) {
             $ref = $block['attrs']['ref'] ?? 0;
-            if (isset($ancestors[$ref])) continue;
+            if (!is_int($ref) || $ref <= 0 || isset($ancestors[$ref])) continue;
             $pattern = zen_get_published_block_pattern($ref);
             if (!$pattern) continue;
             $path = $ancestors;
@@ -432,6 +436,10 @@ function zen_options_page_html() {
             <?php settings_fields('zen_options'); ?>
             <?php if (isset($_GET['zen_reset']) && '1' === $_GET['zen_reset']) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Zen 设置已恢复默认值。', 'zen'); ?></p></div>
+            <?php elseif (isset($_GET['zen_reset']) && 'partial' === $_GET['zen_reset']) : ?>
+                <div class="notice notice-warning is-dismissible"><p><?php esc_html_e('可管理的 Zen 设置已恢复默认值；受权限限制，自定义代码已保留。', 'zen'); ?></p></div>
+            <?php elseif (isset($_GET['zen_reset']) && 'error' === $_GET['zen_reset']) : ?>
+                <div class="notice notice-error is-dismissible"><p><?php esc_html_e('部分设置未能恢复默认值，请重试并检查数据库写入权限。', 'zen'); ?><?php if (!current_user_can('unfiltered_html')) : ?> <?php esc_html_e('受权限限制，自定义代码已保留。', 'zen'); ?><?php endif; ?></p></div>
             <?php endif; ?>
             <div class="zen-save-bar">
                 <?php submit_button(__('保存设置', 'zen'), 'primary', 'zen_save_top', false); ?>

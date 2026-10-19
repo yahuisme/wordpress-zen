@@ -162,6 +162,105 @@ test('both local and header directory triggers share state and restore the activ
     assert.equal(document.body.style.overflow, '');
 });
 
+for (const dismiss of ['Escape', 'close button', 'backdrop']) {
+    test(`drawer ${dismiss} before its focus timer never focuses the closing drawer`, async t => {
+        const { document, press, flush } = await page(t, `
+            <button id="floating-toc-btn">Directory</button>
+            <div id="toc-overlay" class="hidden opacity-0"></div>
+            <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>
+            <button id="search-toggle">Search</button>
+            <div id="search-modal" class="hidden"><button id="search-close">Close</button><input id="search-input"></div>`);
+        const trigger = document.getElementById('floating-toc-btn');
+        const drawer = document.getElementById('drawer-toc');
+        const close = document.getElementById('drawer-toc-close');
+        const focusCalls = [];
+        close.addEventListener('focus', () => focusCalls.push('close'));
+        trigger.focus(); trigger.click();
+        press('k', { ctrlKey: true });
+        assert.equal(document.getElementById('search-modal').classList.contains('hidden'), true, 'drawer continues to block another modal');
+        if (dismiss === 'Escape') press('Escape');
+        else if (dismiss === 'close button') close.click();
+        else document.getElementById('toc-overlay').click();
+        flush();
+        assert.deepEqual(focusCalls, [], 'cancelled open timer must not steal focus during closing');
+        assert.equal(document.activeElement, trigger);
+        assert.equal(drawer.hasAttribute('inert'), true);
+        assert.equal(document.getElementById('toc-overlay').classList.contains('hidden'), true);
+        assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+        assert.equal(document.body.style.overflow, '');
+        trigger.click(); flush();
+        assert.deepEqual(focusCalls, ['close'], 'a later normal open still focuses its close control');
+        assert.equal(document.activeElement, close);
+        press('Escape'); flush();
+        assert.equal(document.activeElement, trigger);
+    });
+}
+
+test('Core lightbox images keep native ownership while plain images retain Zen controls', async t => {
+    const { window, document, flush } = await page(t, `
+        <article class="entry-content">
+            <figure class="wp-block-image wp-lightbox-container"><img id="core" src="/core.jpg" alt="Core" tabindex="-1" role="img" aria-label="Native image"><button>Expand</button></figure>
+            <figure class="wp-lightbox-container"><img id="core-bare" src="/bare.jpg" alt="Bare"></figure>
+            <a href="/linked.jpg"><img id="linked" src="/linked.jpg" alt="Link"></a>
+            <img id="plain" src="/plain.jpg" alt="Plain">
+        </article>
+        <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
+    const lightbox = document.getElementById('lightbox');
+    const core = document.getElementById('core');
+    assert.equal(core.outerHTML, '<img id="core" src="/core.jpg" alt="Core" tabindex="-1" role="img" aria-label="Native image">');
+    const bare = document.getElementById('core-bare');
+    assert.equal(bare.hasAttribute('tabindex'), false);
+    assert.equal(bare.hasAttribute('role'), false);
+    assert.equal(bare.hasAttribute('aria-label'), false);
+    for (const image of [core, bare, document.getElementById('linked')]) {
+        assert.equal(image.classList.contains('cursor-zoom-in'), false);
+        const click = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+        image.dispatchEvent(click);
+        const key = new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        image.dispatchEvent(key);
+        assert.equal(click.defaultPrevented, false);
+        assert.equal(key.defaultPrevented, false);
+        assert.equal(lightbox.classList.contains('hidden'), true);
+    }
+    const plain = document.getElementById('plain');
+    assert.equal(plain.getAttribute('tabindex'), '0');
+    assert.equal(plain.getAttribute('role'), 'button');
+    assert.equal(plain.getAttribute('aria-label'), 'Plain，点击查看大图');
+    plain.focus();
+    plain.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    flush();
+    assert.equal(lightbox.classList.contains('hidden'), false);
+    assert.equal(document.activeElement.id, 'lightbox-close');
+    assert.equal(document.getElementById('lightbox-img').getAttribute('src'), 'https://zen.test/plain.jpg');
+});
+
+test('WordPress and MediaElement audio keep native ownership while plain and block audio retain Zen controls', async t => {
+    const { document } = await page(t, `
+        <audio id="shortcode" class="wp-audio-shortcode" controls preload="none"></audio>
+        <div class="mejs-container"><div><audio id="container" controls style="width: 100%"></audio></div></div>
+        <div class="mejs-mediaelement"><audio id="mediaelement" controls></audio></div>
+        <audio id="plain-audio" controls></audio>
+        <figure class="wp-block-audio"><audio id="block-audio" controls></audio></figure>`, window => {
+        for (const id of ['shortcode', 'container', 'mediaelement']) {
+            const audio = window.document.getElementById(id);
+            audio.dataset.before = audio.outerHTML;
+        }
+    });
+    for (const id of ['shortcode', 'container', 'mediaelement']) {
+        const audio = document.getElementById(id);
+        const before = audio.dataset.before;
+        delete audio.dataset.before;
+        assert.equal(audio.outerHTML, before, id + ' attributes stay untouched');
+        assert.equal(audio.nextElementSibling?.classList.contains('zen-audio-player') || false, false, id + ' gets no competing player');
+    }
+    assert.equal(document.querySelectorAll('.zen-audio-player').length, 2);
+    for (const id of ['plain-audio', 'block-audio']) {
+        const audio = document.getElementById(id);
+        assert.equal(audio.style.display, 'none');
+        assert.ok(audio.nextElementSibling.classList.contains('zen-audio-player'));
+    }
+});
+
 test('audio initializes from metadata and playback already available before DOMContentLoaded', async t => {
     const { document } = await page(t, '<audio controls></audio>', window => {
         const audio = window.document.querySelector('audio');
@@ -212,6 +311,7 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
             <section id="comments"></section>`, window => {
             [...window.document.querySelectorAll('h2, h3, #comments')].forEach((heading, index) => {
                 heading.getBoundingClientRect = () => ({ top: index * 600 - position });
+                heading.getClientRects = () => [{ top: index * 600 - position }];
             });
         });
         flush();
@@ -228,6 +328,82 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
         }
     });
 }
+
+const detailsMarkup = `
+    <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>
+    <article id="post-content">
+        <h2 id="intro">Intro</h2>
+        <details id="outer"><summary>Outer</summary>
+            <details id="inner"><summary>Inner</summary><h3 id="nested">Nested</h3></details>
+        </details>
+        <h2 id="later">Later</h2>
+    </article>`;
+
+function detailsLayout(window) {
+    for (const [id, top] of [['intro', 50], ['nested', 70], ['later', 700]]) {
+        const target = window.document.getElementById(id);
+        const visible = () => {
+            for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+                if (parent.matches('details:not([open])')) return false;
+            }
+            return true;
+        };
+        target.getClientRects = () => visible() ? [{ top }] : [];
+        target.getBoundingClientRect = () => ({ top: visible() ? top : 0 });
+    }
+}
+
+for (const navId of ['toc-nav', 'drawer-toc-nav']) {
+    test(`TOC ${navId} expands all details ancestors without replacing native hash navigation`, async t => {
+        const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
+        const link = document.querySelector(`#${navId} [href="#nested"]`);
+        assert.ok(link, 'initially folded heading remains in the directory');
+        let openedAtDefaultAction = false;
+        document.addEventListener('click', event => {
+            if (event.target === link) {
+                openedAtDefaultAction = document.getElementById('outer').open && document.getElementById('inner').open;
+                assert.equal(event.defaultPrevented, false, 'native anchor default is not intercepted');
+            }
+        });
+        link.click();
+        assert.equal(openedAtDefaultAction, true, 'all ancestors open before the anchor default action');
+        flush();
+        assert.equal(link.getAttribute('aria-current'), 'location');
+        await new Promise(resolve => setTimeout(resolve, 30));
+        assert.equal(window.location.hash, '#nested');
+        window.history.back();
+        flush();
+        await new Promise(resolve => setTimeout(resolve, 30));
+        flush();
+        assert.equal(window.location.hash, '', 'Back preserves native history');
+    });
+}
+
+test('TOC ignores folded targets and refreshes on non-bubbling details toggles', async t => {
+    const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
+    const nestedLinks = [...document.querySelectorAll('[href="#nested"]')];
+    const assertActive = id => {
+        assert.deepEqual([...document.querySelectorAll('.toc-link.active')].map(link => link.dataset.target), [id, id]);
+        assert.deepEqual([...document.querySelectorAll('[aria-current="location"]')].map(link => link.dataset.target), [id, id]);
+    };
+    flush();
+    assert.equal(nestedLinks.length, 2, 'folded entries are retained in both directories');
+    assertActive('intro');
+    document.getElementById('outer').open = true;
+    document.getElementById('inner').open = true;
+    document.getElementById('inner').dispatchEvent(new window.Event('toggle'));
+    flush();
+    assertActive('nested');
+    document.getElementById('outer').open = false;
+    document.getElementById('outer').dispatchEvent(new window.Event('toggle'));
+    flush();
+    assertActive('intro');
+    document.getElementById('intro').getClientRects = () => [];
+    document.getElementById('later').getClientRects = () => [];
+    document.getElementById('outer').dispatchEvent(new window.Event('toggle'));
+    flush();
+    assert.equal(document.querySelectorAll('.toc-link.active, [aria-current="location"]').length, 0, 'no hidden target remains active');
+});
 
 test('audio tolerates unavailable metadata and keeps later media events synchronized', async t => {
     const { window, document } = await page(t, '<audio controls></audio>', window => {

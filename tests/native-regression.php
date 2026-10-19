@@ -65,6 +65,32 @@ try {
         $GLOBALS['post'] = get_post($post_id);
         zen_native_check((bool) zen_has_code_blocks() === $case[1], $name);
     }
+    // Reading-time traversal must reject malformed refs before using them as keys.
+    $reading_pattern = zen_fixture_post('<p>' . str_repeat('字', 301) . '</p>');
+    $reading_ref = '<!-- wp:block {"ref":' . $reading_pattern . '} /-->';
+    $reading_cases = array(
+        'array ref' => array('<!-- wp:block {"ref":[1]} /-->', '', 1),
+        'empty array ref' => array('<!-- wp:block {"ref":[]} /-->', '', 1),
+        'string ref' => array('<!-- wp:block {"ref":"' . $reading_pattern . '"} /-->', '', 1),
+        'missing ref attribute' => array('<!-- wp:block /-->', '', 1),
+        'missing pattern' => array('<!-- wp:block {"ref":2147483647} /-->', '', 1),
+        'zero ref' => array('<!-- wp:block {"ref":0} /-->', '', 1),
+        'negative ref' => array('<!-- wp:block {"ref":-1} /-->', '', 1),
+        'cycle' => array('<!-- wp:block {"ref":' . $cycle . '} /-->', '', 1),
+        'valid pattern' => array($reading_ref, '<p>' . str_repeat('字', 301) . '</p>', 2),
+        'repeated pattern' => array($reading_ref . $reading_ref, str_repeat('<p>' . str_repeat('字', 301) . '</p>', 2), 3),
+        'cycle beside text' => array($reading_ref . '<!-- wp:block {"ref":' . $cycle . '} /-->', '<p>' . str_repeat('字', 301) . '</p>', 2),
+        'ordinary text' => array('<p>' . str_repeat('字', 301) . '</p>', '<p>' . str_repeat('字', 301) . '</p>', 2),
+    );
+    foreach ($reading_cases as $name => $case) {
+        try {
+            zen_native_check(zen_reading_block_text(parse_blocks($case[0])) === $case[1], 'reading text: ' . $name);
+            wp_update_post(array('ID' => $post_id, 'post_content' => $case[0]));
+            zen_native_check(zen_get_reading_time($post_id) === $case[2], 'reading minutes: ' . $name);
+        } catch (Throwable $error) {
+            zen_native_check(false, 'reading traversal: ' . $name . ' (' . $error->getMessage() . ')');
+        }
+    }
     $GLOBALS['post'] = get_post($post_id);
     query_posts(array('p' => $post_id));
     $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';

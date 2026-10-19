@@ -11,7 +11,10 @@ get_header(); ?>
 
 <div class="zen-archives-directory zen-reading-shell">
     <?php
-    $archives_posts = get_transient('zen_archives_public_posts_v2');
+    $archive_context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
+    $archives_cache = get_transient('zen_archives_public_posts_v2');
+    $archives_cache = is_array($archives_cache) ? $archives_cache : array();
+    $archives_posts = $archives_cache[$archive_context] ?? false;
 
     if (false === $archives_posts) {
         $archives_posts = array();
@@ -47,7 +50,10 @@ get_header(); ?>
             unset($archives_query);
         } while ($archive_has_more);
 
-        set_transient('zen_archives_public_posts_v2', $archives_posts, HOUR_IN_SECONDS);
+        // Keep language variants under one invalidation boundary; discard legacy flat rows.
+        $archives_cache = array_filter($archives_cache, 'is_string', ARRAY_FILTER_USE_KEY);
+        $archives_cache[$archive_context] = $archives_posts;
+        set_transient('zen_archives_public_posts_v2', $archives_cache, HOUR_IN_SECONDS);
     }
 
     $year_prev = null;

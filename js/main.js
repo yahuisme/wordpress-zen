@@ -255,7 +255,7 @@ const zenInit = () => {
         trapFocus(lightbox);
 
         images.forEach(img => {
-            if (img.closest('a')) return;
+            if (img.closest('a, .wp-lightbox-container')) return;
             img.classList.add('cursor-zoom-in');
             img.setAttribute('tabindex', '0');
             img.setAttribute('role', 'button');
@@ -404,6 +404,13 @@ const zenInit = () => {
                 link.className = `toc-link ${paddingClass}`;
                 link.dataset.target = item.id;
                 link.textContent = item.text;
+                link.addEventListener('click', () => {
+                    const target = document.getElementById(item.id);
+                    for (let ancestor = target && target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                        if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+                    }
+                    requestTocUpdate();
+                });
                 return link;
             };
 
@@ -439,13 +446,15 @@ const zenInit = () => {
                 const anchorOffset = parseFloat(getComputedStyle(tocTargets[0]).scrollMarginTop) || 0;
                 const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
                 const readingTop = Math.max((siteHeader ? siteHeader.getBoundingClientRect().bottom : 80) + 24, anchorOffset + scrollPadding) + 1;
-                let active = tocTargets[0];
+                let active;
                 for (const target of tocTargets) {
-                    if (target.getBoundingClientRect().top <= readingTop) active = target;
+                    if (!target.getClientRects().length) continue;
+                    if (!active || target.getBoundingClientRect().top <= readingTop) active = target;
                     else break;
                 }
-                if (!active || active.id === activeTocId) return;
-                activeTocId = active.id;
+                const nextActiveId = active ? active.id : null;
+                if (nextActiveId === activeTocId) return;
+                activeTocId = nextActiveId;
                 tocLinks.forEach(link => {
                     const current = link.dataset.target === activeTocId;
                     link.classList.toggle('active', current);
@@ -472,6 +481,9 @@ const zenInit = () => {
             window.addEventListener('scroll', requestTocUpdate, { passive: true });
             window.addEventListener('resize', requestTocUpdate);
             window.addEventListener('load', requestTocUpdate);
+            article.addEventListener('toggle', (event) => {
+                if (event.target.tagName === 'DETAILS') requestTocUpdate();
+            }, true);
             requestTocUpdate();
 
         } else {
@@ -487,6 +499,7 @@ const zenInit = () => {
     const drawerClose = document.getElementById('drawer-toc-close');
     let lastFocusBeforeDrawer;
     let drawerCloseTimer;
+    let drawerFocusTimer;
 
     if (tocTriggers.length && drawerToc && tocOverlay) {
         trapFocus(drawerToc);
@@ -509,12 +522,14 @@ const zenInit = () => {
             setBackgroundModalState();
 
             // Focus trap: move focus to close button
-            setTimeout(() => {
-                if (drawerClose) drawerClose.focus();
+            clearTimeout(drawerFocusTimer);
+            drawerFocusTimer = setTimeout(() => {
+                if (!drawerToc.hasAttribute('inert') && !drawerCloseTimer && drawerClose) drawerClose.focus();
             }, 300);
         };
 
         const closeDrawer = () => {
+            clearTimeout(drawerFocusTimer);
             if (drawerToc.hasAttribute('inert') || drawerCloseTimer) return;
             tocOverlay.classList.add('opacity-0');
             drawerToc.classList.add('translate-x-full');
@@ -600,7 +615,7 @@ const zenInit = () => {
     // --- 6. Audio Player ---
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
-        if (audio.closest('.zen-audio-player')) return;
+        if (audio.closest('.zen-audio-player, .wp-audio-shortcode, .mejs-container, .mejs-mediaelement')) return;
         const player = document.createElement('div');
         player.className = 'zen-audio-player';
 

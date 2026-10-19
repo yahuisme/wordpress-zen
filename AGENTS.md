@@ -213,15 +213,17 @@ PHP 改动至少检查相关模板是否能正常渲染，并用 `php -l` 检查
 
 ## Release Packaging
 
-GitHub Actions（`.github/workflows/release.yml`）通过 `workflow_dispatch` 手动触发（推送到 `main` 不会自动发布）：
+GitHub Actions（`.github/workflows/release.yml`）仅通过 `workflow_dispatch` 手动触发：
 
 1. 从 `style.css` 读取版本号；
-2. 用 `git archive` 打包 `zen.zip`（顶层 `zen/` 目录）；
-3. 创建名为 `Zen vX.Y.Z` 的 Release（tag 为 `vX.Y.Z`），并从 `.github/CHANGELOG.md` 提取对应版本的简要更新内容作为 Release 说明；上传 `zen.zip`。
+2. 用 `git archive` 打包并校验 `zen.zip`（顶层 `zen/` 目录）；
+3. 上传 ZIP 与手填的简短中文发布说明，供单独授权后手动发布。
+
+工作流不创建提交、tag 或 Release；推送不会触发打包或发布。
 
 最低环境要求为 WordPress 6.5、PHP 8.0；`style.css`、README 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
 
-版本号未变化（该 tag 已存在）时跳过，不重复发布。发布包仅包含工作流白名单中的主题运行文件；`.github/`、`AGENTS.md` 等仓库维护文件不会进入 ZIP。本仓库无 `src/`、`node_modules/`、`package.json`、`tailwind.config.js` 等构建依赖，运行时无需任何构建步骤。
+正式发布前检查对应 tag，已有版本不重复创建。发布包仅包含工作流白名单中的主题运行文件；测试、`.github/`、`AGENTS.md` 和 npm 开发文件不会进入 ZIP。`package.json` 与锁文件仅用于 JavaScript 回归测试，主题运行时无需任何构建步骤。
 
 ## Pull Request Expectations
 
