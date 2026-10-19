@@ -1,4 +1,4 @@
-name: Release Zen
+name: Release Packages
 
 on:
   workflow_dispatch:
