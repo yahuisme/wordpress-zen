@@ -25,16 +25,18 @@ php tests/archive-context-regression.php
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
 
-代码高亮回归需要 Node.js 与 `jsdom`，实际执行主题脚本及本地 Highlight.js：
+## JavaScript 行为
 
-JavaScript 依赖已锁定在仓库根目录的 `package-lock.json`，可直接运行：
+使用 Node.js 与仓库外的共享 `jsdom` 依赖，保留代码高亮、前台交互及后台设置测试。已验证 `jsdom` 26.1.0。所有命令从仓库根目录执行。
+
+在维护环境中运行：
 
 ```sh
-npm ci
-npm run test:js
+. /opt/test-tools/env.sh
+node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs
 ```
 
-在共享工具环境中也可继续通过 `NODE_PATH` 指向兼容版本的 `jsdom`。
+其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。主题安装和运行不需要这些工具。
 
 ## 原生 WordPress
 

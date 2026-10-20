@@ -1,4 +1,5 @@
-// Run: NODE_PATH=/opt/test-tools/node/common/node_modules node --test tests/highlight-regression.cjs
+// Run after loading the shared NODE_PATH; see tests/README.md.
+// node --test tests/highlight-regression.cjs
 // Executes the shipped main.js and Highlight.js in jsdom; no browser or WordPress writes.
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');

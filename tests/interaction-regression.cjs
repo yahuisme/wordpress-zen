@@ -1,4 +1,5 @@
-// Run: NODE_PATH=/opt/test-tools/node/common/node_modules node --test tests/interaction-regression.cjs
+// Run after loading the shared NODE_PATH; see tests/README.md.
+// node --test tests/interaction-regression.cjs
 // Executes shipped main.js in jsdom; no browser, network or WordPress writes.
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');

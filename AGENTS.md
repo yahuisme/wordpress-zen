@@ -229,7 +229,7 @@ GitHub Actions（`.github/workflows/release.yml`）仅通过 `workflow_dispatch`
 
 最低环境要求为 WordPress 6.5、PHP 8.0；`theme/zen/style.css`、`theme/zen/README.md` 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
 
-正式发布前检查对应 tag，已有版本不重复创建。发布包仅包含工作流白名单中的主题运行文件；测试、`.github/`、`AGENTS.md` 和 npm 开发文件不会进入 ZIP。`package.json` 与锁文件仅用于 JavaScript 回归测试，主题运行时无需任何构建步骤。
+正式发布前检查对应 tag，已有版本不重复创建。发布包仅包含工作流白名单中的主题运行文件；测试、`.github/` 和 `AGENTS.md` 不会进入 ZIP。JavaScript 回归测试使用仓库外共享 `jsdom`，命令见 `tests/README.md`；仓库不维护 npm 清单或锁文件，主题运行时无需任何构建步骤。
 
 ## Pull Request Expectations
 
