@@ -1,5 +1,11 @@
 # AGENTS instructions
 
+## Repository Layout
+
+- `theme/zen/` is the installable WordPress theme.
+- `tests/` contains development and acceptance tests and never enters the theme ZIP.
+- Project metadata and release workflow remain at the repository root.
+
 本文件为在 Zen 仓库中工作的代码代理提供约束。这个仓库是 WordPress 主题，不是独立应用，也不是插件。所有改动都应服务于主题的核心目标：安静、克制、以阅读为中心的个人博客和技术文章 UI。
 
 ## Naming
@@ -14,7 +20,7 @@
 ## Environment Setup
 
 - 本主题运行在 WordPress 中。不要为主题引入独立服务端框架。
-- 无生产构建依赖。`assets/css/style.css` 为可读兼容基础，`reading.css` 共享前台/编辑器正文排版，`layout.css` 管理前台布局，`admin.css` 管理设置页。
+- 无生产构建依赖。`theme/zen/assets/css/style.css` 为可读兼容基础，`reading.css` 共享前台/编辑器正文排版，`layout.css` 管理前台布局，`admin.css` 管理设置页。
 - 如果需要本地预览，优先使用已有 WordPress 开发环境，而不是另起一个非 WordPress 应用。
 
 ## Commands
@@ -27,21 +33,21 @@ php -l path/to/file.php
 
 ## Repository Structure
 
-- `functions.php`：主题入口，只负责加载 `inc/` 模块。
-- `inc/setup.php`：主题能力、菜单、链接管理器、资源提示和全局过滤器。
-- `inc/enqueue.php`：前端 CSS、JavaScript、字体、图标和代码高亮资源。
-- `inc/template-tags.php`：模板复用函数，例如分类、日期、分页、搜索高亮和归档缓存。
-- `inc/schema.php`：文章页 JSON-LD 结构化数据。
-- `inc/comments.php`：评论列表自定义渲染。
-- `header.php`：全局头部、导航、主题初始化、SEO 描述和搜索弹窗。
-- `footer.php`：页脚、图片灯箱和返回顶部按钮。
-- `index.php`、`archive.php`、`search.php`、`single.php`、`page.php`、`404.php`：WordPress 模板。
-- `page-archives.php`：文章归档页面模板。
-- `page-links.php`：友情链接页面模板，读取 WordPress 链接管理器数据。
-- `template-parts/content-excerpt.php`：文章列表摘要组件。
-- `js/main.js`：前端交互。
-- `assets/css/style.css`：格式化的兼容基础；新设计修改优先维护 `reading.css`、`layout.css`、`admin.css`。
-- `assets/js/`：第三方浏览器资源，不要随意重写压缩库。
+- `theme/zen/functions.php`：主题入口，只负责加载 `theme/zen/inc/` 模块。
+- `theme/zen/inc/setup.php`：主题能力、菜单、链接管理器、资源提示和全局过滤器。
+- `theme/zen/inc/enqueue.php`：前端 CSS、JavaScript、字体、图标和代码高亮资源。
+- `theme/zen/inc/template-tags.php`：模板复用函数，例如分类、日期、分页、搜索高亮和归档缓存。
+- `theme/zen/inc/schema.php`：文章页 JSON-LD 结构化数据。
+- `theme/zen/inc/comments.php`：评论列表自定义渲染。
+- `theme/zen/header.php`：全局头部、导航、主题初始化、SEO 描述和搜索弹窗。
+- `theme/zen/footer.php`：页脚、图片灯箱和返回顶部按钮。
+- `theme/zen/index.php`、`archive.php`、`search.php`、`single.php`、`page.php`、`404.php`：WordPress 模板。
+- `theme/zen/page-archives.php`：文章归档页面模板。
+- `theme/zen/page-links.php`：友情链接页面模板，读取 WordPress 链接管理器数据。
+- `theme/zen/template-parts/content-excerpt.php`：文章列表摘要组件。
+- `theme/zen/js/main.js`：前端交互。
+- `theme/zen/assets/css/style.css`：格式化的兼容基础；新设计修改优先维护 `reading.css`、`layout.css`、`admin.css`。
+- `theme/zen/assets/js/`：第三方浏览器资源，不要随意重写压缩库。
 
 ## Architecture Boundaries
 
@@ -49,8 +55,8 @@ php -l path/to/file.php
 
 1. WordPress 负责内容、路由、后台和数据模型。
 2. PHP 模板负责输出 WordPress 页面结构。
-3. `inc/` 中的辅助函数负责复用逻辑，不承担大型业务模块。
-4. `js/main.js` 负责轻量前端交互，不承担应用状态管理框架职责。
+3. `theme/zen/inc/` 中的辅助函数负责复用逻辑，不承担大型业务模块。
+4. `theme/zen/js/main.js` 负责轻量前端交互，不承担应用状态管理框架职责。
 5. 样式维护在可读原生 CSS 中；不新增未经编译的 Tailwind 工具类，不让生产依赖构建工具。
 6. 不添加自定义数据库表。
 7. 不把 SEO 插件、统计插件、表单系统、会员系统等插件职责塞进主题。
@@ -104,14 +110,14 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 
 深色模式由 `<html>` 上的 `dark` class 和 `zen-theme-mode` localStorage key 控制。
 
-- 修改颜色时优先复用 `assets/css/style.css` 中已有的 `--zen-*` 变量。
+- 修改颜色时优先复用 `theme/zen/assets/css/style.css` 中已有的 `--zen-*` 变量。
 - 避免只在浅色或深色模式可读的硬编码颜色。
-- 保持 `header.php` 中的首屏主题初始化脚本和 `js/main.js` 中的切换逻辑一致。
+- 保持 `theme/zen/header.php` 中的首屏主题初始化脚本和 `theme/zen/js/main.js` 中的切换逻辑一致。
 - 修改任何背景、边框、文本、阴影后，都要检查 light、dark、auto 三种模式。
 
 ## JavaScript Standards
 
-`js/main.js` 当前负责：
+`theme/zen/js/main.js` 当前负责：
 
 - 主题模式切换。
 - Highlight.js 初始化。
@@ -139,13 +145,13 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 - URL、资源、菜单、评论、查询和模板加载使用 WordPress API。
 - 自定义查询后调用 `wp_reset_postdata()`。
 - 避免直接 SQL。
-- 辅助函数放在 `inc/template-tags.php` 或更合适的 `inc/` 文件中。
+- 辅助函数放在 `theme/zen/inc/template-tags.php` 或更合适的 `theme/zen/inc/` 文件中。
 - 模板保持可读；重复或难读的渲染逻辑抽成 `zen_` helper。
 - 不破坏 WordPress 模板层级和用户后台设置。
 
 ## CSS and Tailwind Standards
 
-- `style.css` 保留兼容工具类，新的 `.zen-*` 组件维护在可读设计层，不用 PHP 内联 CSS 累积静态规则。
+- `theme/zen/style.css` 保留兼容主题元数据，`theme/zen/assets/css/style.css` 保留兼容工具类，新的 `.zen-*` 组件维护在可读设计层，不用 PHP 内联 CSS 累积静态规则。
 - PHP 内联 CSS 仅承载保存的字体/宽度变量及相应目录断点。
 - 局部布局可以用 Tailwind class，但不要让模板堆满难以维护的长 class 串。
 - 优先复用现有 `--zen-*` 变量、`.zen-*` 组件和 Tailwind typography/forms 配置。
@@ -167,8 +173,8 @@ UI 是本主题最重要的维护面。所有视觉改动必须符合以下方�
 
 自定义页面：
 
-- `page-archives.php` 保持缓存友好。
-- `page-links.php` 使用 WordPress bookmarks/link manager 数据。
+- `theme/zen/page-archives.php` 保持缓存友好。
+- `theme/zen/page-links.php` 使用 WordPress bookmarks/link manager 数据。
 - 不随意更改模板文件名或 Template Name。
 
 ## SEO and Metadata
@@ -215,13 +221,13 @@ PHP 改动至少检查相关模板是否能正常渲染，并用 `php -l` 检查
 
 GitHub Actions（`.github/workflows/release.yml`）仅通过 `workflow_dispatch` 手动触发：
 
-1. 从 `style.css` 读取版本号；
-2. 用 `git archive` 打包并校验 `zen.zip`（顶层 `zen/` 目录）；
+1. 从 `theme/zen/style.css` 读取版本号；
+2. 用 `git archive` 从 `theme/zen/` 子目录打包并校验 `zen.zip`（顶层 `zen/` 目录）；
 3. 上传 ZIP 与手填的简短中文发布说明，供单独授权后手动发布。
 
 工作流不创建提交、tag 或 Release；推送不会触发打包或发布。
 
-最低环境要求为 WordPress 6.5、PHP 8.0；`style.css`、README 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
+最低环境要求为 WordPress 6.5、PHP 8.0；`theme/zen/style.css`、`theme/zen/README.md` 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
 
 正式发布前检查对应 tag，已有版本不重复创建。发布包仅包含工作流白名单中的主题运行文件；测试、`.github/`、`AGENTS.md` 和 npm 开发文件不会进入 ZIP。`package.json` 与锁文件仅用于 JavaScript 回归测试，主题运行时无需任何构建步骤。
 

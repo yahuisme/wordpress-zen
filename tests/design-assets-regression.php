@@ -1,6 +1,6 @@
 <?php
 /** Execute the real enqueue/setup callbacks with explicit WordPress boundaries. */
-define('ABSPATH', dirname(__DIR__) . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['hooks'] = $GLOBALS['supports'] = $GLOBALS['styles'] = $GLOBALS['inline'] = array();
 $GLOBALS['font'] = 'system';
 function add_action($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $callback; }

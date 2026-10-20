@@ -23,7 +23,7 @@ mkdir -p "$RUNTIME/wp-content/plugins/sqlite-database-integration"
 cp -a "$SQLITE_DIR"/. "$RUNTIME/wp-content/plugins/sqlite-database-integration/"
 cp "$RUNTIME/wp-content/plugins/sqlite-database-integration/db.copy" "$RUNTIME/wp-content/db.php"
 sed -i "s|{SQLITE_IMPLEMENTATION_FOLDER_PATH}|$RUNTIME/wp-content/plugins/sqlite-database-integration|g; s|{SQLITE_PLUGIN}|sqlite-database-integration/load.php|g" "$RUNTIME/wp-content/db.php"
-cp -a "$ROOT" "$RUNTIME/wp-content/themes/zen"
+cp -a "$ROOT/theme/zen" "$RUNTIME/wp-content/themes/zen"
 
 cat > "$RUNTIME/private.php" <<PHP
 <?php

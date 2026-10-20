@@ -5,7 +5,7 @@
  * HTTP, core installation or downloaded dependencies. Browser/core acceptance
  * remains separate; pagination markup below models paginate_links() output.
  */
-define('ABSPATH', dirname(__DIR__) . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['zen_test_hooks'] = array();
 $GLOBALS['zen_test_options'] = array();
 $GLOBALS['zen_test_transients'] = array();

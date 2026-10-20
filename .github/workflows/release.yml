@@ -28,7 +28,7 @@ jobs:
         env:
           RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
-          VERSION="$(grep -m1 '^Version:' style.css | sed 's/^Version:[[:space:]]*//')"
+          VERSION="$(grep -m1 '^Version:' theme/zen/style.css | sed 's/^Version:[[:space:]]*//')"
           if [ -z "$VERSION" ]; then
             echo "::error::无法从 style.css 读取版本号"
             exit 1
@@ -36,7 +36,7 @@ jobs:
           echo "主题版本：$VERSION"
           printf '%s\n' "${RELEASE_NOTES:-更新主题功能，修复已知问题并完善稳定性。}" > release-notes.md
 
-          git archive --format=zip --prefix=zen/ HEAD -o zen.zip
+          git archive --format=zip --prefix=zen/ HEAD:theme/zen -o zen.zip
 
           python - "$VERSION" <<'PY'
           import sys, zipfile, re

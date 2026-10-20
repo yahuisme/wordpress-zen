@@ -5,7 +5,7 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const test = require('node:test');
 const { JSDOM } = require('jsdom');
-const root = join(__dirname, '..');
+const root = join(__dirname, '..', 'theme', 'zen');
 const main = readFileSync(join(root, 'js/main.js'), 'utf8');
 const highlight = readFileSync(join(root, 'assets/js/highlight.min.js'), 'utf8');
 

@@ -1,6 +1,6 @@
 <?php
 /** Run: php tests/assets-regression.php. WordPress boundary doubles, no I/O. */
-define('ABSPATH', dirname(__DIR__) . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['font'] = 'system';
 $GLOBALS['styles'] = array();
 $GLOBALS['inline'] = array();

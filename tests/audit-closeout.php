@@ -12,7 +12,7 @@ function get_transient($key) { return $GLOBALS['cache'][$key] ?? false; }
 function set_transient($key, $value, $ttl) { if (!in_array($ttl, array(300, 3600), true)) throw new RuntimeException('TTL changed'); $GLOBALS['cache'][$key] = $value; }
 function get_post_meta($id, $key, $single) { return $GLOBALS['counts'][$id] ?? 0; }
 function update_post_meta($id, $key, $value) { $GLOBALS['counts'][$id] = $value; }
-$source = file_get_contents(dirname(__DIR__) . '/inc/options.php');
+$source = file_get_contents(dirname(__DIR__) . '/theme/zen/inc/options.php');
 $start = strpos($source, 'function zen_track_post_view()');
 $end = strpos($source, "add_action('wp', 'zen_track_post_view')", $start);
 eval(substr($source, $start, $end - $start));
@@ -39,10 +39,10 @@ $_SERVER['REMOTE_ADDR'] = '192.0.2.10'; $logged_in = true; zen_track_post_view()
 check($counts[43] === 2, 'logged-in user excluded');
 $logged_in = false; $_SERVER['HTTP_USER_AGENT'] = 'Googlebot/2.1'; zen_track_post_view();
 check($counts[43] === 2, 'crawler excluded');
-$footer = file_get_contents(dirname(__DIR__) . '/footer.php');
+$footer = file_get_contents(dirname(__DIR__) . '/theme/zen/footer.php');
 check(str_contains($footer, 'Since <?php') && str_contains($footer, 'Days'), 'English footer design');
 check(str_contains($footer, "esc_html($" . "zen_uptime['days'])"), 'dynamic escaped uptime');
-$archive = file_get_contents(dirname(__DIR__) . '/page-archives.php');
+$archive = file_get_contents(dirname(__DIR__) . '/theme/zen/page-archives.php');
 check(!str_contains($archive, 'preg_match'), 'archive dead date branch');
 check(str_contains($archive, 'zen_archives_public_posts_v2'), 'archive ignores old date format cache');
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
@@ -52,11 +52,11 @@ function get_bloginfo($key) { return '<Fixture>'; }
 function zen_get_site_uptime() { return array('year' => '2022', 'days' => $GLOBALS['uptime_days'] ?? 123); }
 function has_nav_menu($location) { return false; }
 function wp_footer() {}
-ob_start(); require dirname(__DIR__) . '/footer.php'; $html = ob_get_clean();
+ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $html = ob_get_clean();
 check(str_contains($html, 'Since 2022 · 123 Days'), 'rendered dynamic English footer');
 check(str_contains($html, '&lt;Fixture&gt;'), 'footer escaping retained');
 $GLOBALS['uptime_days'] = 1;
-ob_start(); require dirname(__DIR__) . '/footer.php'; $singular = ob_get_clean();
+ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $singular = ob_get_clean();
 check(str_contains($singular, 'Since 2022 · 1 Day</div>'), 'singular English uptime');
 define('HOUR_IN_SECONDS', 3600);
 function get_locale() { return 'zh_CN'; }
@@ -73,9 +73,9 @@ class WP_Query {
     public function __construct($args) { $this->posts = array((object) array('ID' => 7)); $GLOBALS['archive_queries'] = ($GLOBALS['archive_queries'] ?? 0) + 1; }
 }
 $cache['zen_archives_public_posts'] = array(array('id' => 7, 'date' => '10-05'));
-ob_start(); require dirname(__DIR__) . '/page-archives.php'; $html = ob_get_clean();
+ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; $html = ob_get_clean();
 check(str_contains($html, '2026年10月5日') && !str_contains($html, '>10-05<'), 'legacy cache safely rebuilt');
-ob_start(); require dirname(__DIR__) . '/page-archives.php'; ob_end_clean();
+ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; ob_end_clean();
 check($GLOBALS['archive_queries'] === 1, 'warm v2 cache avoids rebuild');
 
 echo "PASS audit closeout: $checks checks\n";

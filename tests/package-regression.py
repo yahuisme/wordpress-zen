@@ -7,8 +7,9 @@ import sys
 import tempfile
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[1]
-workflow = (ROOT / '.github/workflows/release.yml').read_text()
+ROOT = Path(__file__).resolve().parents[1] / 'theme' / 'zen'
+PROJECT = ROOT.parent.parent
+workflow = (PROJECT / '.github/workflows/release.yml').read_text()
 validator_match = re.search(r"<<'PY'\n(.*?)\n          PY", workflow, re.S)
 version_match = re.search(r'^Version:\s*(\S+)', (ROOT / 'style.css').read_text(), re.M)
 assert validator_match and version_match, 'Release workflow contract missing'
@@ -28,8 +29,9 @@ assert '          compression-level: 0' in workflow, 'Do not recompress the rele
 # 开发文件不得出现在发布包中。
 forbidden_prefixes = ('zen/tests/', 'zen/.github/', 'zen/AGENTS.md')
 # 所有纳入版本控制的主题文件都应出现在发布包中。
-tracked = subprocess.check_output(['git', 'ls-files'], cwd=ROOT, text=True).split()
-gitattributes = (ROOT / '.gitattributes').read_text()
+tracked = subprocess.check_output(['git', 'ls-files', 'theme/zen'], cwd=PROJECT, text=True).split()
+tracked = [f.removeprefix('theme/zen/') for f in tracked]
+gitattributes = (PROJECT / '.gitattributes').read_text()
 ignored = set()
 for line in gitattributes.splitlines():
     m = re.match(r'^(\S+)\s+export-ignore', line)
@@ -48,12 +50,12 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     temp = Path(temp)
     # An isolated Git index packages local edits without staging or committing them.
     env = dict(os.environ, GIT_INDEX_FILE=str(temp / 'index'))
-    subprocess.run(['git', 'read-tree', 'HEAD'], cwd=ROOT, env=env, check=True)
-    subprocess.run(['git', 'add', '--'] + expected_files, cwd=ROOT, env=env, check=True)
-    tree = subprocess.check_output(['git', 'write-tree'], cwd=ROOT, env=env, text=True).strip()
+    subprocess.run(['git', 'read-tree', 'HEAD'], cwd=PROJECT, env=env, check=True)
+    subprocess.run(['git', 'add', '--'] + ['theme/zen/' + f for f in expected_files], cwd=PROJECT, env=env, check=True)
+    tree = subprocess.check_output(['git', 'write-tree'], cwd=PROJECT, env=env, text=True).strip()
     package = temp / 'zen.zip'
-    subprocess.run(['git', 'archive', '--format=zip', '--prefix=zen/', tree,
-                    '-o', str(package), '--'] + expected_files, cwd=ROOT, check=True)
+    subprocess.run(['git', 'archive', '--format=zip', '--prefix=zen/', tree + ':theme/zen',
+                    '-o', str(package)], cwd=PROJECT, check=True)
     original = package.read_bytes()
 
     def validate():

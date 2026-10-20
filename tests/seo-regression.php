@@ -1,6 +1,6 @@
 <?php
 /** Focused, dependency-free tests: php tests/seo-regression.php. No WordPress writes. */
-define('ABSPATH', __DIR__ . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['seo_hooks'] = array();
 $GLOBALS['seo_filters'] = array();
 $GLOBALS['seo_context'] = array();
@@ -107,7 +107,7 @@ function seo_check($condition, $message) {
 // Constants cannot be undefined: each simulated plugin gets a fresh PHP process.
 if (isset($argv[1])) {
     define($argv[1], 'test-version');
-    require dirname(__DIR__) . '/inc/schema.php';
+    require dirname(__DIR__) . '/theme/zen/inc/schema.php';
     seo_context('post');
     $outputs = array('default' => seo_output());
     $GLOBALS['seo_filters']['zen_meta_description_enabled'][] = static fn() => true;
@@ -122,8 +122,8 @@ if (isset($argv[1])) {
     exit;
 }
 
-require dirname(__DIR__) . '/inc/schema.php';
-$header = file_get_contents(dirname(__DIR__) . '/header.php');
+require dirname(__DIR__) . '/theme/zen/inc/schema.php';
+$header = file_get_contents(dirname(__DIR__) . '/theme/zen/header.php');
 seo_check(!str_contains($header, 'name="robots"'), 'header delegates robots to native WordPress');
 seo_check(str_contains($header, 'wp_head();'), 'header preserves the native head/canonical entrypoint');
 

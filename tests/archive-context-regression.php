@@ -1,6 +1,6 @@
 <?php
 /** php tests/archive-context-regression.php: real template, explicit WordPress boundaries. */
-define('ABSPATH',dirname(__DIR__).'/');define('HOUR_IN_SECONDS',3600);
+define('ABSPATH',dirname(__DIR__).'/theme/zen/');define('HOUR_IN_SECONDS',3600);
 $cache=[];$language='zh';$locale='zh_CN';$queries=0;$hooks=[];
 function add_action($hook,$callback,...$args){$GLOBALS['hooks'][$hook][]=$callback;}
 function get_header(){}function get_footer(){}function the_title(){echo 'Archives';}

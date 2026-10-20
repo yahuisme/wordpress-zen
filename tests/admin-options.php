@@ -1,6 +1,6 @@
 <?php
 /** Real option callbacks with explicit WordPress boundary doubles. */
-define('ABSPATH', dirname(__DIR__) . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['options'] = $GLOBALS['settings'] = $GLOBALS['errors'] = $GLOBALS['assets'] = array();
 $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => true);
 function add_action(...$args) {}

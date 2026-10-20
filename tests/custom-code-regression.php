@@ -1,6 +1,6 @@
 <?php
 /** Run: php tests/custom-code-regression.php. No WordPress database required. */
-define('ABSPATH', dirname(__DIR__) . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['hooks'] = array();
 $GLOBALS['settings'] = array();
 $GLOBALS['options'] = array();

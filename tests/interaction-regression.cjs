@@ -5,7 +5,7 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const test = require('node:test');
 const { JSDOM } = require('jsdom');
-const main = readFileSync(join(__dirname, '..', 'js/main.js'), 'utf8');
+const main = readFileSync(join(__dirname, '..', 'theme', 'zen', 'js/main.js'), 'utf8');
 
 async function page(t, html, prepare = () => {}) {
     const dom = new JSDOM('<!doctype html>' + html, {

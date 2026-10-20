@@ -2,7 +2,7 @@
 from pathlib import Path
 import json, os, subprocess, tempfile
 from playwright.sync_api import sync_playwright
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[1] / 'theme' / 'zen'
 php = '''<?php
 function get_header() {}
 function get_footer() {}

@@ -1,6 +1,6 @@
 <?php
 /** CLI boundary regression: php tests/reset-regression.php (no WordPress/database). */
-define('ABSPATH', __DIR__ . '/');
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 class Zen_Reset_Redirect extends RuntimeException {}
 class Zen_Reset_Denied extends RuntimeException {}
 class Zen_Reset_Rendered extends RuntimeException {}
@@ -31,7 +31,7 @@ function settings_errors() {}
 function settings_fields($group) {}
 // The notice precedes the first submit button; stop rendering unrelated fields.
 function submit_button(...$args) { throw new Zen_Reset_Rendered(); }
-require dirname(__DIR__) . '/inc/options.php';
+require dirname(__DIR__) . '/theme/zen/inc/options.php';
 $total = 0;
 $failures = 0;
 function zen_reset_check($condition, $label) {

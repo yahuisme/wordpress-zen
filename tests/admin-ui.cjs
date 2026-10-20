@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { JSDOM } = require('jsdom');
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', 'theme', 'zen');
 const html = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html'], { encoding: 'utf8' });
 function asset(file) { const target = path.join(root, file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }
 function boot() {
