@@ -572,7 +572,8 @@ body .font-serif {
         white-space: nowrap;
     }
 }
-.zen-audio-progress-container {
+.zen-audio-progress-container,
+.dark .zen-audio-progress-container {
     height: 32px;
     display: flex;
     align-items: center;

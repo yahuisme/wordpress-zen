@@ -21,6 +21,9 @@ php tests/design-assets-regression.php
 php tests/admin-options.php
 php tests/reset-regression.php
 php tests/archive-context-regression.php
+php tests/archive-batching-regression.php
+php tests/options-boundaries-regression.php
+php tests/frontend-media-regression.php
 ```
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。

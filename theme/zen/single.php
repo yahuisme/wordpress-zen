@@ -41,7 +41,12 @@
 
     <?php if (zen_get_option('zen_show_featured_image') && has_post_thumbnail()) : ?>
     <div class="zen-featured-media">
-        <?php the_post_thumbnail('large', array('class' => 'zen-featured-image', 'sizes' => '(max-width: 767px) calc(100vw - 32px), 720px')); ?>
+        <?php
+        $zen_reading_width = max(600, min(960, (int) zen_get_option('zen_reading_width')));
+        $zen_site_width = max(600, min(1920, (int) zen_get_option('zen_content_width')));
+        $zen_featured_sizes = '(max-width: 639.98px) min(calc(100vw - 32px), ' . min($zen_reading_width, $zen_site_width - 32) . 'px), min(calc(100vw - 48px), ' . min($zen_reading_width, $zen_site_width - 48) . 'px)';
+        the_post_thumbnail('large', array('class' => 'zen-featured-image', 'sizes' => $zen_featured_sizes));
+        ?>
     </div>
     <?php endif; ?>
 

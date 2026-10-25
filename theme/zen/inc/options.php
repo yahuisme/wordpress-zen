@@ -278,7 +278,7 @@ function zen_fetch_update_info() {
     );
     $response = wp_remote_get('https://api.github.com/repos/yahuisme/wordpress-zen/releases/latest', array(
         'timeout'    => 5,
-        'user-agent' => 'Zen/' . wp_get_theme()->get('Version'),
+        'user-agent' => 'Zen/' . wp_get_theme(get_template())->get('Version'),
         'headers'    => array('Accept' => 'application/vnd.github+json'),
     ));
 
@@ -318,7 +318,7 @@ function zen_ajax_update_info() {
     }
     check_ajax_referer('zen_update_info', 'nonce');
     $update = zen_fetch_update_info();
-    $version = wp_get_theme()->get('Version');
+    $version = wp_get_theme(get_template())->get('Version');
     if ($update['error']) {
         $message = $update['error'];
     } elseif (!$update['latest_version']) {
@@ -510,8 +510,9 @@ function zen_options_page_html() {
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
                             <?php $categories = get_categories(array('hide_empty' => false)); ?>
+                            <?php $selected_category_ids = zen_sanitize_category_ids(zen_get_option('zen_category_ids')); ?>
                             <?php if (!is_wp_error($categories)) : foreach ($categories as $category) : ?>
-                                <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, in_array((int) $category->term_id, zen_sanitize_category_ids(zen_get_option('zen_category_ids')), true)); ?>> <?php echo esc_html($category->name); ?></label>
+                                <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, in_array((int) $category->term_id, $selected_category_ids, true)); ?>> <?php echo esc_html($category->name); ?></label>
                             <?php endforeach; endif; ?>
                             </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('全部不勾选时显示所有非空分类；勾选后仅显示所选分类。', 'zen'); ?></p>
                         </td></tr>
@@ -577,7 +578,7 @@ function zen_options_page_html() {
         <section class="zen-options-group zen-options-about" id="zen-about" aria-labelledby="zen-about-title">
             <h2 id="zen-about-title"><?php esc_html_e('关于更新', 'zen'); ?></h2>
             <?php
-            $version = wp_get_theme()->get('Version');
+            $version = wp_get_theme(get_template())->get('Version');
             $update = zen_get_update_info();
             ?>
             <p id="zen-update-status"

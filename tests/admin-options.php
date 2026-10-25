@@ -31,7 +31,8 @@ function get_categories($args) { return array((object) array('term_id' => 2, 'na
 function is_wp_error($value) { return false; }
 function get_transient($key) { return array_key_exists('update_info', $GLOBALS) ? $GLOBALS['update_info'] : false; }
 function wp_create_nonce($action) { return 'fixture-nonce'; }
-function wp_get_theme() { return new class { function get($key) { return '1.5.2'; } }; }
+function get_template() { return 'zen'; }
+function wp_get_theme($stylesheet = false) { return new class { function get($key) { return '1.5.2'; } }; }
 function get_theme_file_uri($path) { return 'https://example.test/theme' . $path; }
 function get_template_directory() { return ABSPATH; }
 function get_template_directory_uri() { return 'https://example.test/theme'; }

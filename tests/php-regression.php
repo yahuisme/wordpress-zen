@@ -251,7 +251,8 @@ function get_posts($args) { return array(); }
 function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
 function get_categories($args) { return array(); }
 function is_wp_error($value) { return false; }
-function wp_get_theme() {
+function get_template() { return 'zen'; }
+function wp_get_theme($stylesheet = false) {
     return new class {
         public function get($key) { return '1.0.0'; }
     };

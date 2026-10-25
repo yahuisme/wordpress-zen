@@ -29,7 +29,7 @@ get_header(); ?>
                 'ignore_sticky_posts' => true,
                 'orderby' => 'date',
                 'order' => 'DESC',
-                'no_found_rows' => false,
+                'no_found_rows' => true,
                 'update_post_meta_cache' => false,
                 'update_post_term_cache' => str_contains((string) get_option('permalink_structure'), '%category%'),
             ));
@@ -45,8 +45,8 @@ get_header(); ?>
             }
 
             wp_reset_postdata();
+            $archive_has_more = count($archives_query->posts) === $archive_batch_size;
             $archive_page++;
-            $archive_has_more = $archive_page <= $archives_query->max_num_pages;
             unset($archives_query);
         } while ($archive_has_more);
 
