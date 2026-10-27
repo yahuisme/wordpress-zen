@@ -52,12 +52,13 @@
         document.querySelectorAll('[data-zen-confirm]').forEach(function (button) {
             if (!button.form) return;
             button.form.addEventListener('submit', function (event) {
+                submission = event;
                 if (!window.confirm(button.dataset.zenConfirm)) event.preventDefault();
             });
         });
         var updateStatus = document.getElementById('zen-update-status');
         var adminSettings = window.zenAdminSettings || {};
-        if (updateStatus && adminSettings.ajaxUrl && adminSettings.nonce) {
+        if (updateStatus && updateStatus.dataset.updatePending === 'true' && adminSettings.ajaxUrl && adminSettings.nonce) {
             updateStatus.textContent = updateStatus.dataset.loading || updateStatus.textContent;
             window.fetch(adminSettings.ajaxUrl, {
                 method: 'POST',

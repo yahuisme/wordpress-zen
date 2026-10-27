@@ -73,7 +73,7 @@ function zen_json_ld() {
         $payload = array(
             '@context' => 'https://schema.org',
             '@type' => 'BlogPosting',
-            'headline' => get_the_title(),
+            'headline' => html_entity_decode(wp_strip_all_tags(get_the_title()), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             'datePublished' => get_the_date('c'),
             'dateModified' => get_the_modified_date('c'),
             'mainEntityOfPage' => array(

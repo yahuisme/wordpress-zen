@@ -24,6 +24,13 @@ php tests/archive-context-regression.php
 php tests/archive-batching-regression.php
 php tests/options-boundaries-regression.php
 php tests/frontend-media-regression.php
+php tests/content-text-regression.php
+```
+
+实体计长测试使用隔离 WordPress 源码，覆盖普通正文、转义代码和同步样板：
+
+```sh
+ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
 ```
 
 需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
@@ -54,11 +61,14 @@ ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/php-native-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-content-text-regression.php /path/to/isolated/wp-load.php
 ```
 
 仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。`native-regression.php` 会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
 
 `php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
+
+`native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
 
 ## 浏览器
 
@@ -114,6 +124,7 @@ python tests/native-settings-regression.py /path/to/fixture
 python tests/native-boundary-regression.py /path/to/fixture
 python tests/list-width-regression.py /path/to/fixture green
 python tests/page-review-regression.py /path/to/fixture
+. /opt/test-tools/env.sh
 python tests/archive-spacing-regression.py
 ```
 

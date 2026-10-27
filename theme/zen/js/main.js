@@ -500,19 +500,23 @@ const zenInit = () => {
     let lastFocusBeforeDrawer;
     let drawerCloseTimer;
     let drawerFocusTimer;
+    let drawerOpening = 0;
 
     if (tocTriggers.length && drawerToc && tocOverlay) {
         trapFocus(drawerToc);
 
         const openDrawer = () => {
-            if (!drawerToc.hasAttribute('inert')) return;
+            if (!drawerToc.hasAttribute('inert') && !drawerCloseTimer) return;
             if (drawerCloseTimer) {
                 clearTimeout(drawerCloseTimer);
                 drawerCloseTimer = null;
+            } else {
+                lastFocusBeforeDrawer = document.activeElement;
             }
-            lastFocusBeforeDrawer = document.activeElement;
             tocOverlay.classList.remove('hidden');
+            const opening = ++drawerOpening;
             requestAnimationFrame(() => {
+                if (opening !== drawerOpening) return;
                 tocOverlay.classList.remove('opacity-0');
                 drawerToc.classList.remove('translate-x-full');
             });
@@ -529,6 +533,7 @@ const zenInit = () => {
         };
 
         const closeDrawer = () => {
+            ++drawerOpening;
             clearTimeout(drawerFocusTimer);
             if (drawerToc.hasAttribute('inert') || drawerCloseTimer) return;
             tocOverlay.classList.add('opacity-0');

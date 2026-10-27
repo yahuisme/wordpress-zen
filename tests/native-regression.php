@@ -91,6 +91,20 @@ try {
             zen_native_check(false, 'reading traversal: ' . $name . ' (' . $error->getMessage() . ')');
         }
     }
+    foreach (array(
+        'empty' => array('', 1),
+        'literal boundary' => array(str_repeat('字', 300), 1),
+        'numeric entity boundary' => array(str_repeat('&#23383;', 300), 1),
+        'named entity boundary' => array(str_repeat('&amp;', 300), 1),
+        'over boundary' => array(str_repeat('&#23383;', 301), 2),
+        'encoded code stays literal' => array('<pre><code>' . str_repeat('&lt;b&gt;', 101) . '</code></pre>', 2),
+    ) as $name => $case) {
+        wp_update_post(array('ID' => $reading_pattern, 'post_content' => $case[0]));
+        foreach (array('direct' => $case[0], 'synced' => $reading_ref) as $kind => $content) {
+            wp_update_post(array('ID' => $post_id, 'post_content' => $content));
+            zen_native_check(zen_get_reading_time($post_id) === $case[1], 'entity reading ' . $kind . ': ' . $name);
+        }
+    }
     $GLOBALS['post'] = get_post($post_id);
     query_posts(array('p' => $post_id));
     $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';

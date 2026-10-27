@@ -266,7 +266,7 @@ function zen_sanitize_site_start_date($value) {
 function zen_fetch_update_info() {
     $transient_key = 'zen_theme_update_info';
 
-    $cached = get_transient($transient_key);
+    $cached = zen_get_update_info();
     if (false !== $cached) {
         return $cached;
     }
@@ -305,20 +305,13 @@ function zen_fetch_update_info() {
 
 function zen_get_update_info() {
     $cached = get_transient('zen_theme_update_info');
-    return false !== $cached ? $cached : array(
-        'latest_version' => '',
-        'url'            => 'https://github.com/yahuisme/wordpress-zen/releases',
-        'error'          => '',
-    );
+    return is_array($cached)
+        && isset($cached['latest_version'], $cached['url'], $cached['error'])
+        && is_string($cached['latest_version']) && is_string($cached['url']) && is_string($cached['error'])
+        ? $cached : false;
 }
 
-function zen_ajax_update_info() {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(array('message' => __('你没有查看更新信息的权限。', 'zen')), 403);
-    }
-    check_ajax_referer('zen_update_info', 'nonce');
-    $update = zen_fetch_update_info();
-    $version = wp_get_theme(get_template())->get('Version');
+function zen_update_info_message($update, $version) {
     if ($update['error']) {
         $message = $update['error'];
     } elseif (!$update['latest_version']) {
@@ -328,7 +321,17 @@ function zen_ajax_update_info() {
     } else {
         $message = sprintf(__('当前版本 v%s 已是最新版本。', 'zen'), $version);
     }
-    wp_send_json_success(array('message' => $message, 'url' => $update['url']));
+    return $message;
+}
+
+function zen_ajax_update_info() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('你没有查看更新信息的权限。', 'zen')), 403);
+    }
+    check_ajax_referer('zen_update_info', 'nonce');
+    $update = zen_fetch_update_info();
+    $version = wp_get_theme(get_template())->get('Version');
+    wp_send_json_success(array('message' => zen_update_info_message($update, $version), 'url' => $update['url']));
 }
 add_action('wp_ajax_zen_update_info', 'zen_ajax_update_info');
 
@@ -369,7 +372,7 @@ function zen_get_reading_time($post_id = 0) {
     }
     $content = strip_shortcodes($content);
     $content = preg_replace('/<!--\s*wp:.*?-->/s', ' ', $content);
-    $content = trim(wp_strip_all_tags($content));
+    $content = trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
     if (function_exists('mb_strlen')) {
         $length = mb_strlen($content);
@@ -582,13 +585,14 @@ function zen_options_page_html() {
             $update = zen_get_update_info();
             ?>
             <p id="zen-update-status"
+               data-update-pending="<?php echo false === $update ? 'true' : 'false'; ?>"
                data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>"
                data-nonce="<?php echo esc_attr(wp_create_nonce('zen_update_info')); ?>"
                data-loading="<?php echo esc_attr(__('正在检查更新…', 'zen')); ?>"
                data-error="<?php echo esc_attr(__('更新检查失败。', 'zen')); ?>">
-                <?php echo esc_html(sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version)); ?>
+                <?php echo esc_html(false === $update ? sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version) : zen_update_info_message($update, $version)); ?>
             </p>
-            <a class="button button-secondary" href="<?php echo esc_url($update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
+            <a class="button button-secondary" href="<?php echo esc_url(false === $update ? 'https://github.com/yahuisme/wordpress-zen/releases' : $update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
         </section>
     </div>
     <?php

@@ -71,7 +71,7 @@ add_filter('block_editor_settings_all', 'zen_editor_settings');
 
 function zen_has_code_blocks() {
     $post = get_post();
-    if (!$post) {
+    if (!$post || post_password_required($post)) {
         return false;
     }
     $pending = array($post->post_content);

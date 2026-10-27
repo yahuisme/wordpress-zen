@@ -6,7 +6,8 @@ if (!defined('ABSPATH')) exit;
  * CJK text is treated as a single word and never truncated.
  */
 function zen_trim_excerpt($text, $length, $more = '…') {
-    $text = trim(preg_replace('/\s+/u', ' ', (string) $text));
+    $text = wp_strip_all_tags((string) $text);
+    $text = trim(preg_replace('/\s+/u', ' ', $text));
     if ($text === '') {
         return '';
     }

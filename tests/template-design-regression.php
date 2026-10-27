@@ -33,6 +33,10 @@ function get_the_title($post = null) { return '清晰的文章标题'; }
 function the_title() { echo esc_html(get_the_title()); }
 function the_title_attribute() { echo esc_attr(get_the_title()); }
 function get_the_excerpt() { $GLOBALS['excerpt_calls']++; return '标准列表摘要内容'; }
+function wp_strip_all_tags($text, $remove_breaks = false) {
+    $text = strip_tags(preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', $text));
+    return trim($remove_breaks ? preg_replace('/[\r\n\t ]+/', ' ', $text) : $text);
+}
 function wp_trim_words($text, $length, $more) { return $text; }
 function get_search_query($escaped = true) { return $GLOBALS['query'] ?? '清晰'; }
 require ABSPATH . 'inc/template-tags.php';

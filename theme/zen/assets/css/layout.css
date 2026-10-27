@@ -244,6 +244,9 @@ body .font-serif {
     text-align: right;
 }
 
+#drawer-toc.translate-x-full {
+    box-shadow: none;
+}
 #toc-container.zen-desktop-toc {
     display: none !important;
     position: fixed;

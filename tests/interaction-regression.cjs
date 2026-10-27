@@ -186,6 +186,8 @@ for (const dismiss of ['Escape', 'close button', 'backdrop']) {
         assert.deepEqual(focusCalls, [], 'cancelled open timer must not steal focus during closing');
         assert.equal(document.activeElement, trigger);
         assert.equal(drawer.hasAttribute('inert'), true);
+        assert.equal(drawer.classList.contains('translate-x-full'), true, 'cancelled opening frame must not reveal the closed drawer');
+        assert.equal(document.getElementById('toc-overlay').classList.contains('opacity-0'), true);
         assert.equal(document.getElementById('toc-overlay').classList.contains('hidden'), true);
         assert.equal(trigger.getAttribute('aria-expanded'), 'false');
         assert.equal(document.body.style.overflow, '');
@@ -196,6 +198,38 @@ for (const dismiss of ['Escape', 'close button', 'backdrop']) {
         assert.equal(document.activeElement, trigger);
     });
 }
+
+test('reopening a closing drawer cancels stale close and focus work', async t => {
+    const { document, flush, press } = await page(t, `
+        <main><button id="floating-toc-btn">Directory</button><button id="outside">Outside</button></main>
+        <div id="toc-overlay" class="hidden opacity-0"></div>
+        <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>`);
+    const trigger = document.getElementById('floating-toc-btn');
+    const drawer = document.getElementById('drawer-toc');
+    const overlay = document.getElementById('toc-overlay');
+    trigger.focus(); trigger.click();
+    press('Escape');
+    trigger.click(); // Before either the initial rAF or close timer has run.
+    flush();
+    assert.equal(drawer.hasAttribute('inert'), false);
+    assert.equal(drawer.classList.contains('translate-x-full'), false);
+    assert.equal(overlay.classList.contains('hidden'), false);
+    assert.equal(overlay.classList.contains('opacity-0'), false);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(document.getElementById('outside').closest('[inert]') !== null, true);
+    assert.equal(document.activeElement.id, 'drawer-toc-close');
+    press('Escape');
+    trigger.click(); flush(); // The active element is still the close control while closing.
+    assert.equal(document.activeElement.id, 'drawer-toc-close');
+    press('Escape'); flush();
+    assert.equal(drawer.hasAttribute('inert'), true);
+    assert.equal(drawer.classList.contains('translate-x-full'), true);
+    assert.equal(overlay.classList.contains('hidden'), true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.getElementById('outside').closest('[inert]'), null);
+    assert.equal(document.activeElement, trigger);
+    assert.equal(document.body.style.overflow, '');
+});
 
 test('Core lightbox images keep native ownership while plain images retain Zen controls', async t => {
     const { window, document, flush } = await page(t, `

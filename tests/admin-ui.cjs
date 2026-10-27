@@ -7,8 +7,9 @@ const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '..', 'theme', 'zen');
 const html = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html'], { encoding: 'utf8' });
 function asset(file) { const target = path.join(root, file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }
-function boot() {
+function boot(prepare = () => {}) {
     const dom = new JSDOM(html, { url: 'https://example.test/wp-admin/admin.php?page=zen-options', runScripts: 'outside-only' });
+    prepare(dom.window);
     dom.window.eval(asset('assets/js/admin.js'));
     dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
     return dom;
@@ -109,6 +110,63 @@ test('a canceled submit retains the real dirty unload warning', () => {
     assert.equal(unloading(dom), true);
     dom.window.close();
 });
+for (const outcome of ['confirmed', 'declined', 'canceled later']) {
+    test(`dirty reset ${outcome} preserves the correct unload warning`, () => {
+        const dom = boot();
+        edit(dom, 'zen_footer_text', 'unsaved');
+        const reset = dom.window.document.getElementById('zen-reset-form');
+        let confirmations = 0;
+        dom.window.confirm = () => { confirmations++; return outcome !== 'declined'; };
+        if (outcome === 'canceled later') {
+            dom.window.document.addEventListener('submit', event => event.preventDefault());
+        }
+        const event = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+        reset.dispatchEvent(event);
+        assert.equal(confirmations, 1);
+        assert.equal(event.defaultPrevented, outcome !== 'confirmed');
+        assert.equal(unloading(dom), outcome !== 'confirmed');
+        dom.window.close();
+    });
+}
+
+for (const cachedMessage of ['当前版本 v2.7.4 已是最新版本。', '连接失败']) {
+    test(`cached update status makes no AJAX request: ${cachedMessage}`, async () => {
+        let requests = 0;
+        const dom = boot(window => {
+            const status = window.document.getElementById('zen-update-status');
+            status.dataset.updatePending = 'false';
+            status.textContent = cachedMessage;
+            window.zenAdminSettings = { ajaxUrl: '/admin-ajax.php', nonce: 'test-nonce' };
+            window.fetch = async () => { requests++; throw new Error('cache hit must not request'); };
+        });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(requests, 0);
+        assert.equal(dom.window.document.getElementById('zen-update-status').textContent, cachedMessage);
+        dom.window.close();
+    });
+}
+
+test('update cache miss requests once with nonce and renders response as text', async () => {
+    const requests = [];
+    const dom = boot(window => {
+        window.document.getElementById('zen-update-status').dataset.updatePending = 'true';
+        window.zenAdminSettings = { ajaxUrl: '/admin-ajax.php', nonce: 'test-nonce' };
+        window.fetch = async (url, options) => {
+            requests.push({ url, options });
+            return { ok: true, json: async () => ({ success: true, data: { message: '<b>new release</b>' } }) };
+        };
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/admin-ajax.php');
+    assert.equal(requests[0].options.credentials, 'same-origin');
+    assert.equal(requests[0].options.body, 'action=zen_update_info&nonce=test-nonce');
+    const status = dom.window.document.getElementById('zen-update-status');
+    assert.equal(status.textContent, '<b>new release</b>');
+    assert.equal(status.querySelector('b'), null);
+    dom.window.close();
+});
+
 test('responsive admin CSS scopes controls and respects native adminbar offsets', () => {
     const css = asset('assets/css/admin.css');
     assert.match(css, /\.zen-options[^}]*max-width:\s*1120px/);

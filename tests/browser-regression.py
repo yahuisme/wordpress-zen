@@ -77,6 +77,7 @@ with sync_playwright() as playwright:
             desktop = page.locator('#toc-container')
             mobile = page.locator('#floating-toc-btn')
             assert desktop.is_visible() != mobile.is_visible(), f'Exactly one TOC required at {width}'
+            assert page.locator('#drawer-toc').evaluate('e => getComputedStyle(e).boxShadow === "none"'), 'Closed drawer shadow leaks into viewport'
             if desktop.is_visible():
                 bounds = page.evaluate('''()=>({right:document.querySelector('#post-content').getBoundingClientRect().right,
                     toc:document.querySelector('#toc-container').getBoundingClientRect().left,

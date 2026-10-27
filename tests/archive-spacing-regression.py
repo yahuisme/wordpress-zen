@@ -9,12 +9,14 @@ function get_footer() {}
 function the_title() { echo '归档'; }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function esc_url($v) { return esc_html($v); }
+function get_locale() { return 'zh_CN'; }
 function get_transient($k) {
+ if ($k !== 'zen_archives_public_posts_v2') throw new RuntimeException('Unexpected archive cache key');
  $rows = array();
  foreach (array('第一篇文章','第二篇文章','长标题：'.str_repeat('完整的中文与English标题',6),'最后一篇文章') as $i=>$t) {
   $rows[] = array('id'=>$i+1,'title'=>$t,'url'=>'#post-'.$i,'year'=>'2026','date'=>'2026年10月5日');
  }
- return $rows;
+ return array('zh_CN:' => $rows);
 }
 include TEMPLATE_PATH;
 '''.replace('TEMPLATE_PATH', repr(str(root / 'page-archives.php')))
@@ -39,6 +41,7 @@ with sync_playwright() as p:
         results.append({'width':width,'rows':rows,'homePadding':home,'archiveWidth':archive_width})
     browser.close()
 print(json.dumps(results,ensure_ascii=False))
+assert all(len(r['rows']) == 4 for r in results), 'Archive fixture must render all four rows'
 assert all(r['archiveWidth']==min(r['width']-32,680) for r in results), 'Archive inherits article reading width instead of its own index measure'
 assert all(r['homePadding']==32 for r in results), 'Archive adjustment leaked into homepage'
 assert all(x['top']==12 and x['bottom']==12 for r in results for x in r['rows']), 'Archive rows inherit spacious summary-list padding'

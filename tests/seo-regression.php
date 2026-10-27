@@ -66,7 +66,7 @@ function get_the_archive_title() { return $GLOBALS['seo_context']['archive_title
 function get_search_query($escaped = true) { return 'a "quote"'; }
 function get_the_author_meta($key, $id = null) { return 'description' === $key ? $GLOBALS['seo_context']['bio'] : 'An Author'; }
 function get_author_posts_url($id) { return 'https://example.test/writers/' . $id . '/'; }
-function get_the_title($post = null) { return 'A <test> "title"'; }
+function get_the_title($post = null) { return $GLOBALS['seo_context']['title'] ?? 'A <test> "title"'; }
 function get_the_date($format, $post = null) { return '2026-09-01T12:00:00+00:00'; }
 function get_the_modified_date($format, $post = null) { return '2026-09-02T12:00:00+00:00'; }
 function get_permalink($post = null) { return 'https://example.test/article/'; }
@@ -126,6 +126,15 @@ require dirname(__DIR__) . '/theme/zen/inc/schema.php';
 $header = file_get_contents(dirname(__DIR__) . '/theme/zen/header.php');
 seo_check(!str_contains($header, 'name="robots"'), 'header delegates robots to native WordPress');
 seo_check(str_contains($header, 'wp_head();'), 'header preserves the native head/canonical entrypoint');
+
+seo_context('post', array('title' => '<b>A &#038; B</b> &#8220;quote&#8221; &quot;double&quot; &#039;single&#039;'));
+$output = seo_output();
+seo_check('A & B “quote” "double" \'single\'' === (seo_schema($output)['headline'] ?? null), 'schema headline strips HTML and decodes native title entities');
+seo_check(str_contains($output, '\\u0026') && str_contains($output, '\\u0022') && str_contains($output, '\\u0027'), 'headline retains JSON_HEX_AMP QUOT and APOS serialization');
+seo_context('post', array('title' => '<script>alert(1)</script><em>中文标题</em> &lt;/script&gt;&lt;script&gt;alert(2)&lt;/script&gt; &amp;lt;'));
+$output = seo_output();
+seo_check('中文标题 </script><script>alert(2)</script> &lt;' === (seo_schema($output)['headline'] ?? null), 'headline decodes only one entity layer after removing actual HTML');
+seo_check(substr_count($output, '</script>') === 1 && str_contains($output, '\\u003C/script\\u003E'), 'encoded title markup cannot terminate the JSON-LD script');
 
 seo_context('post', array('excerpt' => " <p>A &amp; B</p>\n [sample]hidden[/sample]\t excerpt&nbsp; text "));
 $output = seo_output();
