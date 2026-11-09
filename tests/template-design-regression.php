@@ -30,6 +30,7 @@ function get_the_date($format = '', $post = null) { return date($format ?: 'Y-m-
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
 function get_the_title($post = null) { return '清晰的文章标题'; }
+function get_the_ID() { return 42; }
 function the_title() { echo esc_html(get_the_title()); }
 function the_title_attribute() { echo esc_attr(get_the_title()); }
 function get_the_excerpt() { $GLOBALS['excerpt_calls']++; return '标准列表摘要内容'; }

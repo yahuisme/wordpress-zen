@@ -532,7 +532,7 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇', 'zen'), __('显示相邻文章导航', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('点击正文图片放大查看', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_reading_count', __('浏览次数', 'zen'), __('显示简单浏览次数；整页缓存命中不计数，关闭后停止计数。不是独立访客统计。', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_reading_count', __('浏览次数', 'zen'), __('同一 IP 五分钟内计数一次，登录用户不计数。', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                         <td><select name="zen_copyright_license" id="zen_copyright_license">
                             <?php foreach (array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0') as $value => $label) : ?>
@@ -602,47 +602,75 @@ function zen_options_page_html() {
  * Front-end: reading count
  * ---------------------------------------------------------------------- */
 
-function zen_track_post_view() {
-    if (!zen_get_option('zen_show_reading_count') || !is_singular('post') || is_preview() || is_feed()) {
-        return;
+/** Return the current count, or false for a disabled/unavailable article. */
+function zen_track_post_view($post_id = 0) {
+    if (!zen_get_option('zen_show_reading_count')) {
+        return false;
     }
+
+    if (0 === $post_id) {
+        if (!is_singular('post') || is_preview() || is_feed()) {
+            return false;
+        }
+        $post_id = get_queried_object_id();
+        if (!$post_id) $post_id = get_the_ID();
+    }
+
+    if (!is_int($post_id) || $post_id <= 0) return false;
+    $post = get_post($post_id);
+    if (!$post || 'post' !== $post->post_type || 'publish' !== $post->post_status || '' !== $post->post_password) {
+        return false;
+    }
+    $count = (int) get_post_meta($post_id, 'zen_view_count', true);
 
     $user_agent = isset($_SERVER['HTTP_USER_AGENT']) && is_string($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
     if (preg_match('/bot\b|spider|crawler|slurp|bingpreview|facebookexternalhit|headlesschrome/i', $user_agent) || (function_exists('is_bot') && is_bot())) {
-        return;
+        return $count;
     }
 
     if (is_user_logged_in()) {
-        return;
-    }
-
-    $post_id = get_queried_object_id();
-    if (!$post_id) {
-        $post_id = get_the_ID();
-    }
-
-    if (!$post_id) {
-        return;
+        return $count;
     }
 
     // Trust the server-resolved peer only, never client-supplied forwarding headers.
     // Reverse proxies should resolve trusted client IPs in the web server config.
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     if (!is_string($ip) || !filter_var($ip, FILTER_VALIDATE_IP)) {
-        return;
+        return $count;
     }
     // Canonicalize IPv6 so equivalent spellings share the five-minute bucket.
     $ip = inet_ntop(inet_pton($ip));
     $dedupe_key = 'zen_viewed_' . $post_id . '_' . md5($ip);
     if (false !== get_transient($dedupe_key)) {
-        return;
+        return $count;
     }
     set_transient($dedupe_key, 1, 5 * MINUTE_IN_SECONDS);
 
-    $count = (int) get_post_meta($post_id, 'zen_view_count', true);
     update_post_meta($post_id, 'zen_view_count', $count + 1);
+    return (int) get_post_meta($post_id, 'zen_view_count', true);
 }
-add_action('wp', 'zen_track_post_view');
+
+/** Public, nonce-free counter: no privileged state, and safe for cached pages. */
+function zen_ajax_post_view() {
+    nocache_headers();
+    if ('POST' !== ($_SERVER['REQUEST_METHOD'] ?? '')) {
+        wp_send_json_error(array('message' => 'POST required.'), 405);
+        return;
+    }
+    $post_id = $_POST['post_id'] ?? '';
+    if (!is_string($post_id) || !preg_match('/\A[1-9][0-9]*\z/', $post_id) || (string) (int) $post_id !== $post_id) {
+        wp_send_json_error(array('message' => 'Invalid post ID.'), 400);
+        return;
+    }
+    $count = zen_track_post_view((int) $post_id);
+    if (false === $count) {
+        wp_send_json_error(array('message' => 'Reading count unavailable.'), 404);
+        return;
+    }
+    wp_send_json_success(array('count' => number_format_i18n($count)));
+}
+add_action('wp_ajax_nopriv_zen_post_view', 'zen_ajax_post_view');
+add_action('wp_ajax_zen_post_view', 'zen_ajax_post_view');
 
 function zen_get_reading_count($post_id = 0) {
     if (!$post_id) {

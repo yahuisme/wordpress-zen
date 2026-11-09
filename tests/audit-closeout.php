@@ -8,13 +8,16 @@ function is_preview() { return false; }
 function is_feed() { return false; }
 function is_user_logged_in() { return $GLOBALS['logged_in']; }
 function get_queried_object_id() { return $GLOBALS['post_id']; }
+function get_post($id) { return (object) array('ID' => $id, 'post_type' => 'post', 'post_status' => 'publish', 'post_password' => ''); }
 function get_transient($key) { return $GLOBALS['cache'][$key] ?? false; }
 function set_transient($key, $value, $ttl) { if (!in_array($ttl, array(300, 3600), true)) throw new RuntimeException('TTL changed'); $GLOBALS['cache'][$key] = $value; }
 function get_post_meta($id, $key, $single) { return $GLOBALS['counts'][$id] ?? 0; }
 function update_post_meta($id, $key, $value) { $GLOBALS['counts'][$id] = $value; }
 $source = file_get_contents(dirname(__DIR__) . '/theme/zen/inc/options.php');
-$start = strpos($source, 'function zen_track_post_view()');
-$end = strpos($source, "add_action('wp', 'zen_track_post_view')", $start);
+$start = strpos($source, 'function zen_track_post_view(');
+$end = strpos($source, 'function zen_ajax_post_view(', $start);
+if (false === $start || false === $end) throw new RuntimeException('Counter source boundary not found');
+// Execute only the trusted local counter function against WordPress doubles.
 eval(substr($source, $start, $end - $start));
 $checks = 0;
 function check($ok, $label) { global $checks; ++$checks; if (!$ok) throw new RuntimeException($label); }

@@ -16,6 +16,8 @@ function wp_get_theme() { return new class { public function get($key) { return 
 function get_template_directory_uri() { return 'https://example.test/zen'; }
 function get_template_directory() { return ABSPATH; }
 function is_singular() { return $GLOBALS['asset_singular'] ?? false; }
+function is_preview() { return false; }
+function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function get_post($id = null) { return null === $id ? ($GLOBALS['post'] ?? null) : ($GLOBALS['asset_posts'][$id] ?? null); }
 function post_password_required($post = null) {
     $GLOBALS['password_checked_post'] = $post;

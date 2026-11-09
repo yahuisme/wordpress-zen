@@ -1,12 +1,130 @@
 // Run after loading the shared NODE_PATH; see tests/README.md.
 // node --test tests/interaction-regression.cjs
-// Executes shipped main.js in jsdom; no browser, network or WordPress writes.
+// Executes shipped frontend scripts in jsdom; no browser, network or WordPress writes.
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const test = require('node:test');
 const { JSDOM } = require('jsdom');
 const main = readFileSync(join(__dirname, '..', 'theme', 'zen', 'js/main.js'), 'utf8');
+
+async function countPage(t, html, prepare = () => {}) {
+    const dom = new JSDOM('<!doctype html>' + html, {
+        url: 'https://zen.test/article/', runScripts: 'outside-only',
+    });
+    const { window } = dom;
+    const { document } = window;
+    t.after(() => window.close());
+    await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+    window.zenReadingCount = { ajax_url: 'https://zen.test/wp-admin/admin-ajax.php', enabled: 1 };
+    prepare(window);
+    const script = join(__dirname, '..', 'theme', 'zen', 'js/reading-count.js');
+    window.eval(readFileSync(script, 'utf8'));
+    return { window, document };
+}
+
+const countMarkup = '<span class="zen-meta-field">浏览次数 <span id="zen-reading-count" data-post-id="42">7</span></span>';
+
+test('reading count replaces a cached value only after a successful AJAX response', async t => {
+    const requests = [];
+    let respond;
+    const { window, document } = await countPage(t, countMarkup, window => {
+        window.fetch = (url, options) => {
+            requests.push({ url, options });
+            return new Promise(resolve => { respond = resolve; });
+        };
+    });
+    const count = document.getElementById('zen-reading-count');
+    assert.equal(count.textContent, '7', 'cached count remains while the request is pending');
+    assert.equal(requests.length, 1, 'late/deferred execution sends one request');
+    const { url, options } = requests[0];
+    assert.equal(url, 'https://zen.test/wp-admin/admin-ajax.php');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.credentials, 'same-origin');
+    assert.ok(options.body instanceof window.URLSearchParams);
+    assert.deepEqual([...options.body.entries()], [['action', 'zen_post_view'], ['post_id', '42']]);
+    document.dispatchEvent(new window.Event('DOMContentLoaded'));
+    assert.equal(requests.length, 1, 'another ready event never counts twice');
+    respond({ ok: true, json: async () => ({ success: true, data: { count: 1234 } }) });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(count.textContent, '1234', 'replace, never increment the stale cached value');
+    assert.ok(count.parentElement.textContent.startsWith('浏览次数 '));
+});
+
+test('reading count keeps the cached value when AJAX fails', async t => {
+    const { document } = await countPage(t, countMarkup, window => {
+        window.fetch = async () => { throw new Error('offline'); };
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(document.getElementById('zen-reading-count').textContent, '7');
+});
+
+test('reading count accepts a numeric server count', async t => {
+    const { document } = await countPage(t, countMarkup, window => {
+        window.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { count: 0 } }) });
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(document.getElementById('zen-reading-count').textContent, '0');
+});
+
+test('reading count displays the server-formatted count as text', async t => {
+    const { document } = await countPage(t, countMarkup, window => {
+        window.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { count: '1,234' } }) });
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(document.getElementById('zen-reading-count').textContent, '1,234');
+});
+
+for (const [label, response] of [
+    ['HTTP failure', { ok: false, json: async () => ({ success: true, data: { count: 100 } }) }],
+    ['rejected action', { ok: true, json: async () => ({ success: false, data: { count: 100 } }) }],
+    ['invalid JSON', { ok: true, json: async () => { throw new SyntaxError('Invalid JSON'); } }],
+    ['missing count', { ok: true, json: async () => ({ success: true, data: {} }) }],
+]) {
+    test(`reading count keeps the cached value for ${label}`, async t => {
+        const { document } = await countPage(t, countMarkup, window => {
+            window.fetch = async () => response;
+        });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(document.getElementById('zen-reading-count').textContent, '7');
+    });
+}
+
+for (const [label, html, enabled] of [
+    ['non-article page', '<main>Page without a count</main>', 1],
+    ['disabled counter', countMarkup, 0],
+    ['localized disabled counter', countMarkup, '0'],
+    ...['', '0', '-1', '42junk', '4.2', ' 42', '042'].map(id => [
+        `invalid post ID ${JSON.stringify(id)}`, countMarkup.replace('data-post-id="42"', `data-post-id="${id}"`), 1,
+    ]),
+]) {
+    test(`reading count does not request for ${label}`, async t => {
+        let requests = 0;
+        await countPage(t, html, window => {
+            window.zenReadingCount.enabled = enabled;
+            window.fetch = () => { ++requests; };
+        });
+        assert.equal(requests, 0);
+    });
+}
+
+test('reading count accepts the localized enabled flag and waits once for DOM ready', async t => {
+    let requests = 0;
+    const { window, document } = await countPage(t, countMarkup, window => {
+        window.zenReadingCount.enabled = '1';
+        Object.defineProperty(window.document, 'readyState', { value: 'loading' });
+        window.fetch = async () => {
+            ++requests;
+            return { ok: true, json: async () => ({ success: true, data: { count: 0 } }) };
+        };
+    });
+    assert.equal(requests, 0);
+    document.dispatchEvent(new window.Event('DOMContentLoaded'));
+    document.dispatchEvent(new window.Event('DOMContentLoaded'));
+    assert.equal(requests, 1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(document.getElementById('zen-reading-count').textContent, '0');
+});
 
 async function page(t, html, prepare = () => {}) {
     const dom = new JSDOM('<!doctype html>' + html, {

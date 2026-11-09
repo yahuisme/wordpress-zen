@@ -122,10 +122,11 @@ function zen_highlight_search_terms($text, $query = '') {
 
     $output = '';
     foreach ($parts as $part) {
+        $is_match = (bool) preg_match($pattern, $part);
         // Keep entity-like text literal after decoding exactly one input layer.
         $part = preg_replace('/&(?=(?:[A-Za-z][A-Za-z0-9]+|#\d+|#x[0-9A-Fa-f]+);)/', '&amp;', $part);
         $escaped_part = esc_html($part);
-        if (preg_match($pattern, $part)) {
+        if ($is_match) {
             $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . $escaped_part . '</mark>';
         } else {
             $output .= $escaped_part;

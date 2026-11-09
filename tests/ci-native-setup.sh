@@ -80,5 +80,6 @@ PHP
 if [[ "${1:-}" != '--prepare-only' ]]; then
     ZEN_TEST_ISOLATED=1 php "$ROOT/tests/native-regression.php" "$RUNTIME/wp-load.php"
     ZEN_TEST_ISOLATED=1 php "$ROOT/tests/php-native-regression.php" "$RUNTIME/wp-load.php"
+    ZEN_TEST_ISOLATED=1 php "$ROOT/tests/native-reading-count-regression.php" "$RUNTIME/wp-load.php"
 fi
 printf 'ZEN_CI_RUNTIME=%s\n' "$RUNTIME"

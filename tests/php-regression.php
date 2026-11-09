@@ -101,6 +101,13 @@ zen_test('search highlights decoded text without matching entity syntax or expos
     zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '<img src=x onerror=alert(1)> &lt;', 'one-layer decoding changed literal entity text');
 });
 
+zen_test('search does not highlight entity escaping introduced only for output', function () {
+    $html = zen_highlight_search_terms('&amp;lt; amp', 'amp');
+    zen_expect(substr_count($html, '<mark ') === 1, 'output-only amp entity syntax created a false search match');
+    zen_expect(str_contains($html, '&amp;lt; <mark'), 'unmatched literal entity-looking text must stay outside the mark');
+    zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '&lt; amp', 'literal entity-looking text changed');
+});
+
 zen_test('search highlighting escapes decoded ampersands exactly once', function () {
     $html = zen_highlight_search_terms('Tom &amp; Jerry', 'Jerry');
     zen_expect(str_contains($html, 'Tom &amp; <mark'), 'ampersand was double-escaped');

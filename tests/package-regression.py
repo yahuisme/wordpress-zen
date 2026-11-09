@@ -29,7 +29,9 @@ assert '          compression-level: 0' in workflow, 'Do not recompress the rele
 # 开发文件不得出现在发布包中。
 forbidden_prefixes = ('zen/tests/', 'zen/.github/', 'zen/AGENTS.md')
 # 所有纳入版本控制的主题文件都应出现在发布包中。
-tracked = subprocess.check_output(['git', 'ls-files', 'theme/zen'], cwd=PROJECT, text=True).split()
+tracked = subprocess.check_output(
+    ['git', 'ls-files', '--cached', '--others', '--exclude-standard', 'theme/zen'],
+    cwd=PROJECT, text=True).split()
 tracked = [f.removeprefix('theme/zen/') for f in tracked]
 gitattributes = (PROJECT / '.gitattributes').read_text()
 ignored = set()

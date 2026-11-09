@@ -757,6 +757,7 @@ const zenInit = () => {
     let lastActiveElementBeforeSearch;
     let searchCloseTimer;
     let searchFocusTimer;
+    let searchOpening = 0;
     const setBackgroundModalState = () => {
         const applyInert = Boolean(document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden), #drawer-toc:not([inert])'));
         const activeModalIds = ['lightbox', 'search-modal', 'drawer-toc'];
@@ -825,8 +826,13 @@ const zenInit = () => {
         trapFocus(searchModal);
         const openSearch = () => {
             if (document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])')) return;
-            if (searchCloseTimer) clearTimeout(searchCloseTimer);
-            lastActiveElementBeforeSearch = document.activeElement;
+            if (!searchModal.classList.contains('hidden') && !searchCloseTimer) return;
+            if (searchCloseTimer) {
+                clearTimeout(searchCloseTimer);
+                searchCloseTimer = null;
+            } else {
+                lastActiveElementBeforeSearch = document.activeElement;
+            }
             if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
                 if (mobileMenu.contains(lastActiveElementBeforeSearch)) {
                     lastActiveElementBeforeSearch = mobileMenuBtn || searchToggle;
@@ -834,7 +840,9 @@ const zenInit = () => {
                 closeMobileMenuVisuals();
             }
             searchModal.classList.remove('hidden');
+            const opening = ++searchOpening;
             requestAnimationFrame(() => {
+                if (opening !== searchOpening) return;
                 searchModal.classList.remove('opacity-0');
                 searchModal.classList.add('is-open');
             });
@@ -847,6 +855,7 @@ const zenInit = () => {
         };
 
         const closeSearch = () => {
+            ++searchOpening;
             if (searchModal.classList.contains('hidden')) return;
             if (searchCloseTimer) clearTimeout(searchCloseTimer);
             clearTimeout(searchFocusTimer);
@@ -857,6 +866,7 @@ const zenInit = () => {
                 setBackgroundModalState();
                 const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])');
                 if (!anotherModalOpen && lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
+                searchCloseTimer = null;
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
         };

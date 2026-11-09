@@ -11,7 +11,7 @@
             <?php endif; ?>
             <?php zen_posted_on_link(); ?>
             <?php if (zen_get_option('zen_show_reading_count')) : ?>
-            <span class="zen-meta-field">浏览次数 <?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?></span>
+            <span class="zen-meta-field">浏览次数 <span id="zen-reading-count" class="zen-reading-count" data-post-id="<?php echo esc_attr(get_the_ID()); ?>"><?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?></span></span>
             <?php endif; ?>
             <?php if (zen_get_option('zen_show_reading_time')) : ?>
             <span class="zen-meta-field">阅读时间 <?php echo esc_html(zen_get_reading_time()); ?> 分钟</span>

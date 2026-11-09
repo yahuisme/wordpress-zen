@@ -46,6 +46,13 @@ function zen_scripts() {
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),
     ));
+    if (is_singular('post') && !is_preview() && zen_get_option('zen_show_reading_count')) {
+        wp_enqueue_script('zen-reading-count', $uri . '/js/reading-count.js', array(), filemtime($dir . '/js/reading-count.js'), array('in_footer' => true, 'strategy' => 'defer'));
+        wp_localize_script('zen-reading-count', 'zenReadingCount', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'enabled' => (int) zen_get_option('zen_show_reading_count'),
+        ));
+    }
     wp_enqueue_style('zen-compiled-style', $uri . '/assets/css/style.css', array(), filemtime($dir . '/assets/css/style.css'));
     wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array('zen-compiled-style'), filemtime($dir . '/assets/css/reading.css'));
     wp_enqueue_style('zen-layout-style', $uri . '/assets/css/layout.css', array('zen-reading-style'), filemtime($dir . '/assets/css/layout.css'));
@@ -58,6 +65,14 @@ function zen_scripts() {
     }
 }
 add_action('wp_enqueue_scripts', 'zen_scripts');
+
+/** A page view must not wait for WP Rocket's first user interaction. */
+function zen_reading_count_delay_exclusions($excluded) {
+    $excluded[] = 'reading-count.js';
+    $excluded[] = 'zenReadingCount';
+    return $excluded;
+}
+add_filter('rocket_delay_js_exclusions', 'zen_reading_count_delay_exclusions');
 
 function zen_editor_settings($settings) {
     $type = zen_typography();

@@ -25,6 +25,8 @@ php tests/archive-batching-regression.php
 php tests/options-boundaries-regression.php
 php tests/frontend-media-regression.php
 php tests/content-text-regression.php
+php tests/reading-count-regression.php
+php tests/reading-count-assets-regression.php
 ```
 
 实体计长测试使用隔离 WordPress 源码，覆盖普通正文、转义代码和同步样板：
@@ -43,7 +45,7 @@ ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
 
 ```sh
 . /opt/test-tools/env.sh
-node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs
+node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs
 ```
 
 其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。主题安装和运行不需要这些工具。
@@ -56,7 +58,14 @@ node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interactio
 ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh
 ```
 
-脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点。它不读取生产配置，也不使用生产数据库；测试后自行删除 `ZEN_CI_RUNTIME`。
+脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点。默认随后运行原生回归（含 AJAX 浏览次数）；仅准备环境、只补测计数边界时使用：
+
+```sh
+ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh --prepare-only
+ZEN_TEST_ISOLATED=1 php tests/native-reading-count-regression.php "$TMPDIR/zen-native/wp-load.php"
+```
+
+它不读取生产配置，也不使用生产数据库；测试后由调用者清理 `ZEN_CI_RUNTIME`。不要把已有或需要保留的目录传给 setup，它会先删除该目录重建。
 
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
@@ -69,6 +78,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-content-text-regression.php /path/to/isolat
 `php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
 
 `native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
+
+`native-reading-count-regression.php` 在引导真实 WordPress 前设置 `DOING_AJAX` / `WP_ADMIN`，按登录状态分发 `zen_post_view` 对应的原生 AJAX hook；不替换主题函数、JSON 输出、元数据或 transient API。覆盖匿名累计、登录/爬虫只读、选项关闭、文章类型/发布状态/密码保护拒绝，以及服务端 IP 五分钟去重、IPv6 等价写法和转发头不可信边界。仅用异常接管原生 `wp_die_ajax_handler` 以捕获 JSON 并在 `finally` 清理自建文章/去重桶、恢复选项；意外提前终止会返回非零。须看到 `NATIVE_READING_COUNT_COMPLETE` 且退出码为 0。这是原生 hook/JSON/数据库验收，不启动 HTTP 服务，也不证明 Web 服务器、整页缓存或浏览器请求链路。
 
 ## 浏览器
 
