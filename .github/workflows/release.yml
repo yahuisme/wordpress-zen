@@ -57,7 +57,7 @@ jobs:
                   'zen/inc/options.php', 'zen/inc/schema.php', 'zen/inc/setup.php',
                   'zen/inc/template-tags.php', 'zen/index.php', 'zen/js/main.js',
                   'zen/page-archives.php', 'zen/page-links.php', 'zen/page.php',
-                  'zen/screenshot.png', 'zen/search.php', 'zen/single.php',
+                  'zen/screenshot.jpg', 'zen/search.php', 'zen/single.php',
                   'zen/style.css', 'zen/template-parts/content-excerpt.php',
                   'zen/js/reading-count.js',
               }

@@ -32,7 +32,7 @@ forbidden_prefixes = ('zen/tests/', 'zen/.github/', 'zen/AGENTS.md')
 tracked = subprocess.check_output(
     ['git', 'ls-files', '--cached', '--others', '--exclude-standard', 'theme/zen'],
     cwd=PROJECT, text=True).split()
-tracked = [f.removeprefix('theme/zen/') for f in tracked]
+tracked = [f.removeprefix('theme/zen/') for f in tracked if (PROJECT / f).is_file()]
 gitattributes = (PROJECT / '.gitattributes').read_text()
 ignored = set()
 for line in gitattributes.splitlines():
@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     # An isolated Git index packages local edits without staging or committing them.
     env = dict(os.environ, GIT_INDEX_FILE=str(temp / 'index'))
     subprocess.run(['git', 'read-tree', 'HEAD'], cwd=PROJECT, env=env, check=True)
-    subprocess.run(['git', 'add', '--'] + ['theme/zen/' + f for f in expected_files], cwd=PROJECT, env=env, check=True)
+    subprocess.run(['git', 'add', '-A', '--', 'theme/zen'], cwd=PROJECT, env=env, check=True)
     tree = subprocess.check_output(['git', 'write-tree'], cwd=PROJECT, env=env, text=True).strip()
     package = temp / 'zen.zip'
     subprocess.run(['git', 'archive', '--format=zip', '--prefix=zen/', tree + ':theme/zen',
