@@ -171,9 +171,6 @@ const zenInit = () => {
         });
     };
 
-    const highlightMargin = 200;
-    const pendingHighlights = new Set();
-    let highlightObserver;
     const wpCodeBlocks = document.querySelectorAll('.entry-content pre, pre.wp-block-code');
     wpCodeBlocks.forEach(block => {
         const code = block.querySelector('code');
@@ -181,26 +178,6 @@ const zenInit = () => {
             block.classList.forEach(className => {
                 if (className.startsWith('language-')) code.classList.add(className);
             });
-        }
-        if (typeof hljs !== 'undefined' && code && !code.dataset.highlighted) {
-            const rect = block.getBoundingClientRect();
-            if (typeof IntersectionObserver === 'undefined' ||
-                (rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
-                hljs.highlightElement(code);
-            } else {
-                if (!highlightObserver) {
-                    highlightObserver = new IntersectionObserver(entries => {
-                        entries.forEach(entry => {
-                            if (!entry.isIntersecting || !pendingHighlights.delete(entry.target)) return;
-                            highlightObserver.unobserve(entry.target);
-                            if (!entry.target.dataset.highlighted) hljs.highlightElement(entry.target);
-                        });
-                        if (!pendingHighlights.size) highlightObserver.disconnect();
-                    }, { rootMargin: `${highlightMargin}px 0px` });
-                }
-                pendingHighlights.add(code);
-                highlightObserver.observe(code);
-            }
         }
 
         if (code && !block.querySelector('.zen-code-copy')) {
@@ -309,6 +286,15 @@ const zenInit = () => {
     }
 
     // --- 3. TOC 目录 (Universal Logic) ---
+    const focusTocTarget = (target) => {
+        if (!target) return;
+        if (!target.hasAttribute('tabindex')) {
+            target.setAttribute('tabindex', '-1');
+            target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+        }
+        // Native hash navigation owns scrolling; focus only sets the next Tab position.
+        target.focus({ preventScroll: true });
+    };
     const article = document.getElementById('post-content');
     const tocContainer = document.getElementById('toc-container'); // PC Sidebar
     const tocNav = document.getElementById('toc-nav'); // PC Nav Content
@@ -409,6 +395,7 @@ const zenInit = () => {
                     for (let ancestor = target && target.parentElement; ancestor; ancestor = ancestor.parentElement) {
                         if (ancestor.tagName === 'DETAILS') ancestor.open = true;
                     }
+                    if (!link.closest('#drawer-toc')) focusTocTarget(target);
                     requestTocUpdate();
                 });
                 return link;
@@ -532,7 +519,7 @@ const zenInit = () => {
             }, 300);
         };
 
-        const closeDrawer = () => {
+        const closeDrawer = (navigationTarget = null) => {
             ++drawerOpening;
             clearTimeout(drawerFocusTimer);
             if (drawerToc.hasAttribute('inert') || drawerCloseTimer) return;
@@ -548,20 +535,24 @@ const zenInit = () => {
                 drawerToc.setAttribute('data-zen-modal-inert', 'true');
                 setBackgroundModalState();
                 const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden)');
-                if (!anotherModalOpen && lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus({ preventScroll: true });
+                if (!anotherModalOpen) {
+                    if (navigationTarget) focusTocTarget(navigationTarget);
+                    else if (lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus({ preventScroll: true });
+                }
                 drawerCloseTimer = null;
             }, 300);
         };
 
         tocTriggers.forEach(trigger => trigger.addEventListener('click', openDrawer));
-        if (drawerClose) drawerClose.addEventListener('click', closeDrawer);
-        tocOverlay.addEventListener('click', closeDrawer);
+        if (drawerClose) drawerClose.addEventListener('click', () => closeDrawer());
+        tocOverlay.addEventListener('click', () => closeDrawer());
 
         // 点击目录链接跳转后，自动关闭抽屉
         if (drawerTocNav) {
             drawerTocNav.addEventListener('click', (e) => {
-                if (e.target.closest('a')) {
-                    closeDrawer();
+                const link = e.target.closest('a[data-target]');
+                if (link) {
+                    closeDrawer(document.getElementById(link.dataset.target));
                 }
             });
         }
@@ -678,13 +669,22 @@ const zenInit = () => {
             timeDisplay.innerText = `${formatAudioTime(audio.currentTime)} / ${formatAudioTime(audio.duration)}`;
         };
 
+        let playAttempt = 0;
+        const useNativeAudio = () => {
+            ++playAttempt;
+            const restoreFocus = player.contains(document.activeElement);
+            audio.style.display = '';
+            player.remove();
+            if (restoreFocus) audio.focus({ preventScroll: true });
+        };
         btn.addEventListener('click', () => {
+            const attempt = ++playAttempt;
             if (audio.paused) {
                 audio.play().then(() => {
-                    setAudioButtonState(true);
-                }).catch(() => {
-                    audio.style.display = '';
-                    setAudioButtonState(false);
+                    if (attempt === playAttempt) syncAudioButton();
+                }).catch((error) => {
+                    if (attempt !== playAttempt || error?.name === 'AbortError') return;
+                    useNativeAudio();
                 });
             } else {
                 audio.pause();
@@ -697,11 +697,11 @@ const zenInit = () => {
         };
 
         audio.addEventListener('play', syncAudioButton);
-        audio.addEventListener('pause', syncAudioButton);
-        audio.addEventListener('error', () => {
-            audio.style.display = '';
+        audio.addEventListener('pause', () => {
+            if (audio.paused) ++playAttempt;
             syncAudioButton();
         });
+        audio.addEventListener('error', useNativeAudio);
         audio.addEventListener('timeupdate', updateAudioUI);
 
         audio.addEventListener('loadedmetadata', updateAudioUI);
@@ -887,9 +887,60 @@ const zenInit = () => {
             }
         };
     }
+
+    // Optional enhancement runs only after every basic control has its listeners.
+    const enhanceCodeBlocks = () => {
+        const highlightMargin = 200;
+        const pendingHighlights = new Set();
+        let highlightObserver;
+        wpCodeBlocks.forEach(block => {
+            const code = block.querySelector('code');
+            if (!code || code.dataset.highlighted) return;
+            // Keep every bundled language/alias available, but bound unlabelled autodetection.
+            // Explicit lang-/language- labels and Highlight.js legacy language classes opt in.
+            const classes = code.className + ' ' + block.className;
+            const explicitLanguage = /\blang(?:uage)?-([\w-]+)\b/i.test(classes) ||
+                classes.split(/\s+/).some(name => hljs.getLanguage(name));
+            if (!explicitLanguage) {
+                const text = code.textContent;
+                if (text.length > 8192 || text.split('\n', 201).length > 200) return;
+            }
+            const rect = block.getBoundingClientRect();
+            if (typeof IntersectionObserver === 'undefined' ||
+                (rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
+                hljs.highlightElement(code);
+            } else {
+                if (!highlightObserver) {
+                    highlightObserver = new IntersectionObserver(entries => {
+                        entries.forEach(entry => {
+                            if (!entry.isIntersecting || !pendingHighlights.delete(entry.target)) return;
+                            highlightObserver.unobserve(entry.target);
+                            if (!entry.target.dataset.highlighted) hljs.highlightElement(entry.target);
+                        });
+                        if (!pendingHighlights.size) highlightObserver.disconnect();
+                    }, { rootMargin: `${highlightMargin}px 0px` });
+                }
+                pendingHighlights.add(code);
+                highlightObserver.observe(code);
+            }
+        });
+    };
+    if (typeof hljs !== 'undefined') {
+        enhanceCodeBlocks();
+    } else {
+        // The async script tag follows main in wp_footer; capture its non-bubbling load.
+        const onHighlighterLoad = (event) => {
+            if (event.target.id !== 'highlight-js-js') return;
+            document.removeEventListener('load', onHighlighterLoad, true);
+            if (typeof hljs !== 'undefined') enhanceCodeBlocks();
+        };
+        document.addEventListener('load', onHighlighterLoad, true);
+    }
 };
 
-if (document.readyState === 'loading') {
+// Enqueued synchronously in wp_footer: all interactive markup already exists.
+// Retain DOM-ready support for integrations that deliberately move the script earlier.
+if (document.readyState === 'loading' && !document.body?.contains(document.currentScript)) {
     document.addEventListener('DOMContentLoaded', zenInit, { once: true });
 } else {
     zenInit();

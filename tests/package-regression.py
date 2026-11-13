@@ -47,6 +47,13 @@ assert 'assets/css/admin.css' in expected_files, 'Design asset missing from expe
 assert 'assets/css/reading.css' in expected_files
 assert 'assets/css/layout.css' in expected_files
 assert 'assets/js/admin.js' in expected_files
+for notice in ('licenses/Highlight-BSD-3-Clause.txt', 'licenses/Tailwind-MIT.txt'):
+    assert notice in expected_files, 'Third-party license missing: ' + notice
+assert 'undefined and other contributors' not in (ROOT / 'assets/js/highlight.min.js').read_text(), 'Highlighter attribution must name its copyright holder'
+highlight_license = (ROOT / 'licenses/Highlight-BSD-3-Clause.txt').read_text()
+assert all(text in highlight_license for text in ('Ivan Sagalaev', 'Redistribution and use', 'Neither the name', 'THIS SOFTWARE IS PROVIDED'))
+tailwind_license = (ROOT / 'licenses/Tailwind-MIT.txt').read_text()
+assert all(text in tailwind_license for text in ('Tailwind Labs, Inc.', 'Permission is hereby granted', 'THE SOFTWARE IS PROVIDED'))
 
 with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     temp = Path(temp)

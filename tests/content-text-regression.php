@@ -42,6 +42,8 @@ content_check(zen_trim_excerpt('<script>中文恶意内容</script><style>中文
 content_check(zen_trim_excerpt("  <b>中文</b>\n\t 摘要  ", 8) === '中文 摘要', 'plain excerpt whitespace stays normalized');
 content_check(zen_trim_excerpt('<b> </b>', 8) === '', 'markup-only excerpt is empty');
 content_check(zen_trim_excerpt('<b>中文</b>', 2) === '中文', 'exact character limit does not add ellipsis');
+content_check(zen_trim_excerpt('中文 &amp; example', 6) === '中文 & e…', 'named entity consumes one visible character');
+content_check(zen_trim_excerpt('&#20013;&#x6587;&#20013;&#x6587;', 2) === '中文…', 'numeric CJK entities use the CJK character limit');
 $GLOBALS['content_excerpt'] = '<strong>中文摘要</strong>，手工填写。';
 ob_start();
 include ABSPATH . 'template-parts/content-excerpt.php';
@@ -53,5 +55,18 @@ ob_start();
 include ABSPATH . 'template-parts/content-excerpt.php';
 $html = ob_get_clean();
 content_check(!str_contains($html, '<img') && str_contains($html, '&lt;img'), 'encoded excerpt markup remains escaped at the HTML boundary');
+foreach (array(
+    array('中文 &amp;amp; literal', '中文 &amp;…'),
+    array('English &amp;lt;tag&amp;gt; literal', 'English &lt;tag&gt; literal'),
+    array('English &lt;code&gt;literal&lt;/code&gt; words here', 'English <code>literal</code> words here'),
+) as list($source, $visible)) {
+    $GLOBALS['content_excerpt'] = $source;
+    ob_start();
+    include ABSPATH . 'template-parts/content-excerpt.php';
+    $html = ob_get_clean();
+    preg_match('~<div class="zen-post-excerpt[^>]*>(.*?)</div>~s', $html, $match);
+    $actual = html_entity_decode(trim($match[1] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    content_check($actual === $visible, 'one-layer visible text survives actual template: ' . $source . ' => ' . $actual);
+}
 printf("Content text: %d checks, %d failures\n", $checks, $failures);
 exit($failures ? 1 : 0);

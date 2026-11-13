@@ -45,7 +45,7 @@ ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
 
 ```sh
 . /opt/test-tools/env.sh
-node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs
+node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs tests/frontend-loading-regression.cjs
 ```
 
 其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。主题安装和运行不需要这些工具。
@@ -71,6 +71,11 @@ ZEN_TEST_ISOLATED=1 php tests/native-reading-count-regression.php "$TMPDIR/zen-n
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/php-native-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-content-text-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 python3 tests/native-counter-concurrency.py /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-counter-storage-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-counter-cache-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-excerpt-entity-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-comment-form-regression.php /path/to/isolated/wp-load.php
 ```
 
 仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。`native-regression.php` 会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
@@ -78,6 +83,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-content-text-regression.php /path/to/isolat
 `php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
 
 `native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
+
+`native-counter-concurrency.py` 仅在可销毁 fixture 中运行，覆盖冷初始化、已有计数和同 IP 竞争；验证唯一元数据行、桶写入次数及五分钟 TTL。`native-counter-cache-regression.php` 使用真实 Core API 与显式的两请求缓存边界替身，不等于安装 Redis/Memcached 的集成验收。
 
 `native-reading-count-regression.php` 在引导真实 WordPress 前设置 `DOING_AJAX` / `WP_ADMIN`，按登录状态分发 `zen_post_view` 对应的原生 AJAX hook；不替换主题函数、JSON 输出、元数据或 transient API。覆盖匿名累计、登录/爬虫只读、选项关闭、文章类型/发布状态/密码保护拒绝，以及服务端 IP 五分钟去重、IPv6 等价写法和转发头不可信边界。仅用异常接管原生 `wp_die_ajax_handler` 以捕获 JSON 并在 `finally` 清理自建文章/去重桶、恢复选项；意外提前终止会返回非零。须看到 `NATIVE_READING_COUNT_COMPLETE` 且退出码为 0。这是原生 hook/JSON/数据库验收，不启动 HTTP 服务，也不证明 Web 服务器、整页缓存或浏览器请求链路。
 
@@ -116,6 +123,19 @@ python tests/native-content-regression.py /path/to/fixture
 复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
 
 以上测试文件不进入主题发布 ZIP。
+
+## 内容颜色与交互边界
+
+```sh
+. /opt/test-tools/env.sh
+python tests/browser-checkers-regression.py
+python tests/design-boundaries-regression.py /path/to/fixture
+python tests/native-interaction-regression.py /path/to/fixture
+```
+
+颜色测试覆盖 Cover/Group 的局部黑白文字、浅深模式、显式标题色和无脚本原生搜索；可追加 `colors` 或 `noscript`。交互测试通过延迟真实高亮库与 WAV 响应，覆盖音频取消/失败单播放器、目录 Enter 后的 Tab 顺序、Escape 焦点返回，以及高亮未到达时基础交互可用；可追加 `audio`、`toc` 或 `highlight`。这些测试要求上述 loopback fixture，浏览器串行且使用外部内存硬限，不伪造媒体状态。
+
+列表宽度测试可在 `green` 后加 `--focused`，仅跑系统字体、900px版面下的15个原生保存/视口场景；仍断言真实文章ID与非空样本。逐页测试可用 `--routes=tag,article` 只补指定页面族，报告仅对应几何场景，不包含完整交互与后台验收。
 
 ## 定向修复验收
 

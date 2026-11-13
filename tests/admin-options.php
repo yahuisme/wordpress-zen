@@ -97,7 +97,8 @@ test('single settings form groups all old and new fields', function () {
     expect((bool) preg_match('/<details[^>]*id="zen-layout"[^>]*>/', $html, $width) && !str_contains($width[0], ' open'), 'advanced width must start collapsed');
     expect(strpos($html, '</form>') < strpos($html, 'id="zen-about"'), 'updates must be outside form');
     expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
-    expect(str_contains($html, '缓存命中') && str_contains($html, '关闭后停止计数') && str_contains($html, '更换主题'), 'risk and count explanations missing');
+    expect(str_contains($html, '同一 IP 五分钟内计数一次，登录用户不计数。') && str_contains($html, '更换主题'), 'current counter boundary and code risk explanations missing');
+    expect(!str_contains($html, '整页缓存命中不计数'), 'cache-safe AJAX counter must not claim page cache hits never count');
     expect(str_contains($html, '恢复默认设置') && str_contains($html, 'zen_reset_options'), 'reset settings action missing');
     expect(!str_contains($html, '<style>'), 'admin style must be enqueued separately');
 });

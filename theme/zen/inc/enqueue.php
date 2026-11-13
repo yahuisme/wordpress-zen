@@ -37,11 +37,12 @@ function zen_scripts() {
     $dir = get_template_directory();
     $uri = get_template_directory_uri();
     wp_enqueue_style('phosphor-icons', $uri . '/assets/css/phosphor-icons.css', array(), filemtime($dir . '/assets/css/phosphor-icons.css'));
+    // Basic controls bind as soon as footer markup exists, independently of optional scripts.
+    wp_enqueue_script('zen-main', $uri . '/js/main.js', array(), filemtime($dir . '/js/main.js'), array('in_footer' => true));
     if (is_singular() && zen_get_option('zen_show_highlight') && zen_has_code_blocks()) {
         wp_enqueue_style('highlight-css', $uri . '/assets/css/github-dark.min.css', array(), filemtime($dir . '/assets/css/github-dark.min.css'));
-        wp_enqueue_script('highlight-js', $uri . '/assets/js/highlight.min.js', array(), filemtime($dir . '/assets/js/highlight.min.js'), array('in_footer' => true, 'strategy' => 'defer'));
+        wp_enqueue_script('highlight-js', $uri . '/assets/js/highlight.min.js', array(), filemtime($dir . '/assets/js/highlight.min.js'), array('in_footer' => true, 'strategy' => 'async'));
     }
-    wp_enqueue_script('zen-main', $uri . '/js/main.js', wp_script_is('highlight-js', 'enqueued') ? array('highlight-js') : array(), filemtime($dir . '/js/main.js'), array('in_footer' => true, 'strategy' => 'defer'));
     wp_localize_script('zen-main', 'zenSettings', array(
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),

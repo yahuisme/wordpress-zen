@@ -38,4 +38,4 @@
 
 ## 许可证
 
-本项目采用 [GPL-3.0](LICENSE) 许可证。
+本项目采用 [GPL-3.0](LICENSE) 许可证。第三方资源许可见 `licenses/`：Highlight.js（BSD-3-Clause）、Tailwind CSS 与 Phosphor Icons（MIT）。

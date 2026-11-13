@@ -68,7 +68,8 @@ function content_native_assets($expected, $label) {
     $GLOBALS['wp_styles'] = new WP_Styles();
     do_action('wp_enqueue_scripts');
     content_native_check(wp_script_is('highlight-js', 'enqueued') === $expected && wp_style_is('highlight-css', 'enqueued') === $expected, $label . ': native enqueue visibility');
-    content_native_check(wp_scripts()->registered['zen-main']->deps === ($expected ? array('highlight-js') : array()), $label . ': main dependency');
+    content_native_check(wp_scripts()->registered['zen-main']->deps === array(), $label . ': basic controls never depend on optional highlighting');
+    if ($expected) content_native_check(wp_scripts()->get_data('highlight-js', 'strategy') === 'async', $label . ': native optional highlighter is async');
 }
 try {
     foreach (array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8, 'zen_show_highlight' => 1) as $key => $value) {
@@ -79,7 +80,7 @@ try {
     foreach (array(
         array('<strong>中文摘要</strong>，手工填写。', '中文摘要，手工填…'),
         array('<strong>English excerpt</strong> manually entered.', 'English excerpt manually entered.'),
-        array('&lt;img src=x onerror=alert(1)&gt; 中文', '&lt;img …'),
+        array('&lt;img src=x onerror=alert(1)&gt; 中文', '&lt;img src…'),
     ) as $case) {
         $id = content_native_post(array('post_excerpt' => $case[0]));
         content_native_query($id);

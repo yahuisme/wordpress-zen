@@ -114,6 +114,12 @@
     <?php endif; ?>
 </header>
 
+<noscript>
+    <div class="zen-noscript-search zen-inline-search">
+        <?php get_search_form(); ?>
+    </div>
+</noscript>
+
 <div id="search-modal"
      role="dialog"
      aria-modal="true"

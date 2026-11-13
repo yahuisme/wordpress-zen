@@ -52,6 +52,7 @@ jobs:
                   'zen/assets/css/admin.css', 'zen/assets/css/reading.css', 'zen/assets/css/layout.css', 'zen/assets/js/admin.js',
                   'zen/assets/fonts/Phosphor.woff2', 'zen/assets/js/highlight.min.js',
                   'zen/licenses/Phosphor-MIT.txt',
+                  'zen/licenses/Highlight-BSD-3-Clause.txt', 'zen/licenses/Tailwind-MIT.txt',
                   'zen/comments.php', 'zen/footer.php', 'zen/functions.php',
                   'zen/header.php', 'zen/inc/comments.php', 'zen/inc/enqueue.php',
                   'zen/inc/options.php', 'zen/inc/schema.php', 'zen/inc/setup.php',

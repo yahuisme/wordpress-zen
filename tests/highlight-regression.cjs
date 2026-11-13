@@ -150,6 +150,64 @@ test('releases each deferred target once and disconnects after the last highligh
     assert.equal(observer.targets.size, 0);
 });
 
+test('large unmarked code stays literal without autodetection while explicit languages still highlight', async t => {
+    const text = 'const message = "<safe>";\n'.repeat(400);
+    const { calls, codes, blocks, copied, observers } = await page(t, {
+        positions: [20, 3000, 20],
+        prepare(window, blocks) {
+            for (const block of blocks) block.querySelector('code').textContent = text;
+            blocks[0].className = '';
+            blocks[1].className = '';
+        },
+    });
+    assert.deepEqual(calls, [codes[2]], 'large unmarked blocks must not reach real Highlight.js');
+    assert.equal(observers.length, 0, 'over-budget code needs no pending highlighter observer');
+    for (const code of codes.slice(0, 2)) {
+        assert.equal(code.dataset.highlighted, undefined);
+        assert.equal(code.childElementCount, 0);
+        assert.equal(code.textContent, text);
+    }
+    assert.ok(codes[2].querySelector('.hljs-keyword'), 'large explicitly labelled code is not disabled');
+    blocks[0].querySelector('.zen-code-copy').click(); await Promise.resolve();
+    assert.deepEqual(copied, [text]);
+});
+
+test('autodetection has independent size and line budgets while small unmarked code still detects', async t => {
+    const texts = ['x'.repeat(9000), 'x\n'.repeat(201), 'const answer = 42;'];
+    const { calls, codes } = await page(t, {
+        positions: [20, 20, 20],
+        prepare(window, blocks) {
+            blocks.forEach((block, index) => {
+                block.className = '';
+                block.querySelector('code').textContent = texts[index];
+            });
+        },
+    });
+    assert.deepEqual(calls, [codes[2]]);
+    assert.equal(codes[0].textContent, texts[0]);
+    assert.equal(codes[1].textContent, texts[1]);
+    assert.equal(codes[2].dataset.highlighted, 'yes');
+});
+
+test('explicit aliases and legacy language classes retain large code support and no-highlight stays literal', async t => {
+    const text = 'const answer = 42;\n'.repeat(250);
+    const { calls, codes } = await page(t, {
+        positions: [20, 20, 20],
+        prepare(window, blocks) {
+            blocks[0].className = 'lang-js';
+            blocks[1].className = 'javascript';
+            blocks[2].className = 'no-highlight';
+            blocks.forEach(block => { block.querySelector('code').textContent = text; });
+        },
+    });
+    assert.deepEqual(calls.slice(0, 2), codes.slice(0, 2));
+    assert.ok(codes[0].querySelector('.hljs-keyword'));
+    assert.ok(codes[1].querySelector('.hljs-keyword'));
+    assert.equal(codes[2].dataset.highlighted, undefined);
+    assert.equal(codes[2].childElementCount, 0);
+    codes.forEach(code => assert.equal(code.textContent, text));
+});
+
 test('highlights visible and near-viewport code immediately, not distant blocks', async t => {
     const { codes, calls, observers } = await page(t);
     assert.deepEqual(calls, codes.slice(0, 2), 'offscreen parsing must wait for intersection');

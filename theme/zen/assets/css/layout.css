@@ -412,6 +412,9 @@ body .font-serif {
     max-width: 36rem;
     margin: 24px auto;
 }
+.zen-noscript-search {
+    width: min(calc(100% - 32px), 36rem);
+}
 .zen-inline-search .search-form {
     display: flex;
     gap: 8px;

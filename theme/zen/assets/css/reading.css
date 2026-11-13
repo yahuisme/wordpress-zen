@@ -30,7 +30,7 @@
 .entry-content :where(h1, h2, h3, h4, h5, h6),
 .editor-styles-wrapper :where(h1, h2, h3, h4, h5, h6) {
     font-family: var(--zen-font-heading);
-    color: var(--zen-text, #172033);
+    color: inherit;
     font-weight: 600;
     line-height: 1.4;
     text-wrap: pretty;

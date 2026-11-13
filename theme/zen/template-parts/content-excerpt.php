@@ -22,7 +22,12 @@ $zen_compact = zen_get_option('zen_list_style') === 'compact';
     </div>
     <?php if (!$zen_compact) : ?>
         <div class="zen-post-excerpt text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-            <?php echo esc_html(zen_trim_excerpt(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'))); ?>
+            <?php
+            // esc_html preserves valid entities; protect literal entity-looking text
+            // after the helper has decoded exactly one source layer for counting.
+            $zen_excerpt = zen_trim_excerpt(get_the_excerpt(), (int) zen_get_option('zen_excerpt_length'));
+            echo esc_html(str_replace('&', '&amp;', $zen_excerpt));
+            ?>
         </div>
     <?php endif; ?>
 </article>

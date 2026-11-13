@@ -644,10 +644,49 @@ function zen_track_post_view($post_id = 0) {
     if (false !== get_transient($dedupe_key)) {
         return $count;
     }
-    set_transient($dedupe_key, 1, 5 * MINUTE_IN_SECONDS);
+    // Serialize the cold metadata insert, increment and IP bucket together.
+    // options.option_name is unique; postmeta's "unique" flag is only a read check.
+    // Do not use a transient read/write pair as a lock (including with Redis).
+    global $wpdb;
+    $lock_key = 'zen_view_lock_' . $post_id;
+    $token = wp_generate_uuid4();
+    $deadline = microtime(true) + 1;
+    $locked = false;
+    do {
+        $lease = (time() + 30) . ':' . $token;
+        $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $wpdb->options (option_name, option_value, autoload) VALUES (%s, %s, %s)", $lock_key, $lease, 'no'));
+        $owner = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM $wpdb->options WHERE option_name = %s", $lock_key));
+        if (is_string($owner) && (int) $owner < time()) {
+            // Compare the complete lease: never evict a replacement owner's lock.
+            $wpdb->query($wpdb->prepare("UPDATE $wpdb->options SET option_value = %s WHERE option_name = %s AND option_value = %s", $lease, $lock_key, $owner));
+            $owner = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM $wpdb->options WHERE option_name = %s", $lock_key));
+        }
+        $locked = $owner === $lease;
+        if (!$locked) usleep(10000);
+    } while (!$locked && microtime(true) < $deadline);
+    if (!$locked) return $count;
 
-    update_post_meta($post_id, 'zen_view_count', $count + 1);
-    return (int) get_post_meta($post_id, 'zen_view_count', true);
+    try {
+        // Another request may have filled either cache since our first read.
+        wp_cache_delete($post_id, 'post_meta');
+        if (wp_using_ext_object_cache()) {
+            // Refresh a drop-in's request-local miss; deleting would erase the
+            // other request's valid persistent bucket instead of re-reading it.
+            wp_cache_get($dedupe_key, 'transient', true);
+        } else {
+            wp_cache_delete('_transient_' . $dedupe_key, 'options');
+            wp_cache_delete('_transient_timeout_' . $dedupe_key, 'options');
+            wp_cache_delete('notoptions', 'options');
+        }
+        $count = (int) get_post_meta($post_id, 'zen_view_count', true);
+        if (false === get_transient($dedupe_key) && update_post_meta($post_id, 'zen_view_count', $count + 1)) {
+            set_transient($dedupe_key, 1, 5 * MINUTE_IN_SECONDS);
+        }
+        return (int) get_post_meta($post_id, 'zen_view_count', true);
+    } finally {
+        $wpdb->query($wpdb->prepare("DELETE FROM $wpdb->options WHERE option_name = %s AND option_value = %s", $lock_key, $lease));
+        wp_cache_delete($lock_key, 'options');
+    }
 }
 
 /** Public, nonce-free counter: no privileged state, and safe for cached pages. */

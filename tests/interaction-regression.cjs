@@ -349,6 +349,38 @@ test('reopening a closing drawer cancels stale close and focus work', async t =>
     assert.equal(document.body.style.overflow, '');
 });
 
+for (const navId of ['toc-nav', 'drawer-toc-nav']) {
+    test(`TOC ${navId} navigation transfers focus without changing author tabindex or requesting scroll`, async t => {
+        const { document, flush, press } = await page(t, `
+            <header><button id="header-toc-btn">Directory</button></header>
+            <main><nav id="toc-nav"></nav><article id="post-content">
+                <h2 id="chapter">Chapter</h2><a id="after" href="/next">Next control</a>
+                <h2 id="author-focus" tabindex="0">Author focus</h2>
+            </article></main>
+            <div id="toc-overlay" class="hidden opacity-0"></div>
+            <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><nav id="drawer-toc-nav"></nav></aside>`);
+        const trigger = document.getElementById('header-toc-btn');
+        for (const id of ['chapter', 'author-focus']) {
+            if (navId === 'drawer-toc-nav') { trigger.focus(); trigger.click(); flush(); }
+            const target = document.getElementById(id);
+            const focus = target.focus.bind(target);
+            const options = [];
+            target.focus = value => { options.push(value); focus(value); };
+            const link = document.querySelector(`#${navId} [data-target="${id}"]`);
+            link.focus(); link.click(); flush();
+            assert.equal(document.activeElement, target, 'chapter navigation must not return to the header');
+            assert.equal(target.closest('[inert]'), null, 'focus only after modal background is restored');
+            assert.deepEqual(options.map(value => value?.preventScroll), [true], 'native anchor alone owns scrolling');
+            assert.equal(target.getAttribute('tabindex'), id === 'chapter' ? '-1' : '0');
+            document.getElementById('after').focus();
+            assert.equal(target.getAttribute('tabindex'), id === 'chapter' ? null : '0', 'only a temporary tabindex is removed');
+        }
+        // Dismissal is not navigation and must still return to the trigger.
+        trigger.focus(); trigger.click(); flush(); press('Escape'); flush();
+        assert.equal(document.activeElement, trigger);
+    });
+}
+
 test('Core lightbox images keep native ownership while plain images retain Zen controls', async t => {
     const { window, document, flush } = await page(t, `
         <article class="entry-content">
@@ -557,6 +589,112 @@ test('TOC ignores folded targets and refreshes on non-bubbling details toggles',
     flush();
     assert.equal(document.querySelectorAll('.toc-link.active, [aria-current="location"]').length, 0, 'no hidden target remains active');
 });
+
+// jsdom does not implement media playback: keep only that browser boundary doubled.
+async function pendingAudioPage(t) {
+    const attempts = [];
+    // Explicit tabindex models native controls focusability, which jsdom omits.
+    const context = await page(t, '<audio controls tabindex="0"></audio>', window => {
+        const audio = window.document.querySelector('audio');
+        Object.defineProperties(audio, {
+            paused: { value: true, writable: true },
+            ended: { value: false, writable: true },
+        });
+        audio.play = () => {
+            audio.paused = false;
+            audio.dispatchEvent(new window.Event('play'));
+            return new Promise((resolve, reject) => attempts.push({ resolve, reject }));
+        };
+        audio.pause = () => {
+            audio.paused = true;
+            audio.dispatchEvent(new window.Event('pause'));
+        };
+    });
+    const { document } = context;
+    return {
+        ...context, attempts, audio: document.querySelector('audio'),
+        button: document.querySelector('.zen-audio-btn'),
+        settle: () => new Promise(resolve => setImmediate(resolve)),
+    };
+}
+
+test('cancelling pending audio playback keeps only the custom owner', async t => {
+    const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t);
+    button.click();
+    assert.equal(audio.paused, false);
+    button.click();
+    attempts[0].reject(new window.DOMException('play() interrupted by pause()', 'AbortError'));
+    await settle();
+    assert.equal(audio.paused, true);
+    assert.equal(audio.style.display, 'none', 'normal cancellation must not expose native controls');
+    assert.equal(document.querySelectorAll('.zen-audio-player').length, 1);
+    assert.equal(button.getAttribute('aria-label'), '播放音频');
+});
+
+test('a stale audio play resolution cannot overwrite the paused state', async t => {
+    const { audio, button, attempts, settle } = await pendingAudioPage(t);
+    button.click(); button.click();
+    attempts[0].resolve();
+    await settle();
+    assert.equal(audio.paused, true);
+    assert.equal(button.getAttribute('aria-label'), '播放音频');
+    assert.equal(audio.style.display, 'none');
+});
+
+test('a stale audio rejection cannot downgrade a newer successful play', async t => {
+    const { audio, button, attempts, settle } = await pendingAudioPage(t);
+    button.click(); button.click(); button.click();
+    attempts[1].resolve();
+    await settle();
+    attempts[0].reject(new Error('failure from an obsolete attempt'));
+    await settle();
+    assert.equal(audio.paused, false);
+    assert.equal(audio.style.display, 'none', 'only the current play request may downgrade');
+    assert.equal(button.getAttribute('aria-label'), '暂停音频');
+});
+
+for (const completion of ['resolve', 'reject']) {
+    test(`audio ${completion} after an external pause cannot change the cancelled custom owner`, async t => {
+        const { audio, button, attempts, settle } = await pendingAudioPage(t);
+        button.click();
+        audio.pause(); // Media/session controls may pause without using the Zen button.
+        if (completion === 'resolve') attempts[0].resolve();
+        else attempts[0].reject(new Error('obsolete failure after external pause'));
+        await settle();
+        assert.equal(audio.style.display, 'none');
+        assert.equal(button.getAttribute('aria-label'), '播放音频');
+    });
+}
+
+test('an old queued pause event cannot invalidate the current audio failure', async t => {
+    const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t);
+    button.click(); button.click(); button.click();
+    assert.equal(audio.paused, false);
+    // Native media events are queued: the earlier pause can arrive after a new play().
+    audio.dispatchEvent(new window.Event('pause'));
+    attempts[1].reject(new Error('current attempt failed'));
+    await settle();
+    assert.equal(audio.style.display, '');
+    assert.equal(document.querySelectorAll('.zen-audio-player').length, 0);
+});
+
+for (const failure of ['rejected play', 'media error']) {
+    test(`audio ${failure} leaves only native controls and moves focused custom controls`, async t => {
+        const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t);
+        button.focus(); button.click();
+        if (failure === 'rejected play') attempts[0].reject(new Error('unsupported media'));
+        else audio.dispatchEvent(new window.Event('error'));
+        await settle();
+        assert.equal(audio.style.display, '');
+        assert.equal(audio.controls, true);
+        assert.equal(document.querySelectorAll('.zen-audio-player').length, 0, 'fallback removes the competing owner');
+        assert.equal(document.activeElement, audio, 'keyboard focus survives removal of custom controls');
+        // A later completion from the abandoned custom player cannot restore it.
+        attempts[0].resolve();
+        await settle();
+        assert.equal(document.querySelectorAll('.zen-audio-player').length, 0);
+    });
+}
 
 test('audio tolerates unavailable metadata and keeps later media events synchronized', async t => {
     const { window, document } = await page(t, '<audio controls></audio>', window => {

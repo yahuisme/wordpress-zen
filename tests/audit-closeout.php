@@ -1,6 +1,7 @@
 <?php
 /** Execute the shipped counter against explicit WordPress boundary doubles. */
 define('MINUTE_IN_SECONDS', 60);
+require __DIR__ . '/reading-count-storage-double.php';
 $cache = array(); $counts = array(); $post_id = 42; $logged_in = false;
 function zen_get_option($key) { return $key === 'zen_show_reading_count' ? true : ''; }
 function is_singular($type) { return true; }
@@ -12,7 +13,7 @@ function get_post($id) { return (object) array('ID' => $id, 'post_type' => 'post
 function get_transient($key) { return $GLOBALS['cache'][$key] ?? false; }
 function set_transient($key, $value, $ttl) { if (!in_array($ttl, array(300, 3600), true)) throw new RuntimeException('TTL changed'); $GLOBALS['cache'][$key] = $value; }
 function get_post_meta($id, $key, $single) { return $GLOBALS['counts'][$id] ?? 0; }
-function update_post_meta($id, $key, $value) { $GLOBALS['counts'][$id] = $value; }
+function update_post_meta($id, $key, $value) { $GLOBALS['counts'][$id] = $value; return true; }
 $source = file_get_contents(dirname(__DIR__) . '/theme/zen/inc/options.php');
 $start = strpos($source, 'function zen_track_post_view(');
 $end = strpos($source, 'function zen_ajax_post_view(', $start);

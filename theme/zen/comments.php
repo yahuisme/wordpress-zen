@@ -55,8 +55,7 @@ if (post_password_required()) return;
                     '<label for="email">邮箱 ' . $field_required . '</label>' .
                     '<input id="email" name="email" type="email" value="' . esc_attr($commenter['comment_author_email']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="email" placeholder="邮箱不会公开" />' .
                     '</p>',
-
-                'cookies' => '',
+                // Core adds cookies consent according to Discussion settings.
             );
 
             $args = array(

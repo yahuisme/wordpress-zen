@@ -82,7 +82,11 @@ foreach (array(
     zen_scripts();
     check(wp_script_is('highlight-js') === $case[3] && isset($GLOBALS['styles']['highlight-css']) === $case[3], "$name loads highlighter only for visible code");
     $main = array_values(array_filter($GLOBALS['scripts'], static fn($args) => $args[0] === 'zen-main'))[0];
-    check($main[2] === ($case[3] ? array('highlight-js') : array()), "$name preserves main script dependencies");
+    check($main[2] === array(), "$name keeps basic interactions independent of optional highlighting");
+    if ($case[3]) {
+        $highlighter = array_values(array_filter($GLOBALS['scripts'], static fn($args) => $args[0] === 'highlight-js'))[0];
+        check(($highlighter[4]['strategy'] ?? '') === 'async', "$name loads optional highlighter asynchronously");
+    }
     if ($case[1]) {
         check($GLOBALS['code_scan_count'] === 0, 'locked article does not scan hidden code or referenced patterns');
         check(($GLOBALS['password_checked_post'] ?? null) === $GLOBALS['post'], 'password guard checks the actual article object');

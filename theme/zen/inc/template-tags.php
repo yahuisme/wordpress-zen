@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) exit;
  * CJK text is treated as a single word and never truncated.
  */
 function zen_trim_excerpt($text, $length, $more = '…') {
-    $text = wp_strip_all_tags((string) $text);
+    $text = html_entity_decode(wp_strip_all_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim(preg_replace('/\s+/u', ' ', $text));
     if ($text === '') {
         return '';
@@ -16,7 +16,9 @@ function zen_trim_excerpt($text, $length, $more = '…') {
             ? mb_substr($text, 0, $length, 'UTF-8') . $more
             : $text;
     }
-    return wp_trim_words($text, $length, $more);
+    // wp_trim_words() strips tags again; decoded literal <code> must stay text.
+    $words = preg_split('/[\n\r\t ]+/', $text, $length + 1, PREG_SPLIT_NO_EMPTY);
+    return implode(' ', array_slice($words, 0, $length)) . (count($words) > $length ? $more : '');
 }
 
 function zen_get_archives_url() {

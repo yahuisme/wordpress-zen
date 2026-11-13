@@ -14,11 +14,16 @@ def check(label,fn):
  except Exception as ex:results.append({'name':label,'passed':False,'error':str(ex)});print('FAIL',label,str(ex),flush=True)
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage'])
- c=b.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce');c.add_cookies(json.loads((r/'cookies.json').read_text()));page=c.new_page();page.on('dialog',lambda d:d.accept())
+ c=b.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce');c.add_cookies(json.loads((r/'cookies.json').read_text()));page=c.new_page();dialogs=[]
+ def unexpected_dialog(dialog):
+  dialogs.append({'type':dialog.type,'message':dialog.message});dialog.dismiss()
+ c.route('**/*',lambda route:route.continue_() if route.request.url.startswith(o+'/') or route.request.url.startswith('data:') else route.abort())
+ page.on('dialog',unexpected_dialog)
  def settings():page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen-options-form').count()==1
  def save():
   with page.expect_navigation(wait_until='networkidle'):page.locator('#zen_save_top').click()
   assert page.locator('.notice-success,.updated').count()>0,page.locator('body').inner_text()[:1500]
+  assert not dialogs,('Unexpected save/navigation dialog',dialogs)
  def preserve():
   legacy={'zen_font_family':'inter','zen_content_width':1080,'zen_copyright_license':'cc-by-sa-4.0','zen_code_head':'<script>window.zenSaved = "\\\\n";</script>','zen_footer_text':'<a href="https://example.test">Saved footer</a>','zen_show_footer_theme_by':1,'zen_show_footer_wordpress':1}
   for key,val in legacy.items():setoption(key,val)

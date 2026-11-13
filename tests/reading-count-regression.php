@@ -1,6 +1,7 @@
 <?php
 /** Isolated regression tests for the cache-independent reading-count endpoint. */
 define('MINUTE_IN_SECONDS', 60);
+require __DIR__ . '/reading-count-storage-double.php';
 $GLOBALS['hooks'] = array();
 $GLOBALS['counts'] = array();
 $GLOBALS['posts'] = array();
@@ -25,7 +26,7 @@ function get_queried_object_id() { return $GLOBALS['queried_id']; }
 function get_the_ID() { return $GLOBALS['loop_id']; }
 function get_post($id) { return $GLOBALS['posts'][$id] ?? null; }
 function get_post_meta($id, $key, $single) { check($key === 'zen_view_count' && $single, 'existing meta field preserved'); return $GLOBALS['counts'][$id] ?? 0; }
-function update_post_meta($id, $key, $value) { check($key === 'zen_view_count', 'write existing meta field'); $GLOBALS['counts'][$id] = $value; }
+function update_post_meta($id, $key, $value) { check($key === 'zen_view_count', 'write existing meta field'); $GLOBALS['counts'][$id] = $value; return true; }
 function get_transient($key) { return $GLOBALS['cache'][$key] ?? false; }
 function set_transient($key, $value, $ttl) { check($ttl === 300, 'five-minute dedupe TTL preserved'); $GLOBALS['cache'][$key] = $value; }
 class ReadingCountResponse extends RuntimeException {

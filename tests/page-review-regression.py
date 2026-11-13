@@ -1,23 +1,35 @@
 """Whole theme page geometry and task interactions, real loopback WordPress."""
 from pathlib import Path
-import json,sys
+import json,sys,subprocess
 from playwright.sync_api import sync_playwright
 r=Path(sys.argv[1]).resolve();f=json.loads((r/'fixture.json').read_text());o='http://127.0.0.1:18765';out=r/'evidence';rows=[];errors=[]
-routes={'home':'/','article':'/?p='+str(f['normal']),'page':'/?p='+str(f['page']),'category':'/?cat='+str(f['categories'][0]),'tag':'/?tag_id='+str(f['tag']),'archives':'/?p='+str(f['archives']),'links':'/?p='+str(f['links']),'search':'/?s=WordPress','empty-search':'/?s=notfound','404':'/?p=2147483647','author':'/?author=1','date':'/?m=202610','empty-category':'/?cat='+str(f['emptycat']),'protected':'/?p='+str(f['protected']),'multipage':'/?p='+str(f['multipage'])}
+tag_url=subprocess.check_output(['php','/opt/test-tools/wordpress/wp-cli.phar','--allow-root','--path='+str(r/'runtime'),'eval','echo get_tag_link('+str(int(f['tag']))+');'],text=True).strip()
+assert tag_url.startswith(o+'/'), 'Tag route must belong to the isolated site'
+routes={'home':'/','article':'/?p='+str(f['normal']),'page':'/?p='+str(f['page']),'category':'/?cat='+str(f['categories'][0]),'tag':tag_url.removeprefix(o),'archives':'/?p='+str(f['archives']),'links':'/?p='+str(f['links']),'search':'/?s=WordPress','empty-search':'/?s=notfound','404':'/?p=2147483647','author':'/?author=1','date':'/?m=202610','empty-category':'/?cat='+str(f['emptycat']),'protected':'/?p='+str(f['protected']),'multipage':'/?p='+str(f['multipage'])}
+selected=next((arg.split('=',1)[1].split(',') for arg in sys.argv[2:] if arg.startswith('--routes=')),None)
+if selected:
+ assert all(name in routes for name in selected), 'Unknown route selection'
+ routes={name:routes[name] for name in selected}
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage']);c=b.new_context(reduced_motion='reduce');page=c.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
  for name,route in routes.items():
   for width in (320,390,768,1440):
    for dark in (False,True):
     page.set_viewport_size({'width':width,'height':900});res=page.goto(o+route,wait_until='networkidle');assert res.status==(404 if name=='404' else 200),(name,res.status)
+    if name=='tag':assert page.locator('body').evaluate('(e,id)=>e.classList.contains("tag-"+id)',f['tag']) and page.locator('main h1').count()==1, 'Expected the native tag archive, not the homepage'
     page.evaluate('(v)=>{document.documentElement.classList.toggle("dark",v);document.documentElement.style.scrollBehavior="auto"}',dark)
     d=page.evaluate('''()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,items:[...document.querySelectorAll('.zen-post-item--standard')].map(e=>({title:e.querySelector('h2').getBoundingClientRect().width,excerpt:e.querySelector('.zen-post-excerpt').getBoundingClientRect().width})),reading:[...document.querySelectorAll('article.entry-content')].map(e=>({width:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize,line:getComputedStyle(e).lineHeight})),header:{bottom:document.querySelector('.zen-site-header').getBoundingClientRect().bottom}})''')
-    assert d['scroll']<=width+1,(name,width,d);assert all(abs(x['title']-x['excerpt'])<1 for x in d['items']),(name,width,d)
+    assert d['scroll']<=width+1,(name,width,d)
+    if name in ('home','category','tag','search','author','date'):assert d['items'], ('Expected nonempty standard-list fixture',name)
+    assert all(abs(x['title']-x['excerpt'])<1 for x in d['items']),(name,width,d)
     assert all(x['font']=='18px' and x['line']=='32px' for x in d['reading']),(name,d)
     if width in (390,1440) and not dark:
      for image in page.locator('main img').all():image.scroll_into_view_if_needed();page.wait_for_timeout(40)
      page.evaluate('scrollTo(0,0)');page.screenshot(path=str(out/(name+'-'+str(width)+'.png')),full_page=True)
     rows.append({'page':name,'width':width,'dark':dark,'metrics':d})
+ if selected:
+  b.close();assert not errors,errors
+  (out/'page-review-selected.json').write_text(json.dumps({'rows':rows,'errors':errors},ensure_ascii=False,indent=2));print('PASS',len(rows),'selected page/state/width cases');sys.exit(0)
  page.set_viewport_size({'width':390,'height':900});page.goto(o+routes['protected'],wait_until='networkidle')
  password=page.locator('.post-password-form input[type=submit]');assert password.is_visible()
  style=password.evaluate('e=>{let c=getComputedStyle(e);return {height:e.getBoundingClientRect().height,background:c.backgroundColor,padding:c.paddingLeft}}')
