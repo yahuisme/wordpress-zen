@@ -66,6 +66,7 @@ define('HOUR_IN_SECONDS', 3600);
 function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
+function post_password_required() { return false; }
 function the_title() { echo 'Archive'; }
 function get_option($key) { return ''; }
 function get_the_title($post) { return 'Post'; }

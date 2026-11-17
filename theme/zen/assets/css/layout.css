@@ -107,9 +107,20 @@ body .font-serif {
     margin-inline: calc(50% - 50vw);
 }
 .zen-reading-shell .wp-block-image img,
-.zen-reading-shell .wp-block-embed,
+.zen-reading-shell .wp-block-embed:not(.alignwide):not(.alignfull),
 .zen-reading-shell .wp-block-table {
     max-width: 100%;
+}
+/* Override the compatibility embed constraint together with its physical margins. */
+.zen-reading-shell .wp-block-embed.alignwide {
+    width: min(calc(100vw - 32px), var(--zen-content-width)) !important;
+    max-width: none !important;
+    margin-inline: calc((100% - min(100vw - 32px, var(--zen-content-width))) / 2);
+}
+.zen-reading-shell .wp-block-embed.alignfull {
+    width: 100vw !important;
+    max-width: none !important;
+    margin-inline: calc(50% - 50vw);
 }
 
 .zen-site-intro {
@@ -262,6 +273,12 @@ body .font-serif {
 }
 #header-toc-btn.zen-header-toc {
     display: none;
+}
+#floating-toc-btn.zen-toc-pending,
+#header-toc-btn.zen-toc-pending {
+    display: inline-flex !important;
+    visibility: hidden;
+    pointer-events: none;
 }
 #floating-toc-btn.zen-toc-ready {
     display: inline-flex;
@@ -501,12 +518,45 @@ body .font-serif {
     min-width: 0;
     overflow-wrap: anywhere;
 }
+@media (max-width: 480px) {
+    .zen-archive-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    .zen-archive-row .zen-meta-field {
+        font-size: 12px;
+    }
+}
 .zen-page-links {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
     margin-top: 32px;
+}
+.zen-comment-input {
+    font-size: 16px;
+}
+.comment-form-cookies-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.comment-form-cookies-consent input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+.comment-form .comment-form-cookies-consent label {
+    min-width: 0;
+    margin: 0;
+}
+nav[aria-label="分页导航"] .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
 }
 .zen-page-links .post-page-numbers {
     display: flex;

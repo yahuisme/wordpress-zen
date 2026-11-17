@@ -6,6 +6,7 @@ root = Path(__file__).resolve().parents[1] / 'theme' / 'zen'
 php = '''<?php
 function get_header() {}
 function get_footer() {}
+function post_password_required() { return false; }
 function the_title() { echo '归档'; }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function esc_url($v) { return esc_html($v); }
@@ -35,7 +36,7 @@ with sync_playwright() as p:
     for width in (320,390,768,1440):
         page.set_viewport_size({'width':width,'height':900})
         page.set_content('<style>'+css+'</style><main style="padding:16px">'+html+'<article id="home-sentinel" class="zen-post-item">首页列表</article></main>')
-        rows = page.locator('.zen-archive-row').evaluate_all('es=>es.map(e=>{let c=getComputedStyle(e),t=e.querySelector("a").getBoundingClientRect(),d=e.querySelector("span").getBoundingClientRect();return {top:parseFloat(c.paddingTop),bottom:parseFloat(c.paddingBottom),height:e.getBoundingClientRect().height,titleRight:t.right,dateLeft:d.left,dateWidth:d.width,dateScroll:e.querySelector("span").scrollWidth}})')
+        rows = page.locator('.zen-archive-row').evaluate_all('es=>es.map(e=>{let c=getComputedStyle(e),t=e.querySelector("a").getBoundingClientRect(),d=e.querySelector("span").getBoundingClientRect();return {top:parseFloat(c.paddingTop),bottom:parseFloat(c.paddingBottom),height:e.getBoundingClientRect().height,titleRight:t.right,titleBottom:t.bottom,dateLeft:d.left,dateTop:d.top,dateWidth:d.width,dateScroll:e.querySelector("span").scrollWidth}})')
         home = page.locator('#home-sentinel').evaluate('e=>parseFloat(getComputedStyle(e).paddingTop)')
         archive_width = page.locator('.zen-archives-directory').evaluate('e=>e.getBoundingClientRect().width')
         results.append({'width':width,'rows':rows,'homePadding':home,'archiveWidth':archive_width})
@@ -45,5 +46,5 @@ assert all(len(r['rows']) == 4 for r in results), 'Archive fixture must render a
 assert all(r['archiveWidth']==min(r['width']-32,680) for r in results), 'Archive inherits article reading width instead of its own index measure'
 assert all(r['homePadding']==32 for r in results), 'Archive adjustment leaked into homepage'
 assert all(x['top']==12 and x['bottom']==12 for r in results for x in r['rows']), 'Archive rows inherit spacious summary-list padding'
-assert all(x['titleRight']<=x['dateLeft'] and x['dateScroll']<=x['dateWidth']+1 for r in results for x in r['rows']), 'Long archive title/date collision'
+assert all((x['titleBottom']<=x['dateTop'] if r['width']<=480 else x['titleRight']<=x['dateLeft']) and x['dateScroll']<=x['dateWidth']+1 for r in results for x in r['rows']), 'Long archive title/date collision'
 print('PASS: four widths; compact archive rows and unchanged homepage spacing')

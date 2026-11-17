@@ -36,6 +36,11 @@
     text-wrap: pretty;
     overflow-wrap: anywhere;
 }
+.entry-content h1,
+.editor-styles-wrapper h1 {
+    font-size: 32px;
+    margin: 48px 0 24px;
+}
 .entry-content h2,
 .editor-styles-wrapper h2 {
     font-size: 26px;
@@ -49,6 +54,16 @@
 .entry-content h4,
 .editor-styles-wrapper h4 {
     font-size: 19px;
+    margin: 24px 0 12px;
+}
+.entry-content h5,
+.editor-styles-wrapper h5 {
+    font-size: 18px;
+    margin: 24px 0 12px;
+}
+.entry-content h6,
+.editor-styles-wrapper h6 {
+    font-size: 16px;
     margin: 24px 0 12px;
 }
 .entry-content a:not(.wp-element-button):not(.wp-block-button__link),
@@ -158,6 +173,9 @@
     border-collapse: collapse;
     margin: 32px 0;
     font-size: 16px;
+}
+:is(.entry-content, .editor-styles-wrapper) .wp-block-table table {
+    margin: 0;
 }
 .entry-content :where(th, td),
 .editor-styles-wrapper :where(th, td) {

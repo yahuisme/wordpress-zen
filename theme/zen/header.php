@@ -21,8 +21,8 @@
             document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
         })();
     </script>
-
     <?php wp_head(); ?>
+    <noscript><style>#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}</style></noscript>
 </head>
 <body <?php body_class('transition-colors duration-300 min-h-screen flex flex-col'); ?>>
 <?php wp_body_open(); ?>

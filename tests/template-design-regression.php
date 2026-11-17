@@ -1,6 +1,7 @@
 <?php
 /** Execute actual theme templates with explicit WP boundary doubles; no core/DB/browser claim. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
+require __DIR__ . '/html-api-bootstrap.php';
 $GLOBALS['options'] = array();
 $GLOBALS['is_search'] = false;
 $failures = 0;

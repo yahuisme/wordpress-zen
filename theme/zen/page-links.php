@@ -17,6 +17,8 @@ get_header(); ?>
         )); ?>
     </header>
 
+    <?php if (post_password_required()) continue; ?>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-zen mx-auto mb-20">
         <?php
         $bookmarks = get_bookmarks(array(

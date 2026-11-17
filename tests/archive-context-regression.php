@@ -4,6 +4,7 @@ define('ABSPATH',dirname(__DIR__).'/theme/zen/');define('HOUR_IN_SECONDS',3600);
 $cache=[];$language='zh';$locale='zh_CN';$queries=0;$hooks=[];
 function add_action($hook,$callback,...$args){$GLOBALS['hooks'][$hook][]=$callback;}
 function get_header(){}function get_footer(){}function the_title(){echo 'Archives';}
+function post_password_required(){return false;}
 function get_locale(){return $GLOBALS['locale'];}
 function pll_current_language(){return $GLOBALS['language'];}
 function get_transient($key){return $GLOBALS['cache'][$key]??false;}
@@ -11,6 +12,7 @@ function set_transient($key,$value,$ttl){$GLOBALS['cache'][$key]=$value;}
 function delete_transient($key){unset($GLOBALS['cache'][$key]);}
 function get_option($key,$default=false){return $key==='permalink_structure'?'/%postname%/':$default;}
 function get_post_type($id){return 'post';}
+function get_post_status($id){return 'publish';}
 function get_the_title($post){return $GLOBALS['language'].' '.$GLOBALS['locale'].' title';}
 function get_permalink($post){return '/'.$GLOBALS['language'].'/post/'.$post->ID;}
 function get_the_date($format,$post){return $format==='Y'?'2026':'2026年10月19日';}

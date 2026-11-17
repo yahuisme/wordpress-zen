@@ -60,6 +60,23 @@
 .zen-options .form-table td {
     padding: 16px 0;
 }
+.zen-options .form-table tr:has(input[type="checkbox"]) th {
+    padding-block: 12px;
+}
+.zen-options .form-table tr:has(input[type="checkbox"]) td {
+    padding-block: 8px;
+}
+.zen-options .form-table label:has(> input[type="checkbox"]) {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 32px;
+    padding-block: 6px;
+}
+.zen-options .form-table label > input[type="checkbox"] {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
 .zen-options .form-table .description {
     margin-top: 8px;
     max-width: 72ch;
@@ -136,6 +153,12 @@
     }
     .zen-options .form-table td {
         padding: 0 0 16px;
+    }
+    .zen-options .form-table tr:has(input[type="checkbox"]) th {
+        padding: 12px 0 4px;
+    }
+    .zen-options .form-table tr:has(input[type="checkbox"]) td {
+        padding: 0 0 12px;
     }
 }
 @media screen and (max-width: 600px) {

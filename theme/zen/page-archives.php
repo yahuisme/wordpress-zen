@@ -9,6 +9,11 @@ get_header(); ?>
 
 </header>
 
+<?php if (post_password_required()) : ?>
+    <div class="entry-content zen-reading-shell"><?php echo get_the_password_form(); ?></div>
+    <?php get_footer(); return; ?>
+<?php endif; ?>
+
 <div class="zen-archives-directory zen-reading-shell">
     <?php
     $archive_context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');

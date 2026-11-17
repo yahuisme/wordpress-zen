@@ -352,6 +352,7 @@ const zenInit = () => {
             }
             tocTriggers.forEach(trigger => {
                 trigger.hidden = false;
+                trigger.classList.remove('zen-toc-pending');
                 trigger.classList.add('zen-toc-ready');
                 trigger.classList.remove('hidden');
             });
@@ -476,7 +477,10 @@ const zenInit = () => {
         } else {
             // 没有标题，隐藏容器
             if (tocContainer) tocContainer.style.display = 'none';
-            tocTriggers.forEach(trigger => { trigger.style.display = 'none'; });
+            tocTriggers.forEach(trigger => {
+                trigger.classList.remove('zen-toc-pending');
+                trigger.style.display = 'none';
+            });
         }
     }
 

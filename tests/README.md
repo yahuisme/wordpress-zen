@@ -17,6 +17,7 @@ php tests/assets-regression.php
 php tests/custom-code-regression.php
 php tests/seo-regression.php
 php tests/template-design-regression.php
+php tests/toc-startup-regression.php
 php tests/design-assets-regression.php
 php tests/admin-options.php
 php tests/reset-regression.php
@@ -35,7 +36,7 @@ php tests/reading-count-assets-regression.php
 ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
 ```
 
-需要 PHP 8.0+。使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
+需要 PHP 8.0+。模板与目录首屏测试通过 `ZEN_WP_CORE`（维护环境默认为 `/opt/test-tools/wordpress/clean-core`）加载真实 Core HTML tokenizer；不连接数据库。其余使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
 
 ## JavaScript 行为
 
@@ -76,6 +77,9 @@ ZEN_TEST_ISOLATED=1 php tests/native-counter-storage-regression.php /path/to/iso
 ZEN_TEST_ISOLATED=1 php tests/native-counter-cache-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-excerpt-entity-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-comment-form-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-load.php IMAGE_ATTACHMENT_ID 1
+ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-load.php IMAGE_ATTACHMENT_ID 0
 ```
 
 仅用于 `WP_ENVIRONMENT_TYPE=local`、站点地址为 `127.0.0.1` 的一次性安装，启用当前 Zen 主题。`native-regression.php` 会创建并删除自己的样板/文章、临时启用并恢复计数开关，覆盖同步样板、循环引用、可见性与爬虫过滤；必须看到 `NATIVE_COMPLETE` 且退出码为 0。
@@ -118,9 +122,13 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 
 ```sh
 python tests/native-content-regression.py /path/to/fixture
+python tests/native-layout-regression.py /path/to/fixture
+python tests/native-editor-regression.py /path/to/fixture
 ```
 
 复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
+
+新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距；这两项需带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
 
 以上测试文件不进入主题发布 ZIP。
 

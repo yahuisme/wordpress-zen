@@ -1,4 +1,8 @@
-<?php get_header(); ?>
+<?php
+// Buffer only the prefix so Core still processes header/featured media before body media.
+ob_start();
+get_header();
+?>
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
 <div class="zen-reading-shell">
@@ -50,8 +54,28 @@
     </div>
     <?php endif; ?>
 
+    <?php
+    $zen_prefix = ob_get_clean();
+    ob_start();
+    the_content();
+    $zen_content = ob_get_clean();
+    if (zen_get_option('zen_show_toc')) {
+        $zen_tags = new WP_HTML_Tag_Processor($zen_content);
+        while ($zen_tags->next_tag()) {
+            if (in_array($zen_tags->get_tag(), array('H2', 'H3'), true)) {
+                $zen_prefix = str_replace(
+                    array('zen-header-toc zen-ui-link hidden', 'zen-inline-toc-btn zen-ui-link hidden'),
+                    array('zen-header-toc zen-ui-link hidden zen-toc-pending', 'zen-inline-toc-btn zen-ui-link hidden zen-toc-pending'),
+                    $zen_prefix
+                );
+                break;
+            }
+        }
+    }
+    echo $zen_prefix; // Native header, article metadata and featured media, already rendered.
+    ?>
     <article id="post-content" class="focus:outline-none entry-content">
-        <?php the_content(); ?>
+        <?php echo $zen_content; // Already rendered by the native content pipeline. ?>
     </article>
     <?php wp_link_pages(array(
         'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
@@ -120,5 +144,5 @@
     <?php endif; endif; ?>
     <?php if (comments_open() || get_comments_number()) comments_template(); ?>
 </div>
-<?php endwhile; endif; ?>
+<?php endwhile; else : echo ob_get_clean(); endif; ?>
 <?php get_footer(); ?>
