@@ -225,6 +225,89 @@ test('search shortcut preserves focus outside the mobile menu', async t => {
     assert.equal(document.activeElement, outside);
 });
 
+test('the localized disabled shortcut leaves the browser default alone', async t => {
+    const { document, press } = await page(t, searchMarkup, window => {
+        window.zenSettings.search_shortcut = '0';
+    });
+    assert.equal(press('k', { ctrlKey: true }), true);
+    assert.ok(document.getElementById('search-modal').classList.contains('hidden'));
+    document.getElementById('search-toggle').click();
+    assert.equal(document.getElementById('search-toggle').getAttribute('aria-expanded'), 'true');
+});
+
+test('search shortcut does not interrupt the active Core image lightbox', async t => {
+    const { document, press } = await page(t, `${searchMarkup}
+        <div class="wp-lightbox-overlay active" role="dialog" aria-modal="true"><button id="core-close">Close</button></div>`);
+    document.getElementById('core-close').focus();
+    assert.equal(press('k', { ctrlKey: true }), true);
+    assert.ok(document.getElementById('search-modal').classList.contains('hidden'));
+    document.querySelector('.wp-lightbox-overlay').classList.remove('active');
+    document.getElementById('outside').focus();
+    assert.equal(press('k', { ctrlKey: true }), false);
+    assert.equal(document.activeElement.id, 'search-input');
+});
+
+test('search focuses immediately and traps Tab around usable controls only', async t => {
+    const { document, press } = await page(t, searchMarkup.replace('<button>Submit</button>',
+        '<fieldset disabled><button>Unavailable</button></fieldset><button id="submit">Submit</button><div hidden><button>Hidden</button></div>'));
+    const toggle = document.getElementById('search-toggle');
+    toggle.focus(); toggle.click();
+    assert.equal(document.activeElement.id, 'search-input');
+    document.getElementById('submit').focus();
+    assert.equal(press('Tab'), false);
+    assert.equal(document.activeElement.id, 'search-close');
+    assert.equal(press('Tab', { shiftKey: true }), false);
+    assert.equal(document.activeElement.id, 'submit');
+});
+
+test('a focused disclosure closes on Escape, but cannot steal focus from the page', async t => {
+    const { document, press } = await page(t, searchMarkup);
+    const trigger = document.getElementById('mobile-menu-btn');
+    const outside = document.getElementById('outside');
+    trigger.click();
+    assert.equal(press('Escape'), false);
+    assert.equal(document.activeElement, trigger);
+    trigger.click(); outside.focus();
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(press('Escape'), true);
+    assert.equal(document.activeElement, outside);
+});
+
+test('modal isolation is exclusive and restores existing inline and accessibility state', async t => {
+    const { document, press, flush } = await page(t, `<body style="overflow: auto !important">
+        ${searchMarkup}
+        <section id="existing" inert aria-hidden="false"></section><div id="empty" aria-hidden=""></div>
+        <button id="floating-toc-btn">Directory</button>
+        <div id="toc-overlay" class="hidden opacity-0"></div>
+        <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>
+    </body>`);
+    const toggle = document.getElementById('search-toggle');
+    const drawer = document.getElementById('drawer-toc');
+    toggle.focus(); toggle.click(); flush();
+    document.getElementById('floating-toc-btn').click(); flush();
+    assert.equal(document.getElementById('floating-toc-btn').getAttribute('aria-expanded'), null);
+    assert.ok(drawer.hasAttribute('inert'));
+    assert.equal(document.activeElement.id, 'search-input');
+    assert.equal(press('Escape'), false);
+    flush();
+    assert.equal(document.activeElement, toggle);
+    assert.equal(document.body.style.overflow, 'auto');
+    assert.equal(document.body.style.getPropertyPriority('overflow'), 'important');
+    assert.ok(document.getElementById('existing').hasAttribute('inert'));
+    assert.equal(document.getElementById('existing').getAttribute('aria-hidden'), 'false');
+    assert.equal(document.getElementById('empty').getAttribute('aria-hidden'), '');
+});
+
+test('pointer lightbox returns focus to the actual image trigger', async t => {
+    const { document, flush, press } = await page(t, `
+        <article class="entry-content"><a id="prior" href="/about">About</a><img id="image" src="/photo.jpg"></article>
+        <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
+    document.getElementById('prior').focus();
+    document.getElementById('image').click();
+    flush(); press('Escape'); flush();
+    assert.equal(document.activeElement.id, 'image');
+});
+
 for (const modifier of ['ctrlKey', 'metaKey']) {
     test(`search ${modifier} returns focus to a visible control after closing the mobile menu`, async t => {
         const { document, press, flush } = await page(t, searchMarkup);
@@ -282,7 +365,7 @@ test('both local and header directory triggers share state and restore the activ
 });
 
 for (const dismiss of ['Escape', 'close button', 'backdrop']) {
-    test(`drawer ${dismiss} before its focus timer never focuses the closing drawer`, async t => {
+    test(`drawer ${dismiss} before its opening frame does not steal focus after dismissal`, async t => {
         const { document, press, flush } = await page(t, `
             <button id="floating-toc-btn">Directory</button>
             <div id="toc-overlay" class="hidden opacity-0"></div>
@@ -295,13 +378,14 @@ for (const dismiss of ['Escape', 'close button', 'backdrop']) {
         const focusCalls = [];
         close.addEventListener('focus', () => focusCalls.push('close'));
         trigger.focus(); trigger.click();
+        assert.equal(document.activeElement, close, 'focus enters before the opening frame');
         press('k', { ctrlKey: true });
         assert.equal(document.getElementById('search-modal').classList.contains('hidden'), true, 'drawer continues to block another modal');
         if (dismiss === 'Escape') press('Escape');
         else if (dismiss === 'close button') close.click();
         else document.getElementById('toc-overlay').click();
         flush();
-        assert.deepEqual(focusCalls, [], 'cancelled open timer must not steal focus during closing');
+        assert.deepEqual(focusCalls, ['close'], 'no deferred focus occurs during closing');
         assert.equal(document.activeElement, trigger);
         assert.equal(drawer.hasAttribute('inert'), true);
         assert.equal(drawer.classList.contains('translate-x-full'), true, 'cancelled opening frame must not reveal the closed drawer');
@@ -310,12 +394,24 @@ for (const dismiss of ['Escape', 'close button', 'backdrop']) {
         assert.equal(trigger.getAttribute('aria-expanded'), 'false');
         assert.equal(document.body.style.overflow, '');
         trigger.click(); flush();
-        assert.deepEqual(focusCalls, ['close'], 'a later normal open still focuses its close control');
+        assert.deepEqual(focusCalls, ['close', 'close'], 'a later normal open still focuses its close control');
         assert.equal(document.activeElement, close);
         press('Escape'); flush();
         assert.equal(document.activeElement, trigger);
     });
 }
+
+test('drawer dismissal can return focus after its trigger disappears at a wider breakpoint', async t => {
+    const { document, press, flush } = await page(t, `${searchMarkup}
+        <button id="floating-toc-btn">Directory</button>
+        <div id="toc-overlay" class="hidden opacity-0"></div>
+        <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>`);
+    const trigger = document.getElementById('floating-toc-btn');
+    trigger.focus(); trigger.click(); flush();
+    trigger.focus = () => {}; // A CSS-hidden button cannot take focus in a browser.
+    press('Escape'); flush();
+    assert.equal(document.activeElement.id, 'search-toggle');
+});
 
 test('reopening a closing drawer cancels stale close and focus work', async t => {
     const { document, flush, press } = await page(t, `
@@ -446,6 +542,16 @@ test('WordPress and MediaElement audio keep native ownership while plain and blo
     }
 });
 
+test('audio that already failed before startup retains native controls', async t => {
+    const { document } = await page(t, '<audio controls></audio>', window => {
+        Object.defineProperty(window.document.querySelector('audio'), 'error', { value: { code: 4 } });
+    });
+    const audio = document.querySelector('audio');
+    assert.equal(audio.controls, true);
+    assert.equal(audio.style.display, '');
+    assert.equal(document.querySelector('.zen-audio-player'), null);
+});
+
 test('audio initializes from metadata and playback already available before DOMContentLoaded', async t => {
     const { document } = await page(t, '<audio controls></audio>', window => {
         const audio = window.document.querySelector('audio');
@@ -513,6 +619,40 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
         }
     });
 }
+
+test('a scroll burst queues one frame and only changes previous and next TOC entries', async t => {
+    let position = 0;
+    let frames = 0;
+    const { window, document, flush } = await page(t, `
+        <div id="reading-progress"></div><button id="back-to-top">Top</button>
+        <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>
+        <article id="post-content"><h2 id="first">One</h2><h2 id="second">Two</h2><h2 id="third">Three</h2></article>`, window => {
+        const frame = window.requestAnimationFrame;
+        window.requestAnimationFrame = callback => { ++frames; return frame(callback); };
+        Object.defineProperty(window, 'scrollY', { get: () => position });
+        Object.defineProperties(window.document.documentElement, {
+            scrollTop: { get: () => position }, scrollHeight: { value: 1800 }, clientHeight: { value: 600 },
+        });
+        [...window.document.querySelectorAll('h2')].forEach((heading, index) => {
+            heading.getClientRects = () => [{ top: index * 600 - position }];
+        });
+    });
+    flush();
+    frames = 0;
+    const mutations = new window.MutationObserver(() => {});
+    mutations.observe(document.querySelector('#toc-nav'), { subtree: true, attributes: true });
+    position = 600;
+    for (let i = 0; i < 3; i++) window.dispatchEvent(new window.Event('scroll'));
+    assert.equal(frames, 1);
+    flush();
+    assert.equal(document.getElementById('reading-progress').style.width, '50%');
+    assert.equal(document.getElementById('back-to-top').disabled, false);
+    assert.deepEqual([...document.querySelectorAll('.toc-link.active')].map(link => link.dataset.target), ['second', 'second']);
+    assert.deepEqual([...new Set(mutations.takeRecords().map(record => record.target.dataset.target))], ['first', 'second']);
+    position = 700;
+    window.dispatchEvent(new window.Event('scroll')); flush();
+    assert.equal(mutations.takeRecords().length, 0);
+});
 
 const detailsMarkup = `
     <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>

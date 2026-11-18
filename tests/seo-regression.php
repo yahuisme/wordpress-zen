@@ -32,7 +32,7 @@ function seo_context($kind = 'post', $overrides = array()) {
         'content' => 'Article body.', 'term' => '', 'bio' => '', 'archive_title' => '',
         'name' => 'Quiet Site', 'description' => 'A reading journal',
     ), $overrides);
-    $GLOBALS['post'] = (object) array(
+    $GLOBALS['seo_queried_post'] = $GLOBALS['post'] = (object) array(
         'ID' => 17, 'post_author' => 42,
         'post_excerpt' => $GLOBALS['seo_context']['excerpt'],
         'post_content' => $GLOBALS['seo_context']['content'],
@@ -56,7 +56,7 @@ function is_front_page() { return is_home(); }
 function is_404() { return '404' === $GLOBALS['seo_context']['kind']; }
 function get_post($id = null) { return $GLOBALS['post']; }
 function get_queried_object_id() { return is_author() ? 42 : 17; }
-function get_queried_object() { return is_author() ? (object) array('ID' => 42) : get_post(); }
+function get_queried_object() { return is_author() ? (object) array('ID' => 42) : $GLOBALS['seo_queried_post']; }
 function get_the_excerpt($post = null) { return $GLOBALS['seo_context']['excerpt']; }
 function post_password_required($post = null) { return $GLOBALS['seo_context']['protected']; }
 function get_bloginfo($key) { return $GLOBALS['seo_context'][$key] ?? 'UTF-8'; }
@@ -66,11 +66,12 @@ function get_the_archive_title() { return $GLOBALS['seo_context']['archive_title
 function get_search_query($escaped = true) { return 'a "quote"'; }
 function get_the_author_meta($key, $id = null) { return 'description' === $key ? $GLOBALS['seo_context']['bio'] : 'An Author'; }
 function get_author_posts_url($id) { return 'https://example.test/writers/' . $id . '/'; }
-function get_the_title($post = null) { return $GLOBALS['seo_context']['title'] ?? 'A <test> "title"'; }
-function get_the_date($format, $post = null) { return '2026-09-01T12:00:00+00:00'; }
-function get_the_modified_date($format, $post = null) { return '2026-09-02T12:00:00+00:00'; }
-function get_permalink($post = null) { return 'https://example.test/article/'; }
-function has_post_thumbnail($post = null) { return false; }
+function get_the_title($post = null) { return ($post ?? get_post())->ID !== 17 ? 'Unrelated post title' : ($GLOBALS['seo_context']['title'] ?? 'A <test> "title"'); }
+function get_the_date($format, $post = null) { return ($post ?? get_post())->ID === 17 ? '2026-09-01T12:00:00+00:00' : '2026-10-01T12:00:00+00:00'; }
+function get_the_modified_date($format, $post = null) { return ($post ?? get_post())->ID === 17 ? '2026-09-02T12:00:00+00:00' : '2026-10-02T12:00:00+00:00'; }
+function get_permalink($post = null) { return ($post ?? get_post())->ID === 17 ? 'https://example.test/article/' : 'https://example.test/unrelated/'; }
+function has_post_thumbnail($post = null) { return !empty($GLOBALS['seo_context']['thumbnail']); }
+function get_the_post_thumbnail_url($post, $size) { return $GLOBALS['seo_context']['thumbnail_url'] ?? false; }
 function get_site_icon_url($size) { return ''; }
 function strip_shortcodes($text) { return preg_replace('/\[sample(?:[^\]]*)\](?:.*?\[\/sample\])?/s', '', $text); }
 function wp_strip_all_tags($text) {
@@ -140,6 +141,21 @@ seo_context('post', array('excerpt' => " <p>A &amp; B</p>\n [sample]hidden[/samp
 $output = seo_output();
 seo_check('A & B excerpt text' === seo_meta($output), 'hook emits a cleaned singular description');
 seo_check(seo_meta($output) === (seo_schema($output)['description'] ?? null), 'meta and schema share a clean description');
+seo_context('post', array('excerpt' => '<p>First paragraph.</p><p>Second paragraph. Literal &amp;copy;</p>'));
+$output = seo_output();
+seo_check('First paragraph. Second paragraph. Literal &copy;' === seo_meta($output), 'HTML metadata preserves paragraph boundaries and literal entity-like text');
+seo_check(seo_meta($output) === (seo_schema($output)['description'] ?? null), 'literal entity-like text matches HTML metadata and JSON-LD');
+seo_context('post', array('excerpt' => 'Notes &amp;'));
+$output = seo_output();
+seo_check(seo_meta($output) === 'Notes &' && (seo_schema($output)['description'] ?? null) === 'Notes &', 'text truncation does not drop a literal trailing ampersand');
+seo_context('post', array('title' => 'Queried article', 'thumbnail' => true));
+$GLOBALS['post'] = (object) array('ID' => 100);
+$data = seo_schema(seo_output());
+seo_check(($data['headline'] ?? null) === 'Queried article', 'schema follows the queried article even when a plugin changes the global post');
+seo_check(($data['mainEntityOfPage']['@id'] ?? null) === 'https://example.test/article/' && ($data['datePublished'] ?? null) === '2026-09-01T12:00:00+00:00' && ($data['dateModified'] ?? null) === '2026-09-02T12:00:00+00:00', 'queried article supplies its own URL and dates');
+seo_check(!array_key_exists('image', $data ?? array()), 'missing or stale attachment URL does not emit a false schema image');
+seo_context('post', array('thumbnail' => true, 'thumbnail_url' => 'https://example.test/image.jpg'));
+seo_check((seo_schema(seo_output())['image'] ?? null) === 'https://example.test/image.jpg', 'schema includes a valid featured-image URL');
 seo_check(!str_contains($header, 'name="description"'), 'description no longer hardcoded in header');
 seo_context('page', array('excerpt' => ' [sample]hidden[/sample] <b> </b> ', 'content' => "<p>Fallback</p>\n body [sample]hidden[/sample] text"));
 seo_check('Fallback body text' === seo_meta(seo_output()), 'empty cleaned excerpt falls back to cleaned content');

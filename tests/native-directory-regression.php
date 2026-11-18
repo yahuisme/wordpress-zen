@@ -223,7 +223,11 @@ function zen_directory_lifecycle() {
         zen_directory_option($key, $value);
         zen_directory_evicted("$key update evicts both caches");
     }
-    delete_option('zen_site_start_date');
+    $before = zen_directory_warm($page_id);
+    zen_directory_check($before[1]['year'] === '2001', 'configured start date populates uptime cache');
+    zen_directory_check(delete_option('zen_site_start_date'), 'native delete removes explicit start date');
+    zen_directory_evicted('deleting explicit start date invalidates previously rendered uptime');
+    zen_directory_check(zen_get_site_uptime()['year'] !== '2001', 'uptime falls back after deleting start date');
     zen_directory_warm($page_id);
     add_option('zen_site_start_date', '2002-03-04');
     zen_directory_evicted('first explicit start date invalidates fallback caches');

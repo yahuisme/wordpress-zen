@@ -6,6 +6,9 @@ r=Path(sys.argv[1]).resolve();f=json.loads((r/'fixture.json').read_text());o='ht
 tag_url=subprocess.check_output(['php','/opt/test-tools/wordpress/wp-cli.phar','--allow-root','--path='+str(r/'runtime'),'eval','echo get_tag_link('+str(int(f['tag']))+');'],text=True).strip()
 assert tag_url.startswith(o+'/'), 'Tag route must belong to the isolated site'
 routes={'home':'/','article':'/?p='+str(f['normal']),'page':'/?p='+str(f['page']),'category':'/?cat='+str(f['categories'][0]),'tag':tag_url.removeprefix(o),'archives':'/?p='+str(f['archives']),'links':'/?p='+str(f['links']),'search':'/?s=WordPress','empty-search':'/?s=notfound','404':'/?p=2147483647','author':'/?author=1','date':'/?m=202610','empty-category':'/?cat='+str(f['emptycat']),'protected':'/?p='+str(f['protected']),'multipage':'/?p='+str(f['multipage'])}
+if f.get('pagination'):
+ routes['list-page-2']='/?paged=2'
+ routes['search-page-2']='/?s=WordPress&paged=2'
 selected=next((arg.split('=',1)[1].split(',') for arg in sys.argv[2:] if arg.startswith('--routes=')),None)
 if selected:
  assert all(name in routes for name in selected), 'Unknown route selection'
@@ -20,6 +23,20 @@ with sync_playwright() as p:
     page.evaluate('(v)=>{document.documentElement.classList.toggle("dark",v);document.documentElement.style.scrollBehavior="auto"}',dark)
     d=page.evaluate('''()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,items:[...document.querySelectorAll('.zen-post-item--standard')].map(e=>({title:e.querySelector('h2').getBoundingClientRect().width,excerpt:e.querySelector('.zen-post-excerpt').getBoundingClientRect().width})),reading:[...document.querySelectorAll('article.entry-content')].map(e=>({width:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize,line:getComputedStyle(e).lineHeight})),header:{bottom:document.querySelector('.zen-site-header').getBoundingClientRect().bottom}})''')
     assert d['scroll']<=width+1,(name,width,d)
+    if name in ('list-page-2','search-page-2'):
+     nav=page.get_by_role('navigation',name='分页导航')
+     assert nav.locator('[aria-current="page"]').inner_text()=='2', name
+     previous=nav.get_by_role('link',name='上一页')
+     assert previous.get_attribute('href').startswith(o+'/'), name
+     assert '/page/1/' not in previous.get_attribute('href') and 'paged=1' not in previous.get_attribute('href'), name
+     if name=='search-page-2': assert 's=WordPress' in previous.get_attribute('href'), name
+     assert all(a.bounding_box()['height']>=44 for a in nav.get_by_role('link').all()), name
+    if name=='links' and f.get('bookmarks'):
+     cards=page.locator('main .zen-link-card')
+     assert cards.count()==f['bookmarks'], 'Fixture must contain nonempty native bookmarks'
+     assert cards.locator('h2').count()==cards.count(), 'Bookmark name should be a level-two heading'
+     names_and_descriptions=cards.locator('h2, p').evaluate_all('es=>es.map(e=>({width:e.clientWidth,scroll:e.scrollWidth,wrap:getComputedStyle(e).whiteSpace}))')
+     assert all(x['width']>=x['scroll'] and x['wrap']!='nowrap' for x in names_and_descriptions), (name,width,names_and_descriptions)
     if name in ('home','category','tag','search','author','date'):assert d['items'], ('Expected nonempty standard-list fixture',name)
     assert all(abs(x['title']-x['excerpt'])<1 for x in d['items']),(name,width,d)
     assert all(x['font']=='18px' and x['line']=='32px' for x in d['reading']),(name,d)

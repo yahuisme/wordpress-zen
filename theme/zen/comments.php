@@ -25,7 +25,7 @@ if (post_password_required()) return;
 
         <?php if (have_comments()) : ?>
             <ol class="comment-list">
-                <?php wp_list_comments(array('style' => 'ol', 'short_ping' => true, 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
+                <?php wp_list_comments(array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
             </ol>
             <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
             <nav class="comment-pagination flex justify-between gap-4" aria-label="评论分页">
@@ -33,8 +33,6 @@ if (post_password_required()) return;
                 <div class="nav-next"><?php next_comments_link('较新的评论 &rarr;'); ?></div>
             </nav>
             <?php endif; ?>
-        <?php elseif (!comments_open()) : ?>
-            <p class="text-sm text-gray-500 dark:text-gray-400">评论已关闭。</p>
         <?php endif; ?>
 
         <?php if (comments_open()) : ?>
@@ -48,19 +46,20 @@ if (post_password_required()) return;
             $fields = array(
                 'author' => '<p class="comment-form-author">' .
                     '<label for="author">称呼 ' . $field_required . '</label>' .
-                    '<input id="author" name="author" type="text" value="' . esc_attr($commenter['comment_author']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="name" placeholder="怎么称呼你" />' .
+                    '<input id="author" name="author" type="text" value="' . esc_attr($commenter['comment_author']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="name" maxlength="245" placeholder="怎么称呼你" />' .
                     '</p>',
 
                 'email' => '<p class="comment-form-email">' .
                     '<label for="email">邮箱 ' . $field_required . '</label>' .
-                    '<input id="email" name="email" type="email" value="' . esc_attr($commenter['comment_author_email']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="email" placeholder="邮箱不会公开" />' .
+                    '<input id="email" name="email" type="email" value="' . esc_attr($commenter['comment_author_email']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="email" maxlength="100" aria-describedby="zen-comment-email-help" />' .
+                    '<small id="zen-comment-email-help">邮箱不会公开。</small>' .
                     '</p>',
                 // Core adds cookies consent according to Discussion settings.
             );
 
             $args = array(
                 'fields' => $fields,
-                'comment_field' => '<p class="comment-form-comment"><label for="comment">你的想法 ' . $comment_required . '</label><textarea id="comment" name="comment" rows="2" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" placeholder="写点什么..."></textarea></p>',
+                'comment_field' => '<p class="comment-form-comment"><label for="comment">你的想法 ' . $comment_required . '</label><textarea id="comment" name="comment" rows="2" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" maxlength="65525" placeholder="写点什么..."></textarea></p>',
                 'class_container' => 'comment-respond zen-comment-panel p-5 sm:p-7',
                 'class_submit' => 'zen-submit',
                 'label_submit' => '发布评论',
@@ -79,6 +78,8 @@ if (post_password_required()) return;
 
             comment_form($args);
             ?>
+        <?php else : ?>
+            <p class="text-sm text-gray-500 dark:text-gray-400">评论已关闭。</p>
         <?php endif; ?>
 
 

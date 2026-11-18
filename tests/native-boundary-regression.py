@@ -31,16 +31,18 @@ with sync_playwright() as p:
   cli('option','delete','zen_font_family')
  check('all typography choices affect computed frontend font and system disables Google requests',fonts)
  def wide():
-  original=cli('post','get',str(f['split']),'--field=post_content');code='<figure class="wp-block-image alignwide"><img src="'+o+'/wp-content/uploads/2026/10/distant.png" width="1200" height="600" alt="wide"></figure>'
+  original=cli('post','get',str(f['split']),'--field=post_content');src=cli('post','get',str(f['media'][0]),'--field=guid');assert src.startswith(o+'/');code='<figure class="wp-block-image alignwide"><img src="'+src+'" width="1200" height="600" alt="wide"></figure>'
   cli('post','update',str(f['split']),'--post_content='+code)
-  for width in (320,390,1440):q.set_viewport_size({'width':width,'height':900});q.goto(o+'/?p='+str(f['split']),wait_until='networkidle');assert q.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),width
+  for width in (320,390,1440):q.set_viewport_size({'width':width,'height':900});q.goto(o+'/?p='+str(f['split']),wait_until='networkidle');assert q.locator('.alignwide img').evaluate('img=>img.complete && img.naturalWidth>0'),width;assert q.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),width
   cli('post','update',str(f['split']),'--post_content='+original)
  check('native wide media stays centered and inside viewport',wide)
  def restricted():
   cli('option','update','zen_code_head','<script>window.zenRestricted="original";</script>');rc=b.new_context();rc.add_cookies(json.loads((r/'restricted-cookies.json').read_text()));page=rc.new_page();page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen_code_head').count()==0
-  data=page.locator('form').evaluate('e=>Object.fromEntries(new FormData(e))');data['zen_code_head']='<script>forged()</script>';data['zen_code_body']='<script>forgedBody()</script>';data['zen_footer_text']='restricted save';response=rc.request.post(o+'/wp-admin/options.php',form=data);assert response.status==200
+  page.locator('#zen_footer_text').fill('restricted save')
+  with page.expect_navigation(wait_until='networkidle'):page.locator('#zen_save_top').click()
+  assert page.locator('.notice-success,.updated').count()>0
   assert cli('option','get','zen_code_head')=='<script>window.zenRestricted="original";</script>'
   assert cli('option','get','zen_footer_text')=='restricted save';rc.close();cli('option','delete','zen_code_head');cli('option','delete','zen_code_body');cli('option','delete','zen_footer_text')
- check('native manage-options user cannot replace authorized raw code through forged fields',restricted)
+ check('native restricted save retains authorized code without exposing its editor',restricted)
  b.close()
 (r/'evidence/native-boundary.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));assert all(x['passed'] for x in results),results

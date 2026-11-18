@@ -18,9 +18,13 @@
         var original = snapshot();
         function dirty() { return snapshot() !== original; }
         function refresh() {
+            submission = null;
             var changed = dirty();
             form.classList.toggle('zen-is-dirty', changed);
-            if (status) status.textContent = changed ? status.dataset.dirty : status.dataset.clean;
+            if (status) {
+                var message = changed ? status.dataset.dirty : status.dataset.clean;
+                if (status.textContent !== message) status.textContent = message;
+            }
         }
         function syncPreset() {
             if (!width || !preset) return;
@@ -59,7 +63,6 @@
         var updateStatus = document.getElementById('zen-update-status');
         var adminSettings = window.zenAdminSettings || {};
         if (updateStatus && updateStatus.dataset.updatePending === 'true' && adminSettings.ajaxUrl && adminSettings.nonce) {
-            updateStatus.textContent = updateStatus.dataset.loading || updateStatus.textContent;
             window.fetch(adminSettings.ajaxUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -75,8 +78,15 @@
                 updateStatus.textContent = updateStatus.dataset.error || '更新检查失败。';
             });
         }
+        function clearSubmission() { submission = null; }
+        window.addEventListener('pageshow', clearSubmission);
+        document.addEventListener('click', clearSubmission, true);
+        document.addEventListener('keydown', clearSubmission, true);
         window.addEventListener('beforeunload', function (event) {
-            if ((!submission || submission.defaultPrevented) && dirty()) {
+            // A native submit may leave this document open (for example on HTTP 204).
+            var leavingForSubmit = submission && !submission.defaultPrevented;
+            clearSubmission();
+            if (!leavingForSubmit && dirty()) {
                 event.preventDefault();
                 event.returnValue = '';
             }

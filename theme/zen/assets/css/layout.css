@@ -518,6 +518,18 @@ body .font-serif {
     min-width: 0;
     overflow-wrap: anywhere;
 }
+.zen-link-card > :first-child {
+    flex-shrink: 0;
+}
+.zen-link-card :is(h2, p) {
+    overflow-wrap: anywhere;
+}
+.zen-link-card p {
+    color: var(--zen-muted);
+}
+.zen-link-card:hover h2 {
+    color: var(--zen-muted);
+}
 @media (max-width: 480px) {
     .zen-archive-row {
         flex-direction: column;
@@ -551,12 +563,36 @@ body .font-serif {
     min-width: 0;
     margin: 0;
 }
-nav[aria-label="分页导航"] .page-numbers {
+.zen-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+.zen-pagination .page-numbers {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 44px;
     min-height: 44px;
+    padding-inline: 8px;
+    border: 1px solid var(--zen-border);
+    border-radius: 4px;
+    color: var(--zen-muted);
+    font-size: 0.875rem;
+}
+.zen-pagination a:hover {
+    background-color: var(--zen-border-soft);
+    color: var(--zen-text);
+}
+.zen-pagination .current {
+    border-color: transparent;
+    background-color: var(--zen-text);
+    color: var(--zen-bg);
+}
+.zen-pagination .dots {
+    border-color: transparent;
 }
 .zen-page-links .post-page-numbers {
     display: flex;

@@ -33,7 +33,7 @@ function parse_blocks($content) {
     preg_match_all('/<!-- wp:block (\{.*?\}) \/-->/', $content, $matches);
     return array_map(static fn($attrs) => array('blockName' => 'core/block', 'attrs' => json_decode($attrs, true), 'innerBlocks' => array()), $matches[1]);
 }
-function comments_open() { return false; }
+function comments_open() { return $GLOBALS['asset_comments_open'] ?? false; }
 function wp_enqueue_style($handle, ...$args) { $GLOBALS['styles'][$handle] = $args; }
 function wp_enqueue_script(...$args) { $GLOBALS['scripts'][] = $args; }
 function wp_script_is($handle, $status = 'enqueued') {
@@ -91,5 +91,18 @@ foreach (array(
         check($GLOBALS['code_scan_count'] === 0, 'locked article does not scan hidden code or referenced patterns');
         check(($GLOBALS['password_checked_post'] ?? null) === $GLOBALS['post'], 'password guard checks the actual article object');
     }
+}
+foreach (array(
+    'locked comments' => array(true, 1, true, false),
+    'unlocked threaded comments' => array(true, 1, false, true),
+    'threading disabled' => array(true, 0, false, false),
+    'closed comments' => array(false, 1, false, false),
+) as $name => [$comments_open, $thread_comments, $locked, $expected]) {
+    $GLOBALS['asset_comments_open'] = $comments_open;
+    $GLOBALS['asset_options']['thread_comments'] = $thread_comments;
+    $GLOBALS['asset_locked'] = $locked;
+    $GLOBALS['scripts'] = array();
+    zen_scripts();
+    check(wp_script_is('comment-reply') === $expected, "$name: Core owns reply behavior only when available");
 }
 exit($failures ? 1 : 0);

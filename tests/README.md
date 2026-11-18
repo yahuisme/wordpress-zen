@@ -77,6 +77,7 @@ ZEN_TEST_ISOLATED=1 php tests/native-counter-storage-regression.php /path/to/iso
 ZEN_TEST_ISOLATED=1 php tests/native-counter-cache-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-excerpt-entity-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-comment-form-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-admin-save-regression.php /path/to/isolated/wp-load.php refused
 ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-load.php IMAGE_ATTACHMENT_ID 1
 ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-load.php IMAGE_ATTACHMENT_ID 0
@@ -87,6 +88,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-
 `php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
 
 `native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
+
+`native-admin-save-regression.php` 经原生 `options.php` 验证保存结果与通知，可选 `refused`、`invalid`、`unchanged`、`create` 或 `full`。逐页浏览器验收可在 `fixture.json` 设置 `pagination: true`（首页至少四页、搜索 WordPress 至少两页）及 `bookmarks`（友链数量，含长名称和长说明），以覆盖窄屏分页与友链可读性。
 
 `native-counter-concurrency.py` 仅在可销毁 fixture 中运行，覆盖冷初始化、已有计数和同 IP 竞争；验证唯一元数据行、桶写入次数及五分钟 TTL。`native-counter-cache-regression.php` 使用真实 Core API 与显式的两请求缓存边界替身，不等于安装 Redis/Memcached 的集成验收。
 

@@ -47,13 +47,13 @@ test('critical UI is synchronous in the footer before an independent async highl
     assert.ok(Object.keys(scripts).indexOf('zen-main') < Object.keys(scripts).indexOf('highlight-js'));
 });
 
-async function footerPage(t) {
+async function footerPage(t, withCode = true) {
     const dom = new JSDOM(`<!doctype html>
         <button id="mobile-menu-btn" aria-expanded="false">Menu</button>
         <div id="mobile-menu" class="hidden"><a href="/about">About</a></div>
         <button id="search-toggle" aria-expanded="false">Search</button>
         <div id="search-modal" class="hidden"><button id="search-close">Close</button><input id="search-input"></div>
-        <article class="entry-content"><pre class="language-javascript"><code>const answer = 42;</code></pre></article>
+        <article class="entry-content">${withCode ? '<pre class="language-javascript"><code>const answer = 42;</code></pre>' : '<pre>Plain</pre>'}</article>
         <script id="zen-main-js"></script><script id="highlight-js-js" async></script>`,
         { url: 'https://zen.test/', runScripts: 'outside-only', pretendToBeVisual: true });
     const { window } = dom;
@@ -67,8 +67,19 @@ async function footerPage(t) {
     Object.defineProperty(window, 'isSecureContext', { value: true });
     Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: async value => copied.push(value) } });
     window.matchMedia = () => ({ matches: false, addEventListener() {} });
+    const highlightListeners = new Set();
+    const add = document.addEventListener.bind(document);
+    const remove = document.removeEventListener.bind(document);
+    document.addEventListener = (type, callback, options) => {
+        if (options === true && ['load', 'error'].includes(type)) highlightListeners.add(type);
+        return add(type, callback, options);
+    };
+    document.removeEventListener = (type, callback, options) => {
+        if (options === true) highlightListeners.delete(type);
+        return remove(type, callback, options);
+    };
     window.eval(main);
-    return { window, document, copied };
+    return { window, document, copied, highlightListeners };
 }
 
 test('footer UI and copy work before DOMContentLoaded while the highlighter is unavailable', async t => {
@@ -87,13 +98,20 @@ test('footer UI and copy work before DOMContentLoaded while the highlighter is u
 });
 
 test('a failed optional highlighter leaves copy and the menu usable', async t => {
-    const { window, document, copied } = await footerPage(t);
+    const { window, document, copied, highlightListeners } = await footerPage(t);
     document.getElementById('highlight-js-js').dispatchEvent(new window.Event('error'));
+    assert.equal(highlightListeners.size, 0, 'no listener remains after script failure');
     document.querySelector('.zen-code-copy').click(); await Promise.resolve();
     assert.deepEqual(copied, ['const answer = 42;']);
     document.getElementById('mobile-menu-btn').click();
     assert.equal(document.getElementById('mobile-menu-btn').getAttribute('aria-expanded'), 'true');
     assert.equal(document.querySelector('code').childElementCount, 0);
+});
+
+test('plain pre does not register document listeners for highlighting', async t => {
+    const { document, highlightListeners } = await footerPage(t, false);
+    assert.equal(highlightListeners.size, 0);
+    assert.equal(document.querySelector('.zen-code-copy'), null);
 });
 
 test('an asynchronously loaded real highlighter enhances code after basic UI initialization', async t => {

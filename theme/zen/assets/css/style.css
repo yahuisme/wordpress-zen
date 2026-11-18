@@ -713,9 +713,7 @@ h6 {
     border-color: color-mix(in srgb, var(--zen-text) 24%, var(--zen-border));
     box-shadow: 0 12px 34px var(--zen-shadow);
 }
-.zen-link-card:hover h3 {
-    color: var(--zen-muted);
-}
+
 .zen-toc-drawer {
     border-top: 0;
     border-right: 0;

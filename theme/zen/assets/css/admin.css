@@ -85,14 +85,15 @@
     width: 200px;
     max-width: 100%;
 }
-.zen-options select[multiple] {
-    width: 320px;
-    max-width: 100%;
-}
+
 .zen-options .zen-category-choices {
     display: flex;
     flex-wrap: wrap;
     gap: 12px 20px;
+    /* Override the fieldset's min-content floor so long category names can wrap. */
+    box-sizing: border-box;
+    min-inline-size: 0;
+    max-width: 100%;
     padding: 8px 0;
 }
 .zen-options .zen-category-choices label {
@@ -100,6 +101,8 @@
     align-items: center;
     gap: 4px;
     min-height: 28px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 .zen-options input.small-text {
     width: 80px;
@@ -134,9 +137,7 @@
     .admin-bar .zen-options {
         --zen-adminbar-offset: 46px;
     }
-    .zen-options .zen-save-bar {
-        padding: 16px;
-    }
+
     .zen-options .zen-options-group {
         scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
     }

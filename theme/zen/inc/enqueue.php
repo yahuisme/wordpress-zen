@@ -48,11 +48,15 @@ function zen_scripts() {
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),
     ));
     if (is_singular('post') && !is_preview() && zen_get_option('zen_show_reading_count')) {
-        wp_enqueue_script('zen-reading-count', $uri . '/js/reading-count.js', array(), filemtime($dir . '/js/reading-count.js'), array('in_footer' => true, 'strategy' => 'defer'));
-        wp_localize_script('zen-reading-count', 'zenReadingCount', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'enabled' => (int) zen_get_option('zen_show_reading_count'),
-        ));
+        // Match the AJAX eligibility rule even after a password has been entered.
+        $post = get_queried_object();
+        if ($post && 'publish' === $post->post_status && '' === $post->post_password) {
+            wp_enqueue_script('zen-reading-count', $uri . '/js/reading-count.js', array(), filemtime($dir . '/js/reading-count.js'), array('in_footer' => true, 'strategy' => 'defer'));
+            wp_localize_script('zen-reading-count', 'zenReadingCount', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'enabled' => 1,
+            ));
+        }
     }
     wp_enqueue_style('zen-compiled-style', $uri . '/assets/css/style.css', array(), filemtime($dir . '/assets/css/style.css'));
     wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array('zen-compiled-style'), filemtime($dir . '/assets/css/reading.css'));
@@ -61,7 +65,7 @@ function zen_scripts() {
     $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
     $breakpoint = max(1200, $reading + 560);
     wp_add_inline_style('zen-layout-style', '@media(min-width:' . $breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready,#header-toc-btn.zen-toc-ready,#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}}');
-    if (is_singular() && comments_open() && get_option('thread_comments')) {
+    if (is_singular() && comments_open() && get_option('thread_comments') && !post_password_required()) {
         wp_enqueue_script('comment-reply');
     }
 }

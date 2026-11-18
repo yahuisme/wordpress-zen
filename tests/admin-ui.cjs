@@ -110,6 +110,22 @@ test('a canceled submit retains the real dirty unload warning', () => {
     assert.equal(unloading(dom), true);
     dom.window.close();
 });
+test('a submit that leaves the editor open cannot silence later unload warnings', () => {
+    const dom = boot();
+    const { document, Event } = dom.window;
+    edit(dom, 'zen_footer_text', 'unsaved');
+    const save = () => document.querySelector('#zen-options-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    save();
+    assert.equal(unloading(dom), false, 'allow the actual form navigation');
+    assert.equal(unloading(dom), true, 'one submit only exempts one unload');
+    save();
+    edit(dom, 'zen_footer_text', 'edited after submit');
+    assert.equal(unloading(dom), true, 'new edits revoke an unused exemption');
+    save();
+    dom.window.dispatchEvent(new Event('pageshow'));
+    assert.equal(unloading(dom), true, 'returning to the editor revokes an unused exemption');
+    dom.window.close();
+});
 for (const outcome of ['confirmed', 'declined', 'canceled later']) {
     test(`dirty reset ${outcome} preserves the correct unload warning`, () => {
         const dom = boot();

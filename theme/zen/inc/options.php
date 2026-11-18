@@ -148,6 +148,62 @@ function zen_register_options() {
 }
 add_action('admin_init', 'zen_register_options');
 
+/** Keep Core's capability, nonce and save flow; verify the values it attempted to save. */
+function zen_prepare_settings_save() {
+    if ('POST' !== ($_SERVER['REQUEST_METHOD'] ?? '') || 'zen_options' !== ($_POST['option_page'] ?? '') || 'update' !== ($_POST['action'] ?? '')) {
+        return;
+    }
+
+    // Core appends settings-updated to the form's referer, which may be a reset result.
+    add_filter('wp_redirect', static function ($location) {
+        return $location ? remove_query_arg('zen_reset', $location) : $location;
+    });
+
+    $zen_options = zen_get_option_defaults();
+    $submitted = array_keys(array_intersect_key($zen_options, $_POST));
+    $omitted = array_keys(array_diff_key($zen_options, $_POST));
+    // Core normally sends null to sanitizers for missing controls. Zen's clearable
+    // controls submit explicit empty values, while restricted fields may be absent.
+    add_filter('allowed_options', static function ($allowed) use ($omitted) {
+        if (isset($allowed['zen_options'])) {
+            $allowed['zen_options'] = array_values(array_diff($allowed['zen_options'], $omitted));
+        }
+        return $allowed;
+    });
+
+    $expected = array();
+    foreach ($submitted as $key) {
+        add_filter('sanitize_option_' . $key, static function ($value) use ($key, &$expected) {
+            $expected[$key] = $value;
+            return $value;
+        }, PHP_INT_MAX);
+    }
+    // Core ignores update_option()'s result (false also means unchanged).
+    // Check the sanitized values just before Core persists the redirect notices.
+    add_filter('pre_set_transient_settings_errors', static function ($notices) use (&$expected) {
+        $failed = array();
+        foreach ($expected as $key => $value) {
+            $stored = get_option($key, null);
+            if ($stored !== $value && !(is_scalar($stored) && is_scalar($value) && (string) $stored === (string) $value)) {
+                $failed[] = array(
+                    'setting' => $key,
+                    'code' => $key . '_not_saved',
+                    'message' => sprintf(__('设置 %s 未能保存，请重试。', 'zen'), $key),
+                    'type' => 'error',
+                );
+            }
+        }
+        if (!$failed) return $notices;
+        foreach ($notices as $index => $notice) {
+            if ('settings_updated' === $notice['code'] && in_array($notice['type'], array('success', 'updated'), true)) {
+                unset($notices[$index]);
+            }
+        }
+        return array_merge($notices, $failed);
+    });
+}
+add_action('load-options.php', 'zen_prepare_settings_save');
+
 /**
  * Restore only Zen-owned settings through the native admin-post boundary.
  */
@@ -155,7 +211,7 @@ function zen_reset_options() {
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('你没有执行此操作的权限。', 'zen'), '', array('response' => 403));
     }
-    check_admin_referer('zen_reset_options');
+    check_admin_referer('zen_reset_options', 'zen_reset_nonce');
 
     $can_reset_code = current_user_can('unfiltered_html');
     $failed = false;
@@ -431,17 +487,19 @@ function zen_options_page_html() {
         return;
     }
     $reading_width = zen_get_option('zen_reading_width');
+    // The Settings API redirect preserves the previous request's query string.
+    $reset = isset($_GET['settings-updated']) ? '' : ($_GET['zen_reset'] ?? '');
     ?>
     <div class="wrap zen-options">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <?php settings_errors(); ?>
         <form method="post" action="options.php" id="zen-options-form">
             <?php settings_fields('zen_options'); ?>
-            <?php if (isset($_GET['zen_reset']) && '1' === $_GET['zen_reset']) : ?>
+            <?php if ('1' === $reset) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Zen 设置已恢复默认值。', 'zen'); ?></p></div>
-            <?php elseif (isset($_GET['zen_reset']) && 'partial' === $_GET['zen_reset']) : ?>
+            <?php elseif ('partial' === $reset) : ?>
                 <div class="notice notice-warning is-dismissible"><p><?php esc_html_e('可管理的 Zen 设置已恢复默认值；受权限限制，自定义代码已保留。', 'zen'); ?></p></div>
-            <?php elseif (isset($_GET['zen_reset']) && 'error' === $_GET['zen_reset']) : ?>
+            <?php elseif ('error' === $reset) : ?>
                 <div class="notice notice-error is-dismissible"><p><?php esc_html_e('部分设置未能恢复默认值，请重试并检查数据库写入权限。', 'zen'); ?><?php if (!current_user_can('unfiltered_html')) : ?> <?php esc_html_e('受权限限制，自定义代码已保留。', 'zen'); ?><?php endif; ?></p></div>
             <?php endif; ?>
             <div class="zen-save-bar">
@@ -548,7 +606,7 @@ function zen_options_page_html() {
                         <td><textarea name="zen_footer_text" id="zen_footer_text" rows="4" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
                         <p class="description"><?php esc_html_e('支持安全 HTML 标签；留空不显示。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
-                        <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" style="width: 160px;" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
+                        <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
                         <p class="description"><?php esc_html_e('页脚运行时间的起点（YYYY-MM-DD）。留空按首篇公开文章计算。', 'zen'); ?></p></td></tr>
                     <?php zen_checkbox_field('zen_show_footer_theme_by', __('主题署名', 'zen'), __('显示 Theme By RyanZ', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_footer_wordpress', __('WordPress 署名', 'zen'), __('显示 Powered By WordPress', 'zen')); ?>
@@ -576,7 +634,7 @@ function zen_options_page_html() {
         </form>
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="zen-reset-form" class="zen-reset-form">
             <input type="hidden" name="action" value="zen_reset_options">
-            <?php wp_nonce_field('zen_reset_options'); ?>
+            <?php wp_nonce_field('zen_reset_options', 'zen_reset_nonce', false); ?>
         </form>
         <section class="zen-options-group zen-options-about" id="zen-about" aria-labelledby="zen-about-title">
             <h2 id="zen-about-title"><?php esc_html_e('关于更新', 'zen'); ?></h2>
@@ -584,11 +642,8 @@ function zen_options_page_html() {
             $version = wp_get_theme(get_template())->get('Version');
             $update = zen_get_update_info();
             ?>
-            <p id="zen-update-status"
+            <p id="zen-update-status" role="status"
                data-update-pending="<?php echo false === $update ? 'true' : 'false'; ?>"
-               data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>"
-               data-nonce="<?php echo esc_attr(wp_create_nonce('zen_update_info')); ?>"
-               data-loading="<?php echo esc_attr(__('正在检查更新…', 'zen')); ?>"
                data-error="<?php echo esc_attr(__('更新检查失败。', 'zen')); ?>">
                 <?php echo esc_html(false === $update ? sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version) : zen_update_info_message($update, $version)); ?>
             </p>

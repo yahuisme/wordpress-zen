@@ -11,8 +11,8 @@ function esc_html__($text, $domain = null) { return htmlspecialchars($text, ENT_
 function esc_html_e($text, $domain = null) { echo esc_html__($text, $domain); }
 function esc_html($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); }
 function wp_die($message, $title = '', $args = array()) { throw new Zen_Reset_Denied((string) $args['response']); }
-function check_admin_referer($action) {
-    if ($action !== 'zen_reset_options' || !$GLOBALS['nonce_valid']) throw new Zen_Reset_Denied('nonce');
+function check_admin_referer($action, $name = '_wpnonce') {
+    if ($action !== 'zen_reset_options' || $name !== 'zen_reset_nonce' || !$GLOBALS['nonce_valid']) throw new Zen_Reset_Denied('nonce');
 }
 function get_option($key, $default = false) { return array_key_exists($key, $GLOBALS['options']) ? $GLOBALS['options'][$key] : $default; }
 function delete_option($key) {
@@ -104,6 +104,10 @@ foreach (array_keys(zen_get_option_defaults()) as $key) {
 zen_reset_check(get_option('unrelated_option') === 'untouched', 'authorized reset leaves unrelated options alone');
 $html = zen_reset_notice($status);
 zen_reset_check(str_contains($html, 'notice-success') && str_contains($html, 'Zen 设置已恢复默认值。'), 'complete reset shows success notice');
+$_GET['settings-updated'] = 'true';
+$html = zen_reset_notice($status);
+zen_reset_check(!str_contains($html, 'Zen 设置已恢复默认值。'), 'a settings save must not replay the previous reset result');
+unset($_GET['settings-updated']);
 foreach (array(true, false) as $unfiltered) {
     zen_reset_fixture($unfiltered);
     $GLOBALS['refused'] = array('zen_reading_width');

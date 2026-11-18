@@ -19,8 +19,8 @@ function checked($a, $b) { if ((string) $a === (string) $b) echo ' checked="chec
 function sanitize_text_field($text) { return strip_tags($text); }
 function absint($value) { return abs((int) $value); }
 function settings_errors() {}
-function settings_fields($group) { echo '<input type="hidden" name="option_page" value="' . $group . '"><input type="hidden" name="_wpnonce" value="fixture">'; }
-function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="fixture-reset">'; }
+function settings_fields($group) { echo '<input type="hidden" name="option_page" value="' . $group . '">'; wp_nonce_field($group . '-options'); }
+function wp_nonce_field($action, $name = '_wpnonce', $referer = true) { echo '<input type="hidden" id="' . $name . '" name="' . $name . '" value="fixture">'; }
 function submit_button($label, $type = 'primary', $name = 'submit', $wrap = true) { echo '<button type="submit" name="' . esc_attr($name) . '" id="' . esc_attr($name) . '" class="button button-primary">' . esc_html($label) . '</button>'; }
 function get_admin_page_title() { return 'Zen 主题设置'; }
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
@@ -87,7 +87,7 @@ test('registered new options sanitize values and reject invalid numbers without 
 test('single settings form groups all old and new fields', function () {
     $html = render();
     preg_match_all('/\bid="([^"]+)"/', $html, $ids);
-    expect(count($ids[1]) === count(array_unique($ids[1])), 'native submit buttons must not duplicate element IDs');
+    expect(count($ids[1]) === count(array_unique($ids[1])), 'Settings API and reset forms must not duplicate element IDs');
     expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');
     foreach (array('reading', 'list', 'post', 'footer', 'code', 'about') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
@@ -117,7 +117,7 @@ test('no post yields no invented article link and failed updates never claim suc
     $GLOBALS['update_info'] = array('latest_version' => '', 'url' => 'https://example.test/releases', 'error' => '连接失败');
     $html = render();
     expect(!str_contains($html, 'https://example.test/post-'), 'nonexistent article link invented');
-    expect(str_contains($html, '正在检查更新') && !str_contains($html, '已是最新'), 'update status must remain pending before AJAX response');
+    expect(str_contains($html, '连接失败') && !str_contains($html, '已是最新'), 'cached error displays without claiming success');
     $GLOBALS['update_info']['error'] = '';
     expect(!str_contains(render(), '已是最新'), 'unknown version disguised as success');
     unset($GLOBALS['public_posts'], $GLOBALS['update_info']);

@@ -26,6 +26,7 @@ content += '<h2 id="custom-size" style="font-size:40px;color:#aa3344">Explicit s
 content += '<figure class="wp-block-table"><table><tbody><tr><td>Table</td><td>Data</td></tr></tbody></table></figure><table id="standalone"><tbody><tr><td>Standalone</td></tr></tbody></table>'
 for align in ('alignwide', 'alignfull'):
     content += f'<figure id="{align}" class="wp-block-embed is-type-video wp-embed-aspect-16-9 wp-has-aspect-ratio {align}"><div class="wp-block-embed__wrapper"><iframe src="/embed.html" title="Local embed" width="560" height="315"></iframe></div></figure>'
+content += ''.join(f'<h2 id="section-{i}">Additional section {i}</h2>' for i in range(30))
 try:
     post = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Native layout checks', '--comment_status=open', '--post_content=' + content, '--porcelain'); posts.append(post)
     plain = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Plain startup', '--post_content=<p>No headings.</p>', '--porcelain'); posts.append(plain)
@@ -59,8 +60,7 @@ try:
                 check(label + ' table spacing owned by figure', data['table']['mt'] == data['table']['mb'] == 0 and data['standalone']['mt'] > 0, data['table'])
                 check(label + ' consent checkbox shares first line', abs(data['checkbox']['y'] - data['label']['y']) <= 6 and data['label']['x'] > data['checkbox']['x'], {'checkbox': data['checkbox'], 'label': data['label']})
                 check(label + ' comment inputs at least 16px', all(item['font'] >= 16 for item in data['inputs']))
-                expected_wide = min(width - 32, 900)
-                check(label + ' wide and full native embeds', abs(data['wide']['w'] - expected_wide) <= 1 and abs(data['full']['w'] - width) <= 1 and abs(data['full']['x']) <= 1, data)
+                check(label + ' wide and full native embeds', data['reading']['w'] <= data['wide']['w'] < width and abs(data['wide']['x'] * 2 + data['wide']['w'] - width) <= 1 and abs(data['full']['w'] - width) <= 1 and abs(data['full']['x']) <= 1, data)
                 check(label + ' document does not overflow', data['overflow'] <= 1, data['overflow'])
         page.goto(origin, wait_until='networkidle')
         targets = page.locator('nav[aria-label="分页导航"] .page-numbers').evaluate_all('es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height}))')
@@ -87,6 +87,19 @@ try:
                 if name == 'headings':
                     trigger = page.locator('#header-toc-btn' if width < 1280 else '#toc-container')
                     check(f'{width}/headings released directory is usable', trigger.is_visible() and page.locator('#toc-nav .toc-link').count() > 0)
+                    if width == 390:
+                        trigger.click()
+                        close = page.locator('#drawer-toc-close')
+                        check('drawer starts on the close button', close.evaluate('e=>e===document.activeElement'))
+                        page.keyboard.press('Shift+Tab')
+                        last = page.locator('#drawer-toc-nav .toc-link').last
+                        check('reverse Tab reveals the last drawer link', last.evaluate('''e=>{
+                            const scroll = e.closest('#drawer-toc-nav').parentElement;
+                            const link = e.getBoundingClientRect(), panel = scroll.getBoundingClientRect();
+                            return e === document.activeElement && panel.height > 0 && link.top >= panel.top && link.bottom <= Math.min(panel.bottom, innerHeight);
+                        }'''))
+                        page.keyboard.press('Tab')
+                        check('forward Tab wraps to drawer close', close.evaluate('e=>e===document.activeElement'))
                 if name == 'plain':
                     check(f'{width}/plain no unused directory slot', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0)
                 context.close()

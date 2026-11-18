@@ -13,7 +13,7 @@ const zenInit = () => {
     };
     const themeDefaultMode = (window.zenSettings && window.zenSettings.theme_mode_default && themeModes.includes(window.zenSettings.theme_mode_default)) ? window.zenSettings.theme_mode_default : 'auto';
     let themeMode = themeDefaultMode;
-    const zenSearchShortcut = !!(window.zenSettings && window.zenSettings.search_shortcut);
+    const zenSearchShortcut = Number(window.zenSettings?.search_shortcut) === 1;
     const reduceMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     const reduceMotion = reduceMotionQuery ? reduceMotionQuery.matches : false;
 
@@ -113,34 +113,83 @@ const zenInit = () => {
         });
     }
 
-    const trapFocus = (container) => {
-        container.addEventListener('keydown', (event) => {
-            if (event.key !== 'Tab') return;
-
-            const focusable = Array.from(container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-
-            if (!first || !last) {
-                event.preventDefault();
-            } else if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-            } else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
+    // One Zen modal owns focus and the background until its close finishes.
+    const searchToggle = document.getElementById('search-toggle');
+    let activeModal;
+    const coreLightboxOpen = () => document.querySelector('.wp-lightbox-overlay.active') !== null;
+    const restoreModalFocus = (trigger) => {
+        trigger?.focus({ preventScroll: true });
+        if (document.activeElement !== trigger) searchToggle?.focus({ preventScroll: true });
+    };
+    const focusModal = (container, control) => {
+        control?.focus({ preventScroll: true });
+        if (!container.contains(document.activeElement)) {
+            if (!container.hasAttribute('tabindex')) container.tabIndex = -1;
+            container.focus({ preventScroll: true });
+        }
+    };
+    const lockModal = (container, dismiss, control, backdrop) => {
+        activeModal = { container, dismiss };
+        focusModal(container, control);
+        const background = [];
+        const isolate = (parent) => {
+            for (const child of parent.children) {
+                if (child === container || child === backdrop) continue;
+                if (child.contains(container) || (backdrop && child.contains(backdrop))) {
+                    isolate(child);
+                    continue;
+                }
+                background.push([child, child.hasAttribute('inert'), child.getAttribute('aria-hidden')]);
+                child.setAttribute('inert', '');
+                child.setAttribute('aria-hidden', 'true');
             }
-        });
+        };
+        isolate(document.body);
+        const style = document.body.style;
+        const overflow = style.overflow;
+        const priority = style.getPropertyPriority('overflow');
+        style.setProperty('overflow', 'hidden');
+        activeModal.restore = () => {
+            style.setProperty('overflow', overflow, priority);
+            for (const [node, wasInert, ariaHidden] of background) {
+                if (!wasInert) node.removeAttribute('inert');
+                if (ariaHidden === null) node.removeAttribute('aria-hidden');
+                else node.setAttribute('aria-hidden', ariaHidden);
+            }
+        };
+    };
+    const unlockModal = () => {
+        activeModal.restore();
+        activeModal = null;
+    };
+    const trapModalTab = (event, container) => {
+        const controls = Array.from(container.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).filter(element =>
+            element.tabIndex >= 0 && !element.matches(':disabled, input[type="hidden"]') &&
+            !element.closest('[hidden], [inert], [aria-hidden="true"]') &&
+            (!element.checkVisibility || element.checkVisibility({ visibilityProperty: true }))
+        );
+        const activeIndex = controls.indexOf(document.activeElement);
+        if (activeIndex < 0 || (event.shiftKey ? activeIndex === 0 : activeIndex === controls.length - 1)) {
+            event.preventDefault();
+            controls[event.shiftKey ? controls.length - 1 : 0]?.focus();
+        }
     };
 
-    // One document listener; component-level Tab/arrow handlers stay local.
-    const escapeHandlers = [];
+    let dismissMobileMenu;
     let searchShortcutHandler;
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            escapeHandlers.forEach((handler) => handler());
-        } else if (searchShortcutHandler) {
-            searchShortcutHandler(event);
+        if (event.defaultPrevented || event.isComposing) return;
+        if (event.key === 'Tab' && activeModal) {
+            trapModalTab(event, activeModal.container);
+        } else if (event.key === 'Escape') {
+            if (activeModal) {
+                event.preventDefault();
+                activeModal.dismiss();
+            } else if (dismissMobileMenu?.()) {
+                event.preventDefault();
+            }
+        } else {
+            searchShortcutHandler?.(event);
         }
     });
 
@@ -171,16 +220,16 @@ const zenInit = () => {
         });
     };
 
-    const wpCodeBlocks = document.querySelectorAll('.entry-content pre, pre.wp-block-code');
-    wpCodeBlocks.forEach(block => {
+    const codeBlocks = [];
+    document.querySelectorAll('.entry-content pre, pre.wp-block-code').forEach(block => {
         const code = block.querySelector('code');
-        if (code) {
-            block.classList.forEach(className => {
-                if (className.startsWith('language-')) code.classList.add(className);
-            });
-        }
+        if (!code) return;
+        codeBlocks.push({ block, code });
+        block.classList.forEach(className => {
+            if (className.startsWith('language-')) code.classList.add(className);
+        });
 
-        if (code && !block.querySelector('.zen-code-copy')) {
+        if (!block.querySelector('.zen-code-copy')) {
             block.classList.add('zen-code-block');
             const copyBtn = document.createElement('button');
             copyBtn.type = 'button';
@@ -227,9 +276,7 @@ const zenInit = () => {
     if (lightbox && lightboxImg) {
         const closeBtn = document.getElementById('lightbox-close');
         const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
-        let lastFocusedElement;
-        let lightboxFocusTimer;
-        trapFocus(lightbox);
+        let lightboxTrigger;
 
         images.forEach(img => {
             if (img.closest('a, .wp-lightbox-container')) return;
@@ -240,9 +287,9 @@ const zenInit = () => {
             img.setAttribute('aria-label', imageDescription ? `${imageDescription}，点击查看大图` : '点击查看大图');
 
             const openLightbox = (e) => {
-                if (img.parentElement.tagName === 'A') return;
+                if (e.defaultPrevented || activeModal || img.closest('a, .wp-lightbox-container') || coreLightboxOpen()) return;
                 e.preventDefault();
-                lastFocusedElement = document.activeElement;
+                lightboxTrigger = img;
 
                 lightboxImg.src = img.currentSrc || img.src;
                 lightboxImg.alt = img.alt || '放大图片';
@@ -254,11 +301,7 @@ const zenInit = () => {
                     lightboxImg.removeAttribute('sizes');
                 }
                 lightbox.classList.remove('hidden');
-                setBackgroundModalState();
-                clearTimeout(lightboxFocusTimer);
-                lightboxFocusTimer = setTimeout(() => {
-                    if (!lightbox.classList.contains('hidden') && closeBtn) closeBtn.focus();
-                }, 100);
+                lockModal(lightbox, closeLightbox, closeBtn);
             };
 
             img.addEventListener('click', openLightbox);
@@ -270,19 +313,16 @@ const zenInit = () => {
         });
 
         const closeLightbox = () => {
-            if (!lightbox.classList.contains('hidden')) {
-                lightbox.classList.add('hidden');
-                clearTimeout(lightboxFocusTimer);
-                setBackgroundModalState();
-                if (lastFocusedElement) lastFocusedElement.focus();
-            }
+            if (activeModal?.container !== lightbox) return;
+            lightbox.classList.add('hidden');
+            unlockModal();
+            restoreModalFocus(lightboxTrigger);
         };
 
         if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
         lightbox.addEventListener('click', (e) => {
             if (e.target === lightbox) closeLightbox();
         });
-        escapeHandlers.push(closeLightbox);
     }
 
     // --- 3. TOC 目录 (Universal Logic) ---
@@ -306,38 +346,41 @@ const zenInit = () => {
     const progressBar = document.getElementById('reading-progress');
     const backToTopBtn = document.getElementById('back-to-top');
     let scrollTicking = false;
+    let updateToc;
+    let backToTopVisible;
 
     const updateScrollUI = () => {
         if (progressBar) {
             const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-            progressBar.style.width = scrollPercent + '%';
+            const width = Math.min(100, Math.max(0, scrollPercent)) + '%';
+            if (progressBar.style.width !== width) progressBar.style.width = width;
         }
 
         if (backToTopBtn) {
-            backToTopBtn.disabled = window.scrollY <= 300;
-            if (window.scrollY > 300) {
-                backToTopBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-            } else {
-                backToTopBtn.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            const visible = window.scrollY > 300;
+            if (visible !== backToTopVisible) {
+                backToTopVisible = visible;
+                backToTopBtn.disabled = !visible;
+                for (const name of ['opacity-0', 'pointer-events-none', 'translate-y-4']) {
+                    backToTopBtn.classList.toggle(name, !visible);
+                }
             }
         }
-
-        scrollTicking = false;
     };
 
     const requestScrollUIUpdate = () => {
         if (!scrollTicking) {
             scrollTicking = true;
-            requestAnimationFrame(updateScrollUI);
+            requestAnimationFrame(() => {
+                scrollTicking = false;
+                updateToc?.();
+                updateScrollUI();
+            });
         }
     };
 
-    if (progressBar || backToTopBtn) {
-        window.addEventListener('scroll', requestScrollUIUpdate, { passive: true });
-        updateScrollUI();
-    }
 
     // TOC Generation & Spy
     if (article && (tocNav || drawerTocNav)) {
@@ -375,29 +418,32 @@ const zenInit = () => {
                 usedIds.add(headingId);
                 return {
                     id: headingId,
+                    target: header,
                     level: header.tagName.toLowerCase(),
                     text: header.textContent.trim() || `章节 ${index + 1}`,
                 };
             });
 
-            if (document.getElementById('comments') && !tocItems.some(item => item.id === 'comments')) {
-                tocItems.push({ id: 'comments', level: 'comments', text: '评论区' });
+            const comments = document.getElementById('comments');
+            if (comments && !tocItems.some(item => item.id === 'comments')) {
+                tocItems.push({ id: 'comments', target: comments, level: 'comments', text: '评论区' });
             }
 
-            const createTocLink = (item) => {
+            const createTocLink = (item, nav) => {
                 const link = document.createElement('a');
                 const paddingClass = item.level === 'h3' ? 'pl-6 text-xs' : 'pl-3 text-sm';
                 link.href = '#' + item.id;
                 link.className = `toc-link ${paddingClass}`;
                 link.dataset.target = item.id;
                 link.textContent = item.text;
+                if (nav === tocNav) item.desktopLink = link;
+                else item.drawerLink = link;
                 link.addEventListener('click', () => {
-                    const target = document.getElementById(item.id);
-                    for (let ancestor = target && target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                    for (let ancestor = item.target.parentElement; ancestor; ancestor = ancestor.parentElement) {
                         if (ancestor.tagName === 'DETAILS') ancestor.open = true;
                     }
-                    if (!link.closest('#drawer-toc')) focusTocTarget(target);
-                    requestTocUpdate();
+                    if (!link.closest('#drawer-toc')) focusTocTarget(item.target);
+                    requestScrollUIUpdate();
                 });
                 return link;
             };
@@ -410,10 +456,10 @@ const zenInit = () => {
                     if (item.level === 'comments') {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-800';
-                        wrapper.appendChild(createTocLink(item));
+                        wrapper.appendChild(createTocLink(item, nav));
                         fragment.appendChild(wrapper);
                     } else {
-                        fragment.appendChild(createTocLink(item));
+                        fragment.appendChild(createTocLink(item, nav));
                     }
                 });
 
@@ -424,55 +470,42 @@ const zenInit = () => {
             fillTocNav(drawerTocNav);
 
             // Select by reading position in both scroll directions, including long sections.
-            const tocTargets = tocItems.map(item => document.getElementById(item.id)).filter(Boolean);
-            const tocLinks = Array.from(document.querySelectorAll('.toc-link'));
-            let activeTocId;
-            let tocTicking = false;
-            const updateToc = () => {
-                tocTicking = false;
-                const siteHeader = document.querySelector('.zen-site-header');
-                const anchorOffset = parseFloat(getComputedStyle(tocTargets[0]).scrollMarginTop) || 0;
-                const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-                const readingTop = Math.max((siteHeader ? siteHeader.getBoundingClientRect().bottom : 80) + 24, anchorOffset + scrollPadding) + 1;
-                let active;
-                for (const target of tocTargets) {
-                    if (!target.getClientRects().length) continue;
-                    if (!active || target.getBoundingClientRect().top <= readingTop) active = target;
-                    else break;
-                }
-                const nextActiveId = active ? active.id : null;
-                if (nextActiveId === activeTocId) return;
-                activeTocId = nextActiveId;
-                tocLinks.forEach(link => {
-                    const current = link.dataset.target === activeTocId;
+            const siteHeader = document.querySelector('.zen-site-header');
+            let activeItem;
+            const setTocCurrent = (item, current) => {
+                for (const link of [item?.desktopLink, item?.drawerLink]) {
+                    if (!link) continue;
                     link.classList.toggle('active', current);
                     if (current) link.setAttribute('aria-current', 'location');
                     else link.removeAttribute('aria-current');
-                });
-                if (tocContainer && tocContainer.getClientRects().length) {
-                    const link = tocLinks.find(item => item.dataset.target === activeTocId && tocNav && tocNav.contains(item));
-                    if (link) {
-                        const bounds = tocContainer.getBoundingClientRect();
-                        const rect = link.getBoundingClientRect();
-                        if (rect.top < bounds.top || rect.bottom > bounds.bottom) {
-                            tocContainer.scrollTop += rect.top - bounds.top - bounds.height / 2;
-                        }
+                }
+            };
+            updateToc = () => {
+                const anchorOffset = parseFloat(getComputedStyle(tocItems[0].target).scrollMarginTop) || 0;
+                const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+                const readingTop = Math.max((siteHeader ? siteHeader.getBoundingClientRect().bottom : 80) + 24, anchorOffset + scrollPadding) + 1;
+                let active;
+                for (const item of tocItems) {
+                    const rect = item.target.getClientRects()[0];
+                    if (!rect) continue;
+                    if (!active || rect.top <= readingTop) active = item;
+                    else break;
+                }
+                if (active === activeItem) return;
+                setTocCurrent(activeItem, false);
+                activeItem = active;
+                setTocCurrent(activeItem, true);
+                if (active?.desktopLink && tocContainer?.getClientRects().length) {
+                    const bounds = tocContainer.getBoundingClientRect();
+                    const rect = active.desktopLink.getBoundingClientRect();
+                    if (rect.top < bounds.top || rect.bottom > bounds.bottom) {
+                        tocContainer.scrollTop += rect.top - bounds.top - bounds.height / 2;
                     }
                 }
             };
-            const requestTocUpdate = () => {
-                if (!tocTicking) {
-                    tocTicking = true;
-                    requestAnimationFrame(updateToc);
-                }
-            };
-            window.addEventListener('scroll', requestTocUpdate, { passive: true });
-            window.addEventListener('resize', requestTocUpdate);
-            window.addEventListener('load', requestTocUpdate);
             article.addEventListener('toggle', (event) => {
-                if (event.target.tagName === 'DETAILS') requestTocUpdate();
+                if (event.target.tagName === 'DETAILS') requestScrollUIUpdate();
             }, true);
-            requestTocUpdate();
 
         } else {
             // 没有标题，隐藏容器
@@ -484,25 +517,31 @@ const zenInit = () => {
         }
     }
 
+    if (progressBar || backToTopBtn || updateToc) {
+        window.addEventListener('scroll', requestScrollUIUpdate, { passive: true });
+        window.addEventListener('resize', requestScrollUIUpdate);
+        window.addEventListener('load', requestScrollUIUpdate, { once: true });
+        updateScrollUI();
+        if (updateToc) requestScrollUIUpdate();
+    }
+
     // --- 4. Drawer TOC Interaction (A11y: Focus Trap) ---
     const drawerToc = document.getElementById('drawer-toc');
     const tocOverlay = document.getElementById('toc-overlay');
     const drawerClose = document.getElementById('drawer-toc-close');
     let lastFocusBeforeDrawer;
     let drawerCloseTimer;
-    let drawerFocusTimer;
     let drawerOpening = 0;
 
     if (tocTriggers.length && drawerToc && tocOverlay) {
-        trapFocus(drawerToc);
-
-        const openDrawer = () => {
-            if (!drawerToc.hasAttribute('inert') && !drawerCloseTimer) return;
+        const openDrawer = (event) => {
+            if ((activeModal && (activeModal.container !== drawerToc || !drawerCloseTimer)) || coreLightboxOpen()) return;
+            const reopening = Boolean(drawerCloseTimer);
             if (drawerCloseTimer) {
                 clearTimeout(drawerCloseTimer);
                 drawerCloseTimer = null;
             } else {
-                lastFocusBeforeDrawer = document.activeElement;
+                lastFocusBeforeDrawer = event.currentTarget;
             }
             tocOverlay.classList.remove('hidden');
             const opening = ++drawerOpening;
@@ -514,19 +553,13 @@ const zenInit = () => {
             // A11y
             tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'true'));
             drawerToc.removeAttribute('inert');
-            setBackgroundModalState();
-
-            // Focus trap: move focus to close button
-            clearTimeout(drawerFocusTimer);
-            drawerFocusTimer = setTimeout(() => {
-                if (!drawerToc.hasAttribute('inert') && !drawerCloseTimer && drawerClose) drawerClose.focus();
-            }, 300);
+            if (reopening) focusModal(drawerToc, drawerClose);
+            else lockModal(drawerToc, closeDrawer, drawerClose, tocOverlay);
         };
 
         const closeDrawer = (navigationTarget = null) => {
+            if (activeModal?.container !== drawerToc || drawerCloseTimer) return;
             ++drawerOpening;
-            clearTimeout(drawerFocusTimer);
-            if (drawerToc.hasAttribute('inert') || drawerCloseTimer) return;
             tocOverlay.classList.add('opacity-0');
             drawerToc.classList.add('translate-x-full');
 
@@ -535,15 +568,10 @@ const zenInit = () => {
                 // A11y Cleanup
                 tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
                 drawerToc.setAttribute('inert', '');
-                drawerToc.setAttribute('data-zen-original-inert', 'true');
-                drawerToc.setAttribute('data-zen-modal-inert', 'true');
-                setBackgroundModalState();
-                const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden)');
-                if (!anotherModalOpen) {
-                    if (navigationTarget) focusTocTarget(navigationTarget);
-                    else if (lastFocusBeforeDrawer) lastFocusBeforeDrawer.focus({ preventScroll: true });
-                }
                 drawerCloseTimer = null;
+                unlockModal();
+                if (navigationTarget) focusTocTarget(navigationTarget);
+                else restoreModalFocus(lastFocusBeforeDrawer);
             }, 300);
         };
 
@@ -560,62 +588,63 @@ const zenInit = () => {
                 }
             });
         }
-
-        escapeHandlers.push(closeDrawer);
     }
 
     // --- 5. Mobile Menu ---
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
+    const mobileMenuIcon = mobileMenuBtn?.querySelector('i');
+    const isMenuOpen = () => !!mobileMenu && !mobileMenu.classList.contains('hidden');
 
     const closeMobileMenuVisuals = () => {
-        if (!mobileMenu) return;
+        if (!isMenuOpen()) return;
         mobileMenu.classList.add('hidden');
         mobileMenu.setAttribute('aria-hidden', 'true');
-        if (mobileMenuBtn) {
-            mobileMenuBtn.setAttribute('aria-expanded', 'false');
-            mobileMenuBtn.setAttribute('aria-label', '打开菜单');
-            const icon = mobileMenuBtn.querySelector('i');
-            if (icon) icon.className = 'ph ph-list text-2xl';
-        }
+        mobileMenuBtn?.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn?.setAttribute('aria-label', '打开菜单');
+        if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-list text-2xl';
     };
 
     if (mobileMenuBtn && mobileMenu) {
-        const closeMobileMenu = (restoreFocus = true) => {
+        const inDisclosure = (target) => target === mobileMenuBtn || mobileMenu.contains(target);
+        dismissMobileMenu = () => {
+            if (!isMenuOpen() || !inDisclosure(document.activeElement)) return false;
             closeMobileMenuVisuals();
-            if (restoreFocus) mobileMenuBtn.focus();
+            mobileMenuBtn.focus({ preventScroll: true });
+            return true;
         };
-
         mobileMenuBtn.addEventListener('click', () => {
-            const isHidden = mobileMenu.classList.contains('hidden');
-            if (isHidden) {
-                if (drawerToc && !drawerToc.hasAttribute('inert')) return;
-                mobileMenu.classList.remove('hidden');
-                mobileMenu.removeAttribute('aria-hidden');
-                mobileMenuBtn.setAttribute('aria-expanded', 'true');
-                mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
-                const icon = mobileMenuBtn.querySelector('i');
-                if (icon) icon.className = 'ph ph-x text-2xl';
-                const firstLink = mobileMenu.querySelector('a');
-                if (firstLink) firstLink.focus();
-            } else {
-                closeMobileMenu();
+            if (activeModal) return;
+            if (isMenuOpen()) {
+                closeMobileMenuVisuals();
+                mobileMenuBtn.focus({ preventScroll: true });
+                return;
             }
+            mobileMenu.classList.remove('hidden');
+            mobileMenu.removeAttribute('aria-hidden');
+            mobileMenuBtn.setAttribute('aria-expanded', 'true');
+            mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
+            if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-x text-2xl';
+            mobileMenu.querySelector('a[href]')?.focus();
         });
 
         mobileMenu.addEventListener('click', (event) => {
-            if (event.target.closest('a')) closeMobileMenu(false);
+            if (event.target.closest('a')) closeMobileMenuVisuals();
         });
-
-        escapeHandlers.push(() => {
-            if (!mobileMenu.classList.contains('hidden')) closeMobileMenu();
+        const closeOnFocusLeave = (event) => {
+            if (event.relatedTarget && !inDisclosure(event.relatedTarget)) closeMobileMenuVisuals();
+        };
+        mobileMenu.addEventListener('focusout', closeOnFocusLeave);
+        mobileMenuBtn.addEventListener('focusout', closeOnFocusLeave);
+        window.matchMedia?.('(min-width: 768px)').addEventListener?.('change', (event) => {
+            if (event.matches) closeMobileMenuVisuals();
         });
     }
 
     // --- 6. Audio Player ---
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
-        if (audio.closest('.zen-audio-player, .wp-audio-shortcode, .mejs-container, .mejs-mediaelement')) return;
+        if (audio.error || audio.closest('.zen-audio-player, .wp-audio-shortcode, .mejs-container, .mejs-mediaelement')) return;
         const player = document.createElement('div');
         player.className = 'zen-audio-player';
 
@@ -754,91 +783,22 @@ const zenInit = () => {
     }
 
     // --- 8. Search ---
-    const searchToggle = document.getElementById('search-toggle');
     const searchModal = document.getElementById('search-modal');
     const searchClose = document.getElementById('search-close');
     const searchInput = document.getElementById('search-input');
-    let lastActiveElementBeforeSearch;
-    let searchCloseTimer;
-    let searchFocusTimer;
-    let searchOpening = 0;
-    const setBackgroundModalState = () => {
-        const applyInert = Boolean(document.querySelector('#lightbox:not(.hidden), #search-modal:not(.hidden), #drawer-toc:not([inert])'));
-        const activeModalIds = ['lightbox', 'search-modal', 'drawer-toc'];
-        const activeModals = activeModalIds.map((id) => document.getElementById(id)).filter((modal) => modal && (modal.id === 'drawer-toc' ? !modal.hasAttribute('inert') : !modal.classList.contains('hidden')));
-
-        // The drawer backdrop is interactive, not part of the inert background.
-        if (activeModals.includes(drawerToc) && tocOverlay) activeModals.push(tocOverlay);
-
-        const isolateDescendants = (node) => {
-            Array.from(node.children).forEach((child) => {
-                if (activeModals.some((modal) => child === modal || child.contains(modal))) {
-                    if (!activeModals.includes(child)) isolateDescendants(child);
-                    return;
-                }
-                if (!child.hasAttribute('data-zen-modal-inert')) {
-                    child.setAttribute('data-zen-original-inert', child.hasAttribute('inert') ? 'true' : 'false');
-                    child.setAttribute('data-zen-original-aria-hidden', child.getAttribute('aria-hidden') || '');
-                }
-                child.setAttribute('inert', '');
-                child.setAttribute('aria-hidden', 'true');
-                child.setAttribute('data-zen-modal-inert', 'true');
-            });
-        };
-
-        document.body.style.overflow = applyInert ? 'hidden' : '';
-
-        Array.from(document.body.children).forEach((node) => {
-            if (activeModals.includes(node)) {
-                return;
-            }
-
-            if (applyInert) {
-                if (activeModals.some((modal) => node.contains(modal))) {
-                    isolateDescendants(node);
-                } else {
-                    if (!node.hasAttribute('data-zen-modal-inert')) {
-                        node.setAttribute('data-zen-original-inert', node.hasAttribute('inert') ? 'true' : 'false');
-                        node.setAttribute('data-zen-original-aria-hidden', node.getAttribute('aria-hidden') || '');
-                    }
-                    node.setAttribute('inert', '');
-                    node.setAttribute('aria-hidden', 'true');
-                    node.setAttribute('data-zen-modal-inert', 'true');
-                }
-            } else {
-                if (node.getAttribute('data-zen-modal-inert') === 'true') {
-                    if (node.getAttribute('data-zen-original-inert') === 'false') node.removeAttribute('inert');
-                    if (node.getAttribute('data-zen-original-aria-hidden')) node.setAttribute('aria-hidden', node.getAttribute('data-zen-original-aria-hidden'));
-                    else node.removeAttribute('aria-hidden');
-                    node.removeAttribute('data-zen-modal-inert');
-                    node.removeAttribute('data-zen-original-inert');
-                    node.removeAttribute('data-zen-original-aria-hidden');
-                }
-                node.querySelectorAll('[data-zen-modal-inert="true"]').forEach((child) => {
-                    if (child.getAttribute('data-zen-original-inert') === 'false') child.removeAttribute('inert');
-                    if (child.getAttribute('data-zen-original-aria-hidden')) child.setAttribute('aria-hidden', child.getAttribute('data-zen-original-aria-hidden'));
-                    else child.removeAttribute('aria-hidden');
-                    child.removeAttribute('data-zen-modal-inert');
-                    child.removeAttribute('data-zen-original-inert');
-                    child.removeAttribute('data-zen-original-aria-hidden');
-                });
-            }
-        });
-    };
-
     if (searchToggle && searchModal && searchInput) {
-        trapFocus(searchModal);
-        const openSearch = () => {
-            if (document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])')) return;
-            if (!searchModal.classList.contains('hidden') && !searchCloseTimer) return;
-            if (searchCloseTimer) {
+        let lastActiveElementBeforeSearch;
+        let searchCloseTimer;
+        let searchOpening = 0;
+        const openSearch = (trigger) => {
+            if ((activeModal && (activeModal.container !== searchModal || !searchCloseTimer)) || coreLightboxOpen()) return false;
+            const reopening = Boolean(searchCloseTimer);
+            if (reopening) {
                 clearTimeout(searchCloseTimer);
                 searchCloseTimer = null;
             } else {
-                lastActiveElementBeforeSearch = document.activeElement;
-            }
-            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
-                if (mobileMenu.contains(lastActiveElementBeforeSearch)) {
+                lastActiveElementBeforeSearch = trigger;
+                if (isMenuOpen() && mobileMenu.contains(trigger)) {
                     lastActiveElementBeforeSearch = mobileMenuBtn || searchToggle;
                 }
                 closeMobileMenuVisuals();
@@ -850,44 +810,40 @@ const zenInit = () => {
                 searchModal.classList.remove('opacity-0');
                 searchModal.classList.add('is-open');
             });
-            setBackgroundModalState();
             searchToggle.setAttribute('aria-expanded', 'true');
-            clearTimeout(searchFocusTimer);
-            searchFocusTimer = setTimeout(() => {
-                if (!searchModal.classList.contains('hidden')) searchInput.focus();
-            }, 180);
+            if (reopening) focusModal(searchModal, searchInput);
+            else lockModal(searchModal, closeSearch, searchInput);
+            return true;
         };
 
         const closeSearch = () => {
+            if (activeModal?.container !== searchModal || searchCloseTimer) return;
             ++searchOpening;
-            if (searchModal.classList.contains('hidden')) return;
-            if (searchCloseTimer) clearTimeout(searchCloseTimer);
-            clearTimeout(searchFocusTimer);
             searchModal.classList.remove('is-open');
             searchModal.classList.add('opacity-0');
             searchCloseTimer = setTimeout(() => {
                 searchModal.classList.add('hidden');
-                setBackgroundModalState();
-                const anotherModalOpen = document.querySelector('#lightbox:not(.hidden), #drawer-toc:not([inert])');
-                if (!anotherModalOpen && lastActiveElementBeforeSearch) lastActiveElementBeforeSearch.focus();
                 searchCloseTimer = null;
+                unlockModal();
+                restoreModalFocus(lastActiveElementBeforeSearch);
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
         };
 
-        searchToggle.addEventListener('click', openSearch);
-        if (searchClose) searchClose.addEventListener('click', closeSearch);
+        const searchReturnTarget = () => document.activeElement === document.body ? searchToggle : document.activeElement;
+        searchToggle.addEventListener('click', (event) => openSearch(event.detail > 0 ? searchToggle : searchReturnTarget()));
+        searchClose?.addEventListener('click', closeSearch);
         searchModal.addEventListener('click', (e) => {
             if (e.target === searchModal || e.target.matches('.zen-search-shell') || e.target.closest('[data-search-dismiss="true"]')) closeSearch();
         });
 
-        escapeHandlers.push(() => {
-            if (!searchModal.classList.contains('hidden')) closeSearch();
-        });
-        searchShortcutHandler = (event) => {
-            if (zenSearchShortcut && (event.metaKey || event.ctrlKey) && event.key === 'k') {
+        if (zenSearchShortcut) searchShortcutHandler = (event) => {
+            if (!(event.metaKey || event.ctrlKey) || event.key !== 'k' || event.altKey || event.repeat) return;
+            if (activeModal?.container === searchModal && !searchCloseTimer) {
                 event.preventDefault();
-                if (searchModal.classList.contains('hidden')) openSearch(); else closeSearch();
+                closeSearch();
+            } else if (openSearch(searchReturnTarget())) {
+                event.preventDefault();
             }
         };
     }
@@ -897,9 +853,8 @@ const zenInit = () => {
         const highlightMargin = 200;
         const pendingHighlights = new Set();
         let highlightObserver;
-        wpCodeBlocks.forEach(block => {
-            const code = block.querySelector('code');
-            if (!code || code.dataset.highlighted) return;
+        codeBlocks.forEach(({ block, code }) => {
+            if (code.dataset.highlighted) return;
             // Keep every bundled language/alias available, but bound unlabelled autodetection.
             // Explicit lang-/language- labels and Highlight.js legacy language classes opt in.
             const classes = code.className + ' ' + block.className;
@@ -929,16 +884,24 @@ const zenInit = () => {
             }
         });
     };
+    if (!codeBlocks.length) return;
     if (typeof hljs !== 'undefined') {
         enhanceCodeBlocks();
-    } else {
+    } else if (document.readyState === 'loading' || (document.readyState !== 'complete' && document.getElementById('highlight-js-js'))) {
         // The async script tag follows main in wp_footer; capture its non-bubbling load.
-        const onHighlighterLoad = (event) => {
-            if (event.target.id !== 'highlight-js-js') return;
-            document.removeEventListener('load', onHighlighterLoad, true);
-            if (typeof hljs !== 'undefined') enhanceCodeBlocks();
+        const stopWatching = () => {
+            document.removeEventListener('load', onHighlighterResult, true);
+            document.removeEventListener('error', onHighlighterResult, true);
+            window.removeEventListener('load', stopWatching);
         };
-        document.addEventListener('load', onHighlighterLoad, true);
+        const onHighlighterResult = (event) => {
+            if (event.target.id !== 'highlight-js-js') return;
+            stopWatching();
+            if (event.type === 'load' && typeof hljs !== 'undefined') enhanceCodeBlocks();
+        };
+        document.addEventListener('load', onHighlighterResult, true);
+        document.addEventListener('error', onHighlighterResult, true);
+        window.addEventListener('load', stopWatching, { once: true });
     }
 };
 

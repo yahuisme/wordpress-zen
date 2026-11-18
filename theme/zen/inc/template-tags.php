@@ -152,6 +152,7 @@ function zen_kses_link($html) {
             'data-respondelement' => true,
         ),
         'span' => array(
+            'aria-current' => true,
             'aria-hidden' => true,
             'class' => true,
         ),
@@ -163,30 +164,17 @@ function zen_kses_link($html) {
 }
 
 function zen_pagination() {
-    global $wp_query;
-
-    $big = 999999999;
     $pages = paginate_links(array(
-        'base' => str_replace($big, '%#%', esc_url(get_pagenum_link($big))),
-        'format' => '?paged=%#%',
-        'current' => max(1, get_query_var('paged')),
-        'total' => $wp_query->max_num_pages,
         'prev_text' => '<span aria-hidden="true">&larr;</span><span class="screen-reader-text">上一页</span>',
         'next_text' => '<span class="screen-reader-text">下一页</span><span aria-hidden="true">&rarr;</span>',
         'type' => 'array',
     ));
 
     if (is_array($pages)) {
-        echo '<nav class="pt-8 flex justify-center items-center gap-2" aria-label="分页导航">';
-
+        echo '<nav class="zen-pagination" aria-label="分页导航">';
         foreach ($pages as $page) {
-            if (preg_match('/^<span\b[^>]*\saria-current=([\'\"])page\1/i', $page)) {
-                echo "<span class='page-numbers px-3 py-1 border border-transparent bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-sm text-sm' aria-current='page'>" . esc_html(strip_tags($page)) . "</span>";
-            } else {
-                echo zen_kses_link(str_replace('page-numbers', 'page-numbers px-3 py-1 border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-sm text-gray-600 dark:text-gray-400', $page));
-            }
+            echo zen_kses_link($page);
         }
-
         echo '</nav>';
     }
 }
@@ -213,6 +201,7 @@ add_action('trashed_post', 'zen_clear_archives_cache');
 add_action('untrashed_post', 'zen_clear_archives_cache');
 add_action('add_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
+add_action('delete_option_zen_site_start_date', 'zen_clear_archives_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
 function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {

@@ -50,9 +50,10 @@ function wp_kses($html, $allowed) { return $html; }
 function get_option($key, $default = false) { return $GLOBALS['zen_test_options'][$key] ?? $default; }
 function get_transient($key) { return $GLOBALS['zen_test_transients'][$key] ?? false; }
 function delete_transient($key) { unset($GLOBALS['zen_test_transients'][$key]); }
-function get_pagenum_link($number) { return 'https://example.test/?s=concurrent&paged=' . $number; }
-function get_query_var($key) { return 1; }
-function paginate_links($args) { return $GLOBALS['zen_test_pages']; }
+function paginate_links($args) {
+    zen_expect(!array_intersect_key($args, array_flip(array('base', 'format', 'current', 'total'))), 'use Core pagination defaults');
+    return $GLOBALS['zen_test_pages'];
+}
 
 require ABSPATH . 'inc/template-tags.php';
 require ABSPATH . 'inc/options.php';
@@ -71,7 +72,7 @@ zen_test('search pagination preserves concurrent links and only marks the curren
     zen_expect(str_contains($html, 'dots'), 'ellipsis must remain non-current');
 });
 
-foreach (array('add', 'update') as $operation) {
+foreach (array('add', 'update', 'delete') as $operation) {
     zen_test("$operation start date invalidates populated uptime cache", function () use ($operation) {
         $GLOBALS['zen_test_transients']['zen_site_uptime'] = array('year' => '2000', 'days' => 100);
         foreach ($GLOBALS['zen_test_hooks'][$operation . '_option_zen_site_start_date'] ?? array() as $callback) {

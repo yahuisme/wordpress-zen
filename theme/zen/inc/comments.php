@@ -8,14 +8,13 @@ function zen_comment_callback($comment, $args, $depth) {
     }
     $reply_args = array_merge($args, array(
         'depth' => $depth,
-        'max_depth' => $args['max_depth'],
         'reply_text' => '回复 <i class="ph ph-arrow-bend-up-left" aria-hidden="true"></i>',
         'add_below' => 'div-comment',
-        'aria_label' => '回复给 ' . get_comment_author(),
+        'reply_to_text' => __('回复给 %s', 'zen'),
     ));
     $commenter = wp_get_current_commenter();
     $show_pending_links = !empty($commenter['comment_author']);
-    $reply_link = ('1' === $comment->comment_approved || $show_pending_links) ? (get_comment_reply_link($reply_args) ?? '') : '';
+    $reply_link = ('1' === $comment->comment_approved || $show_pending_links) ? get_comment_reply_link($reply_args, $comment) : '';
     ?>
     <li id="comment-<?php comment_ID(); ?>" <?php comment_class(); ?>>
         <article id="div-comment-<?php comment_ID(); ?>" class="<?php echo esc_attr($comment_card_classes); ?>">
@@ -49,21 +48,20 @@ function zen_comment_callback($comment, $args, $depth) {
                                     <?php printf(esc_html__('%1$s前', 'zen'), esc_html(human_time_diff(get_comment_time('U', true), current_time('timestamp', true)))); ?>
                                 </time>
                             </a>
-                            <?php echo zen_kses_link($reply_link); ?>
+                            <?php if ($reply_link) echo zen_kses_link($reply_link); ?>
                         </div>
                     </header>
 
                     <div class="zen-comment-text max-w-none break-words leading-relaxed text-gray-700 dark:text-gray-300">
                         <?php
                         // Custom callbacks bypass Walker_Comment's pending-comment filter.
-                        $walker = new Walker_Comment();
-                        if ('comment' === $comment->comment_type) {
-                            add_filter('comment_text', array($walker, 'filter_comment_text'), 40, 2);
-                        }
+                        $pending_filter = 'comment' === $comment->comment_type && '0' === $comment->comment_approved && !$show_pending_links
+                            ? array(new Walker_Comment(), 'filter_comment_text') : null;
+                        if ($pending_filter) add_filter('comment_text', $pending_filter, 40, 2);
                         try {
                             comment_text($comment, $args);
                         } finally {
-                            remove_filter('comment_text', array($walker, 'filter_comment_text'), 40);
+                            if ($pending_filter) remove_filter('comment_text', $pending_filter, 40);
                         }
                         ?>
                     </div>
