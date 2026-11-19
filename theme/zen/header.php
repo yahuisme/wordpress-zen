@@ -40,62 +40,38 @@
             <?php if (has_custom_logo()) : ?>
                 <?php echo wp_get_attachment_image((int) get_theme_mod('custom_logo'), 'full', false, array('class' => 'zen-site-logo', 'alt' => get_bloginfo('name'))); ?>
             <?php endif; ?>
-            <span class="zen-site-title font-serif"><?php echo esc_html(get_bloginfo('name')); ?></span>
+            <span class="zen-site-title"><?php echo esc_html(get_bloginfo('name')); ?></span>
         </a>
-
-        <?php $zen_has_primary_menu = has_nav_menu('primary'); ?>
-
-        <?php if ($zen_has_primary_menu) : ?>
-        <nav id="mobile-menu" aria-label="主菜单" class="zen-header-nav zen-noscript-menu">
-            <?php
-            wp_nav_menu(array(
-                'theme_location' => 'primary',
-                'container'      => false,
-                'menu_class'     => 'zen-primary-menu flex list-none m-0 p-0',
-                'fallback_cb'    => false,
-                'depth'          => 1,
-            ));
-            ?>
-        </nav>
-        <?php endif; ?>
 
         <div class="zen-header-actions">
             <div class="zen-header-tools">
                 <?php if (is_singular('post') && zen_get_option('zen_show_toc')) : ?>
                 <button id="header-toc-btn" type="button" class="zen-header-tool zen-header-toc zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden>目录</button>
                 <?php endif; ?>
-                <button id="theme-toggle" type="button" hidden
-                        class="zen-theme-toggle zen-header-tool zen-icon-btn"
-                        aria-label="切换主题"
-                        title="跟随系统">
-                    <i class="ph ph-circle-half text-xl md:text-lg" aria-hidden="true"></i>
-                    <span class="screen-reader-text" data-theme-toggle-label>跟随系统</span>
-                </button>
-
+                <a id="search-fallback" href="<?php echo esc_url(home_url('/?s=')); ?>" class="zen-header-tool zen-icon-btn" aria-label="搜索">
+                    <i class="ph ph-magnifying-glass text-xl" aria-hidden="true"></i>
+                </a>
                 <button id="search-toggle" type="button" hidden
                         class="zen-header-tool zen-icon-btn"
                         aria-label="搜索"
                         aria-expanded="false"
                         aria-controls="search-modal">
-                    <i class="ph ph-magnifying-glass text-xl md:text-lg" aria-hidden="true"></i>
+                    <i class="ph ph-magnifying-glass text-xl" aria-hidden="true"></i>
                 </button>
-
-                <?php if ($zen_has_primary_menu) : ?>
-                <button id="mobile-menu-btn" type="button" hidden
-                        class="zen-header-tool zen-icon-btn md:hidden"
-                        aria-expanded="false"
-                        aria-controls="mobile-menu">
-                    <span class="screen-reader-text">打开/关闭菜单</span>
-                    <i class="ph ph-list text-2xl" aria-hidden="true"></i>
+                <button id="theme-toggle" type="button" hidden
+                        class="zen-theme-toggle zen-header-tool zen-icon-btn"
+                        aria-label="切换主题"
+                        title="跟随系统">
+                    <i class="ph ph-circle-half text-xl" aria-hidden="true"></i>
+                    <span class="screen-reader-text" data-theme-toggle-label>跟随系统</span>
                 </button>
-                <?php endif; ?>
             </div>
         </div>
     </div>
 
 </header>
 
-<div id="search-modal" class="zen-noscript-search">
+<div id="search-modal" hidden>
     <div class="zen-search-backdrop" data-search-dismiss="true" aria-hidden="true"></div>
 
     <div class="zen-search-shell relative mx-auto flex min-h-full w-full max-w-3xl items-center justify-center py-12">

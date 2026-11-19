@@ -12,6 +12,7 @@ function get_footer() {}
 function have_posts() { return $GLOBALS['loop_left'] > 0; }
 function the_post() { $GLOBALS['loop_left']--; }
 function zen_post_title() { return 'Media regression'; }
+function has_excerpt() { return false; }
 function esc_html($value) { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
 function zen_get_primary_category() { return false; }
 function zen_posted_on_link() {}
@@ -46,14 +47,14 @@ function test($name, $callback) {
 $section = $argv[1] ?? 'all';
 if ($section === 'all' || $section === 'image') {
     test('featured sizes follow saved reading width, site cap and responsive gutters', function () {
-        // Main is border-box px-4 sm:px-6; sm starts at 640px. The reading shell sits inside it.
+        // The main box has 28px mobile / 32px desktop gutters.
         foreach (array(
-            array(array(), 720, 720),
+            array(array(), 768, 768),
             array(array('zen_reading_width' => 600), 600, 600),
             array(array('zen_reading_width' => '731'), 731, 731),
             array(array('zen_reading_width' => 960, 'zen_content_width' => 1920), 960, 960),
-            array(array('zen_reading_width' => 960, 'zen_content_width' => 900), 868, 852),
-            array(array('zen_reading_width' => 960, 'zen_content_width' => 600), 568, 552),
+            array(array('zen_reading_width' => 960, 'zen_content_width' => 900), 844, 836),
+            array(array('zen_reading_width' => 960, 'zen_content_width' => 600), 544, 536),
             array(array('zen_reading_width' => 10, 'zen_content_width' => 5000), 600, 600),
             array(array('zen_reading_width' => 5000, 'zen_content_width' => 5000), 960, 960),
         ) as $case) {
@@ -61,7 +62,7 @@ if ($section === 'all' || $section === 'image') {
             $calls = render_single($options);
             check(count($calls) === 1 && $calls[0][0] === 'large', 'native large thumbnail delegation changed');
             check(($calls[0][1]['class'] ?? '') === 'zen-featured-image', 'featured image class changed');
-            $expected = '(max-width: 639.98px) min(calc(100vw - 32px), ' . $mobile_cap . 'px), min(calc(100vw - 48px), ' . $desktop_cap . 'px)';
+            $expected = '(max-width: 639.98px) min(calc(100vw - 56px), ' . $mobile_cap . 'px), min(calc(100vw - 64px), ' . $desktop_cap . 'px)';
             $actual = $calls[0][1]['sizes'] ?? '';
             check($actual === $expected, 'options ' . json_encode($options) . ': expected ' . $expected . '; got ' . $actual);
         }

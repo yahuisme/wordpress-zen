@@ -38,9 +38,14 @@ function zen_utf8_substr($text, $length) {
 }
 
 function zen_get_archives_url() {
+    return zen_get_directory_url('page-archives.php');
+}
+
+/** Use the owner's published page and its native permalink, never guess its slug. */
+function zen_get_directory_url($template) {
     $pages = get_pages(array(
         'meta_key' => '_wp_page_template',
-        'meta_value' => 'page-archives.php',
+        'meta_value' => $template,
         'post_status' => 'publish',
         'hierarchical' => false,
         'number' => 1,
@@ -103,9 +108,6 @@ function zen_get_latest_index_post($posts) {
 }
 
 function zen_post_date_format($context = 'full', $year = '') {
-    if (zen_get_option('zen_date_style') !== 'editorial') {
-        return 'Y年n月j日';
-    }
     if ($context === 'directory' || ($context === 'list' && $year === wp_date('Y'))) {
         return 'n月 j日';
     }
@@ -133,6 +135,19 @@ function zen_posted_on_link($context = 'full', $post = null) {
     );
 }
 
+/** Fold current-year dates into a narrow column on the posts index. */
+function zen_index_date_html() {
+    if (get_the_date('Y') !== wp_date('Y')) {
+        return zen_post_date_html('list');
+    }
+    return sprintf(
+        '<time class="zen-post-date zen-index-date" datetime="%s"><span>%s</span> <span>%s</span></time>',
+        esc_attr(get_the_date('c')),
+        esc_html(get_the_date('n月')),
+        esc_html(get_the_date('j日'))
+    );
+}
+
 function zen_index_post_meta($context, $post = null) {
     ?>
     <div class="zen-post-meta">
@@ -146,17 +161,16 @@ function zen_index_post_meta($context, $post = null) {
     <?php
 }
 
+function zen_display_excerpt($excerpt) {
+    $excerpt = zen_trim_excerpt($excerpt, (int) zen_get_option('zen_excerpt_length'));
+    // Keep decoded entity-like text literal at the HTML boundary.
+    return esc_html(str_replace('&', '&amp;', $excerpt));
+}
+
 function zen_index_post_excerpt($post = null) {
-    if (zen_get_option('zen_list_style') === 'compact') {
-        return;
-    }
-    $excerpt = zen_trim_excerpt(get_the_excerpt($post), (int) zen_get_option('zen_excerpt_length'));
-    if ($excerpt !== '') {
-        // The excerpt is plain text after one decode. Double-encode ampersands so literal
-        // entity-looking text never becomes markup or a character at the HTML boundary.
-        $display_excerpt = str_replace('&', '&amp;', $excerpt);
-        printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', esc_html($display_excerpt));
-    }
+    if (zen_get_option('zen_list_style') === 'compact') return;
+    $excerpt = zen_display_excerpt(get_the_excerpt($post));
+    if ($excerpt !== '') printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', $excerpt);
 }
 
 function zen_highlight_search_terms($text, $query = '') {

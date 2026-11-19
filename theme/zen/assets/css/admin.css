@@ -126,13 +126,6 @@
     padding: 16px 0;
     font-size: 13px;
 }
-.zen-options .zen-options-about {
-    padding: 24px;
-}
-.zen-options .zen-options-about h2 {
-    margin: 0 0 16px;
-    font-size: 15px;
-}
 @media screen and (max-width: 782px) {
     .admin-bar .zen-options {
         --zen-adminbar-offset: 46px;
@@ -141,8 +134,7 @@
     .zen-options .zen-options-group {
         scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
     }
-    .zen-options summary,
-    .zen-options .zen-options-about {
+    .zen-options summary {
         padding: 16px;
     }
     .zen-options .zen-group-content {

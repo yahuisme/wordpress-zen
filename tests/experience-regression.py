@@ -77,14 +77,15 @@ with sync_playwright() as p:
 
     def search_focus():
         visit(width=375)
-        page.locator('#mobile-menu-btn').click()
-        assert page.evaluate("!!document.activeElement.closest('#mobile-menu')")
+        assert page.locator('.zen-site-header nav, #mobile-menu-btn').count() == 0
+        return_link = page.locator('.zen-footer-navigation a').first
+        return_link.focus()
         page.keyboard.press('Control+k')
         page.wait_for_timeout(220)
         assert page.evaluate('document.activeElement.id') == 'search-input'
         page.keyboard.press('Escape')
         page.wait_for_timeout(380)
-        assert page.evaluate('document.activeElement.id') == 'mobile-menu-btn'
+        assert return_link.evaluate('e=>document.activeElement===e')
         page.locator('#search-toggle').click()
         page.wait_for_timeout(220)
         assert page.locator('main').get_attribute('inert') is not None

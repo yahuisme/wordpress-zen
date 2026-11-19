@@ -52,12 +52,16 @@ with sync_playwright() as p:
  style=password.evaluate('e=>{let c=getComputedStyle(e);return {height:e.getBoundingClientRect().height,background:c.backgroundColor,padding:c.paddingLeft}}')
  assert style['height']>=40 and style['background']!='rgba(0, 0, 0, 0)',('password submit lacks a visible button',style)
  page.set_viewport_size({'width':390,'height':900});page.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');page.locator('#header-toc-btn').click();page.wait_for_timeout(350);assert page.locator('#drawer-toc-close').evaluate('e=>e===document.activeElement');page.keyboard.press('Escape');page.wait_for_timeout(350);assert page.locator('#header-toc-btn').evaluate('e=>e===document.activeElement')
- menu=page.get_by_role('navigation',name='主菜单',exact=True);menu_btn=page.locator('#mobile-menu-btn')
- assert menu.count()==0 and menu_btn.is_visible()
- menu_btn.click();assert menu.is_visible() and menu.get_by_role('link').first.evaluate('e=>e===document.activeElement')
- page.keyboard.press('Escape');assert menu.count()==0 and menu_btn.evaluate('e=>e===document.activeElement')
- page.set_viewport_size({'width':768,'height':900});assert menu.is_visible() and not menu_btn.is_visible()
- page.set_viewport_size({'width':390,'height':900});assert menu.count()==0 and menu_btn.is_visible()
+ for width in (390,768):
+  page.set_viewport_size({'width':width,'height':900})
+  assert page.locator('.zen-site-header nav, #mobile-menu-btn').count()==0 and page.locator('.zen-footer-navigation a').first.is_visible()
+ page.set_viewport_size({'width':390,'height':900})
+ page.evaluate('window.scrollTo({top: document.documentElement.scrollHeight, behavior: "instant"})')
+ assert page.locator('.zen-footer-navigation a').last.evaluate('''el => {
+  const r = el.getBoundingClientRect();
+  return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+ }'''), 'fixed UI must not cover the final footer link'
+ page.evaluate('window.scrollTo({top: 0, behavior: "instant"})')
  page.locator('#search-toggle').click();page.wait_for_timeout(200);page.locator('#search-input').fill('WordPress')
  with page.expect_navigation(wait_until='networkidle'):page.locator('.zen-search-submit').click()
  assert 's=WordPress' in page.url

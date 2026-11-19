@@ -111,6 +111,7 @@ unset($_GET['settings-updated']);
 foreach (array(true, false) as $unfiltered) {
     zen_reset_fixture($unfiltered);
     $GLOBALS['refused'] = array('zen_reading_width');
+    $GLOBALS['options']['zen_reading_width'] = 720;
     $status = zen_reset_call();
     zen_reset_check(get_option('zen_reading_width') === 720, 'refused delete leaves original value');
     zen_reset_check(!array_key_exists('zen_show_tags', $GLOBALS['options']), 'other settings can reset despite a refused delete');

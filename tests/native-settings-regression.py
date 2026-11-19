@@ -1,5 +1,5 @@
 """Native Settings API and cross-page acceptance; isolated fixture only."""
-import json,sys,subprocess,time
+import json,os,sys,subprocess,time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 r=Path(sys.argv[1]).resolve();assert (r/'runtime/wp-load.php').is_file() and (r/'db/zen.sqlite').is_file(), 'Isolated fixture required';f=json.loads((r/'fixture.json').read_text());o='http://127.0.0.1:18765';e=r/'evidence';results=[]
@@ -12,8 +12,17 @@ def setoption(key,val):return cli('option','update',key,json.dumps(val,ensure_as
 def check(label,fn):
  try:fn();results.append({'name':label,'passed':True});print('PASS',label,flush=True)
  except Exception as ex:results.append({'name':label,'passed':False,'error':str(ex)});print('FAIL',label,str(ex),flush=True)
+preserve_only = '--preserve-only' in sys.argv
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage'])
+ args=['--no-sandbox','--disable-dev-shm-usage']
+ if preserve_only: args.extend(['--single-process','--no-zygote'])
+ b=p.chromium.launch(executable_path='/usr/lib/chromium/chromium',args=args,env={**os.environ,'DBUS_SESSION_BUS_ADDRESS':'unix:path=/nonexistent','DBUS_SYSTEM_BUS_ADDRESS':'unix:path=/nonexistent'})
+ if preserve_only:
+  group=Path('/proc/self/cgroup').read_text()
+  scope=(Path('/sys/fs/cgroup')/group.strip().split('::',1)[1].lstrip('/')).parent
+  assert int((scope/'memory.max').read_text()) <= 4*1024**3 and (scope/'memory.swap.max').read_text().strip()=='0'
+  processes=b.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+  assert len(processes)==1 and Path(f'/proc/{processes[0]["id"]}/cgroup').read_text()==group
  c=b.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce');c.add_cookies(json.loads((r/'cookies.json').read_text()));page=c.new_page();dialogs=[]
  def unexpected_dialog(dialog):
   dialogs.append({'type':dialog.type,'message':dialog.message});dialog.dismiss()
@@ -25,18 +34,29 @@ with sync_playwright() as p:
   assert page.locator('.notice-success,.updated').count()>0,page.locator('body').inner_text()[:1500]
   assert not dialogs,('Unexpected save/navigation dialog',dialogs)
  def preserve():
-  legacy={'zen_font_family':'inter','zen_content_width':1080,'zen_copyright_license':'cc-by-sa-4.0','zen_code_head':'<script>window.zenSaved = "\\\\n";</script>','zen_footer_text':'<a href="https://example.test">Saved footer</a>','zen_show_footer_theme_by':1,'zen_show_footer_wordpress':1}
+  legacy={'zen_font_family':'inter','zen_date_style':'classic','zen_content_width':1080,'zen_copyright_license':'cc-by-sa-4.0','zen_code_head':'<script>window.zenSaved = "\\\\n";</script>','zen_footer_text':'<a href="https://example.test">Saved footer</a>','zen_show_footer_theme_by':1,'zen_show_footer_wordpress':1}
   for key,val in legacy.items():setoption(key,val)
-  settings();page.locator('#zen_footer_text').fill('Edited footer');save()
-  for key,val in legacy.items():assert str(option(key))==str('Edited footer' if key=='zen_footer_text' else val),(key,option(key),val)
+  settings()
+  for key in ('zen_font_family','zen_date_style','zen_show_footer_theme_by','zen_show_footer_wordpress'):
+   assert page.locator(f'[name="{key}"]').count() == 0
+  page.locator('#zen_footer_text').fill('Edited footer');save()
   assert page.locator('#zen-save-state').inner_text()=='没有未保存的修改'
- check('native save preserves legacy fonts width license and collapsed code',preserve)
+  page.goto(o+'/',wait_until='networkidle')
+  assert 'Edited footer' in page.locator('.zen-site-footer').inner_text()
+  assert 'Theme By RyanZ' not in page.locator('.zen-site-footer').inner_text() and 'Powered By WordPress' not in page.locator('.zen-site-footer').inner_text()
+  for key,val in legacy.items():assert str(option(key))==str('Edited footer' if key=='zen_footer_text' else val),(key,option(key),val)
+ check('native save retains old option rows and current settings without reactivating removed credits',preserve)
+ if preserve_only:
+  b.close()
+  sys.exit(0 if results[0]['passed'] else 1)
  def edited():
   settings();page.locator('#zen_reading_width_preset').select_option('800');page.locator('#zen_list_style').select_option('compact');page.locator('#zen_category_ids input[type=checkbox]').evaluate_all('(es,ids)=>es.forEach(e=>{e.checked=ids.includes(e.value);e.dispatchEvent(new Event("change",{bubbles:true}))})',[str(f['categories'][2]),str(f['categories'][0])]);page.locator('#zen_show_site_intro').uncheck();page.locator('#zen_copyright_license').select_option('none');page.locator('#zen_show_reading_count').uncheck();save()
   assert int(option('zen_reading_width'))==800 and option('zen_list_style')=='compact'
   assert set(option('zen_category_ids'))=={f['categories'][0],f['categories'][2]},option('zen_category_ids')
   assert option('zen_show_site_intro')=='0' or option('zen_show_site_intro')==0
   page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-excerpt').count()==0
+  assert page.locator('.zen-category-nav').count()==0
+  page.goto(o+'/?cat='+str(f['categories'][0]),wait_until='networkidle')
   links=page.locator('.zen-category-track > a');assert links.count()==3
   assert all(link.is_visible() for link in links.all())
   page.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');assert page.locator('#post-content').evaluate('e=>Math.round(e.getBoundingClientRect().width)')==800,page.locator('#post-content').evaluate('e=>({width:e.getBoundingClientRect().width,var:getComputedStyle(e).getPropertyValue("--zen-reading-width")})')

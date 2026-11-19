@@ -1,42 +1,23 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-/** One typography contract for the reader and the native block editor. */
-function zen_typography() {
-    $family = zen_get_option('zen_font_family');
-    $system = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
-    $serif = '"Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, serif';
-    $fonts = '';
-    if ('kami' === $family) {
-        // Private builds may declare Zen Kami Kai in the shared reading stylesheet.
-        $body = $heading = '"Zen Kami Kai", "Zen Charter", "TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC", "Source Han Serif CN", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, Palatino, "Times New Roman", serif';
-    } elseif ('space-grotesk' === $family) {
-        $body = '"Space Grotesk", "Noto Sans SC", ' . $system;
-        $heading = $body;
-        $fonts = 'family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700';
-    } elseif ('inter' === $family) {
-        $body = 'Inter, "Noto Sans SC", ' . $system;
-        $heading = '"Noto Serif SC", ' . $serif;
-        $fonts = 'family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700';
-    } else {
-        $body = $system;
-        $heading = $serif;
+/** Only an explicitly installed, same-theme Kai add-on can supply its webfonts. */
+function zen_reference_font_styles() {
+    $styles = array('zen-bins-google-code' => 'assets/css/zen-bins-google-code.css');
+    $kai = 'assets/zen-kai/assets/css/zen-bins-kai.css';
+    if (is_readable(get_template_directory() . '/' . $kai)) {
+        $styles['zen-bins-kai'] = $kai;
     }
-    return array('body' => $body, 'heading' => $heading, 'fonts' => $fonts ? 'https://fonts.googleapis.com/css2?' . $fonts . '&display=swap' : '');
+    return $styles;
 }
 
 function zen_design_variables() {
-    $type = zen_typography();
     $site = max(600, min(1920, (int) zen_get_option('zen_content_width')));
     $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
-    return ':root{--zen-content-width:' . $site . 'px;--zen-content-half:' . round($site / 2) . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px;--zen-font-body:' . $type['body'] . ';--zen-font-heading:' . $type['heading'] . '}';
+    return ':root{--zen-content-width:' . $site . 'px;--zen-content-half:' . round($site / 2) . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px}';
 }
 
 function zen_scripts() {
-    $type = zen_typography();
-    if ($type['fonts']) {
-        wp_enqueue_style('zen-google-fonts', $type['fonts'], array(), null);
-    }
     $dir = get_template_directory();
     $uri = get_template_directory_uri();
     wp_enqueue_style('phosphor-icons', $uri . '/assets/css/phosphor-icons.css', array(), filemtime($dir . '/assets/css/phosphor-icons.css'));
@@ -58,8 +39,13 @@ function zen_scripts() {
         ));
     }
     wp_enqueue_style('zen-compiled-style', $uri . '/assets/css/style.css', array(), filemtime($dir . '/assets/css/style.css'));
-    wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array('zen-compiled-style'), filemtime($dir . '/assets/css/reading.css'));
+    $fonts = zen_reference_font_styles();
+    foreach ($fonts as $handle => $file) {
+        wp_enqueue_style($handle, $uri . '/' . $file, array(), filemtime($dir . '/' . $file));
+    }
+    wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array_merge(array('zen-compiled-style'), array_keys($fonts)), filemtime($dir . '/assets/css/reading.css'));
     wp_enqueue_style('zen-layout-style', $uri . '/assets/css/layout.css', array('zen-reading-style'), filemtime($dir . '/assets/css/layout.css'));
+    wp_enqueue_style('zen-directories-style', $uri . '/assets/css/directories.css', array('zen-layout-style'), filemtime($dir . '/assets/css/directories.css'));
     wp_add_inline_style('zen-reading-style', zen_design_variables());
     $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
     $breakpoint = max(1200, $reading + 560);
@@ -79,11 +65,7 @@ function zen_reading_count_delay_exclusions($excluded) {
 add_filter('rocket_delay_js_exclusions', 'zen_reading_count_delay_exclusions');
 
 function zen_editor_settings($settings) {
-    $type = zen_typography();
     $settings['styles'][] = array('css' => zen_design_variables());
-    if ($type['fonts']) {
-        $settings['styles'][] = array('css' => '@import url("' . $type['fonts'] . '");');
-    }
     return $settings;
 }
 add_filter('block_editor_settings_all', 'zen_editor_settings');

@@ -2,22 +2,6 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Resource hints.
- */
-function zen_resource_hints($urls, $relation_type) {
-    if ('preconnect' === $relation_type && zen_typography()['fonts']) {
-        $urls[] = 'https://fonts.googleapis.com';
-        $urls[] = array(
-            'href' => 'https://fonts.gstatic.com',
-            'crossorigin' => 'anonymous',
-        );
-    }
-
-    return $urls;
-}
-add_filter('wp_resource_hints', 'zen_resource_hints', 10, 2);
-
-/**
  * Theme setup.
  */
 function zen_setup() {
@@ -26,13 +10,10 @@ function zen_setup() {
     add_theme_support('custom-logo', array('height' => 80, 'width' => 240, 'flex-height' => true, 'flex-width' => true));
     add_theme_support('editor-styles');
     add_theme_support('align-wide');
-    add_editor_style('assets/css/reading.css');
+    add_editor_style(array_merge(array_values(zen_reference_font_styles()), array('assets/css/reading.css')));
     add_theme_support('automatic-feed-links');
 
-    register_nav_menus(array(
-        'primary' => __('Primary Menu', 'zen'),
-        'footer' => __('Footer Menu', 'zen'),
-    ));
+    register_nav_menus(array('footer' => __('Footer Menu', 'zen')));
 
     add_theme_support('html5', array('search-form', 'comment-form', 'comment-list', 'gallery', 'caption', 'script', 'style'));
     add_filter('pre_option_link_manager_enabled', '__return_true');

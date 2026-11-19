@@ -1,53 +1,33 @@
 /* Shared article typography: loaded by both reader and WordPress editor. */
-@font-face {
-    font-family: "Zen Charter";
-    src: url("../fonts/charter_regular.woff2") format("woff2");
-    font-weight: 400;
-    font-display: swap;
-}
-@font-face {
-    font-family: "Zen Charter";
-    src: url("../fonts/charter_bold.woff2") format("woff2");
-    font-weight: 700;
-    font-display: swap;
-}
-@font-face {
-    font-family: "Zen Charter";
-    src: url("../fonts/charter_italic.woff2") format("woff2");
-    font-style: italic;
-    font-weight: 400;
-    font-display: swap;
-}
-@font-face {
-    font-family: "Zen Charter";
-    src: url("../fonts/charter_bold_italic.woff2") format("woff2");
-    font-style: italic;
-    font-weight: 700;
-    font-display: swap;
-}
 :root {
-    --zen-reading-width: 720px;
+    --zen-reading-width: 768px;
     --zen-font-body:
-        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-        "Microsoft YaHei", sans-serif;
-    --zen-font-heading:
-        "Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, serif;
+        "Zen Kami Kai", "TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC",
+        "Source Han Serif CN", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+    --zen-font-heading: var(--zen-font-body);
+    --zen-font-mono:
+        "TsangerJinKai02 Code CJK", "Google Sans Code", "Google Sans Code fallback: Courier New",
+        monospace, "JetBrains Mono", "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas,
+        "Zen Kami Kai", "Source Han Serif SC", "Songti SC";
 }
 
 .entry-content,
 .editor-styles-wrapper {
     font-family: var(--zen-font-body);
-    font-size: 18px;
-    line-height: 32px;
-    color: var(--zen-text, #25241f);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--zen-secondary, #504e49);
+    font-synthesis: none;
     overflow-wrap: anywhere;
 }
+
+.entry-content :is(p, li),
+.editor-styles-wrapper :is(p, li) { font-feature-settings: "chws"; }
 
 .entry-content :where(p, li, blockquote, table),
 .editor-styles-wrapper :where(p, li, blockquote, table) {
     font-family: var(--zen-font-body);
-    font-size: 18px;
-    line-height: 32px;
+    line-height: 1.55;
 }
 .entry-content p,
 .editor-styles-wrapper p {
@@ -57,8 +37,9 @@
 .editor-styles-wrapper :where(h1, h2, h3, h4, h5, h6) {
     font-family: var(--zen-font-heading);
     color: inherit;
-    font-weight: 600;
-    line-height: 1.4;
+    font-weight: 500;
+    line-height: 1.25;
+    font-synthesis: none;
     text-wrap: pretty;
     overflow-wrap: anywhere;
 }
@@ -114,9 +95,10 @@
 }
 .entry-content blockquote,
 .editor-styles-wrapper blockquote {
-    padding-inline-start: 20px;
+    padding: 0;
+    border: 0;
     margin: 32px 0;
-    font-style: italic;
+    font-style: normal;
     font-weight: 400;
     color: var(--zen-muted, #625d52);
 }
@@ -130,7 +112,7 @@
 }
 .entry-content :where(pre, .wp-block-code),
 .editor-styles-wrapper :where(pre, .wp-block-code) {
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-family: var(--zen-font-mono);
     font-size: 14px;
     line-height: 1.7;
     white-space: pre;
@@ -138,9 +120,10 @@
     overflow-wrap: normal;
     padding: 20px;
     margin: 32px 0;
-    border-radius: 8px;
-    background: #202b36;
-    color: #dbe5ec;
+    border: 0;
+    border-radius: 6px;
+    background: var(--zen-surface, #faf9f5);
+    color: var(--zen-text, #141413);
 }
 .entry-content pre code,
 .editor-styles-wrapper pre code {
@@ -153,11 +136,16 @@
     border: 0;
     color: inherit;
 }
-/* Keep the shipped section token readable on both Zen code backgrounds. */
-.entry-content pre .hljs .hljs-section,
-pre.wp-block-code .hljs .hljs-section { color: #58a6ff; }
+/* Let syntax distinguish roles without introducing a second accent palette. */
+.entry-content pre .hljs :is(.hljs-keyword, .hljs-literal, .hljs-section, .hljs-title, .hljs-number) {
+    color: var(--zen-accent, #1b365d);
+}
+.entry-content pre .hljs :where(span) { color: var(--zen-secondary, #504e49); }
+.entry-content pre .hljs .hljs-comment { color: var(--zen-muted, #6b6a64); }
+pre.wp-block-code:not(.entry-content pre) .hljs .hljs-section { color: #58a6ff; }
 .entry-content code:not(pre code),
 .editor-styles-wrapper code:not(pre code) {
+    font-family: var(--zen-font-mono);
     font-size: 0.88em;
 }
 .entry-content img,
@@ -230,7 +218,7 @@ pre.wp-block-code .hljs .hljs-section { color: #58a6ff; }
     max-width: var(--zen-reading-width);
 }
 .editor-styles-wrapper .wp-block[data-align="wide"] {
-    max-width: var(--zen-content-width, 900px);
+    max-width: var(--zen-content-width, 992px);
 }
 .editor-styles-wrapper .wp-block[data-align="full"] {
     max-width: none;
@@ -239,9 +227,11 @@ pre.wp-block-code .hljs .hljs-section { color: #58a6ff; }
     font-family: var(--zen-font-heading);
     font-size: 36px;
     line-height: 1.3;
-    font-weight: 600;
+    font-weight: 500;
 }
 @media (max-width: 639.98px) {
+    .entry-content,
+    .editor-styles-wrapper { font-size: 16px; }
     .entry-content h2,
     .editor-styles-wrapper h2 {
         font-size: 24px;

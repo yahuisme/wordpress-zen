@@ -17,7 +17,7 @@ function scriptQueue() {
         function add_action(...$args) {}
         function add_filter(...$args) {}
         function zen_get_option($key) {
-            return ['zen_font_family' => 'system', 'zen_show_highlight' => 1, 'zen_content_width' => 900, 'zen_reading_width' => 720][$key] ?? 0;
+            return ['zen_show_highlight' => 1, 'zen_content_width' => 900, 'zen_reading_width' => 720][$key] ?? 0;
         }
         function get_template_directory() { return ABSPATH; }
         function get_template_directory_uri() { return 'https://zen.test/theme'; }
@@ -51,8 +51,6 @@ test('critical UI is synchronous in the footer before an independent async highl
 
 async function footerPage(t, withCode = true) {
     const dom = new JSDOM(`<!doctype html>
-        <button id="mobile-menu-btn" aria-expanded="false">Menu</button>
-        <div id="mobile-menu" class="hidden"><a href="/about">About</a></div>
         <button id="search-toggle" aria-expanded="false">Search</button>
         <div id="search-modal" class="hidden"><button id="search-close">Close</button><input id="search-input"></div>
         <article class="entry-content">${withCode ? '<pre class="language-javascript"><code>const answer = 42;</code></pre>' : '<pre>Plain</pre>'}</article>
@@ -86,9 +84,6 @@ async function footerPage(t, withCode = true) {
 
 test('footer UI and copy work before DOMContentLoaded while the highlighter is unavailable', async t => {
     const { window, document, copied } = await footerPage(t);
-    const menu = document.getElementById('mobile-menu-btn');
-    menu.click();
-    assert.equal(menu.getAttribute('aria-expanded'), 'true', 'menu must bind before DCL');
     document.getElementById('search-toggle').click();
     assert.equal(document.getElementById('search-toggle').getAttribute('aria-expanded'), 'true');
     const copy = document.querySelector('.zen-code-copy');
@@ -99,14 +94,14 @@ test('footer UI and copy work before DOMContentLoaded while the highlighter is u
     assert.equal(document.querySelectorAll('.zen-code-copy').length, 1, 'DCL does not initialize twice');
 });
 
-test('a failed optional highlighter leaves copy and the menu usable', async t => {
+test('a failed optional highlighter leaves copy and search usable', async t => {
     const { window, document, copied, highlightListeners } = await footerPage(t);
     document.getElementById('highlight-js-js').dispatchEvent(new window.Event('error'));
     assert.equal(highlightListeners.size, 0, 'no listener remains after script failure');
     document.querySelector('.zen-code-copy').click(); await Promise.resolve();
     assert.deepEqual(copied, ['const answer = 42;']);
-    document.getElementById('mobile-menu-btn').click();
-    assert.equal(document.getElementById('mobile-menu-btn').getAttribute('aria-expanded'), 'true');
+    document.getElementById('search-toggle').click();
+    assert.equal(document.getElementById('search-toggle').getAttribute('aria-expanded'), 'true');
     assert.equal(document.querySelector('code').childElementCount, 0);
 });
 
@@ -127,6 +122,6 @@ test('an asynchronously loaded real highlighter enhances code after basic UI ini
     assert.ok(code.querySelector('.hljs-keyword'), 'real Highlight.js executes after its load event');
     script.dispatchEvent(new window.Event('load'));
     assert.equal(document.querySelectorAll('.zen-code-copy').length, 1);
-    document.getElementById('mobile-menu-btn').click();
-    assert.equal(document.getElementById('mobile-menu-btn').getAttribute('aria-expanded'), 'true');
+    document.getElementById('search-toggle').click();
+    assert.equal(document.getElementById('search-toggle').getAttribute('aria-expanded'), 'true');
 });

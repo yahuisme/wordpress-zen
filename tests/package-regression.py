@@ -48,11 +48,11 @@ assert 'assets/css/admin.css' in expected_files, 'Design asset missing from expe
 assert 'assets/css/reading.css' in expected_files
 assert 'assets/css/layout.css' in expected_files
 assert 'assets/js/admin.js' in expected_files
-for notice in ('licenses/Highlight-BSD-3-Clause.txt', 'licenses/Tailwind-MIT.txt', 'licenses/Bitstream-Charter.txt'):
+for notice in ('licenses/Highlight-BSD-3-Clause.txt', 'licenses/Tailwind-MIT.txt', 'assets/fonts/google-sans-code/OFL.txt'):
     assert notice in expected_files, 'Third-party license missing: ' + notice
-for face in ('regular', 'bold', 'italic', 'bold_italic'):
-    font_file = f'assets/fonts/charter_{face}.woff2'
-    assert font_file in expected_files and (ROOT / font_file).read_bytes().startswith(b'wOF2'), font_file
+code_fonts = sorted(f for f in expected_files if f.startswith('assets/fonts/google-sans-code/') and f.endswith('.woff2'))
+assert code_fonts and all((ROOT / font).read_bytes().startswith(b'wOF2') for font in code_fonts)
+assert not any('charter' in f.lower() for f in expected_files), 'Retired font assets must not ship'
 assert 'undefined and other contributors' not in (ROOT / 'assets/js/highlight.min.js').read_text(), 'Highlighter attribution must name its copyright holder'
 highlight_license = (ROOT / 'licenses/Highlight-BSD-3-Clause.txt').read_text()
 assert all(text in highlight_license for text in ('Ivan Sagalaev', 'Redistribution and use', 'Neither the name', 'THIS SOFTWARE IS PROVIDED'))

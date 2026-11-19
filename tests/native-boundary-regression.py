@@ -25,11 +25,15 @@ with sync_playwright() as p:
  check('native logo title fallback featured image srcset and long-brand mobile geometry',branding)
  def fonts():
   q.set_viewport_size({'width':1440,'height':900})
-  for value,family in [('system','system-ui'),('inter','Inter'),('space-grotesk','Space Grotesk')]:
-   cli('option','update','zen_font_family',value);q.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');q.evaluate('document.fonts.ready');computed=q.locator('#post-content').evaluate('e=>getComputedStyle(e).fontFamily');assert family in computed,computed
-   assert bool(q.locator('link[href*="fonts.googleapis.com"]').count())==(value!='system')
-  cli('option','delete','zen_font_family')
- check('all typography choices affect computed frontend font and system disables Google requests',fonts)
+  cli('option','update','zen_font_family','inter')
+  try:
+   q.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');q.evaluate('document.fonts.ready')
+   computed=q.locator('#post-content').evaluate('e=>getComputedStyle(e).fontFamily');assert 'TsangerJinKai02' in computed,computed
+   assert q.locator('link[href*="zen-bins-google-code.css"]').count()==1
+   assert q.locator('link[href*="fonts.googleapis.com"],link[href*="fonts.gstatic.com"]').count()==0
+  finally:
+   cli('option','delete','zen_font_family')
+ check('retired font choices cannot change the shared local typography',fonts)
  def wide():
   original=cli('post','get',str(f['split']),'--field=post_content');src=cli('post','get',str(f['media'][0]),'--field=guid');assert src.startswith(o+'/');code='<figure class="wp-block-image alignwide"><img src="'+src+'" width="1200" height="600" alt="wide"></figure>'
   cli('post','update',str(f['split']),'--post_content='+code)

@@ -66,10 +66,13 @@ try:
             page.goto(origin + '/', wait_until='domcontentloaded')
             for width in (320, 767, 768):
                 page.set_viewport_size({'width': width, 'height': 900})
-                menu = page.get_by_role('navigation', name='主菜单', exact=True)
-                rows.append({'name': f'noscript-native-menu-{width}', 'passed': menu.count() == 1 and menu.get_by_role('link').first.is_visible() and not page.locator('#mobile-menu-btn').is_visible()})
+                footer = page.locator('.zen-footer-navigation')
+                rows.append({'name': f'noscript-footer-nav-without-header-menu-{width}', 'passed': footer.get_by_role('link').first.is_visible() and not page.locator('.zen-site-header nav, #mobile-menu-btn').count()})
             page.set_viewport_size({'width': 390, 'height': 900})
-            form = page.locator('.zen-noscript-search form[role=search]')
+            fallback = page.locator('#search-fallback')
+            rows.append({'name': 'noscript-search-link-visible', 'passed': fallback.is_visible() and not page.locator('#search-toggle').is_visible()})
+            fallback.click()
+            form = page.locator('main form[role=search]')
             visible = form.count() == 1 and form.is_visible()
             rows.append({'name': 'noscript-search-visible', 'passed': visible})
             if visible:

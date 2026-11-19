@@ -2,19 +2,11 @@
 /*
 Template Name: Archives Template
 */
-get_header(); ?>
+get_header();
 
-<header class="zen-article-header zen-archive-heading">
-    <h1 class="zen-article-title"><?php echo esc_html(zen_post_title()); ?></h1>
-</header>
-
-<?php if (post_password_required()) : ?>
-    <div class="entry-content zen-reading-shell"><?php echo get_the_password_form(); ?></div>
-    <?php get_footer(); return; ?>
-<?php endif; ?>
-
-<div class="zen-archives-directory zen-reading-shell">
-    <?php
+$archive_locked = post_password_required();
+$archives_posts = array();
+if (!$archive_locked) {
     $archive_context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
     $archives_cache = get_transient('zen_archives_public_posts_v3');
     $archives_cache = is_array($archives_cache) ? $archives_cache : array();
@@ -58,43 +50,70 @@ get_header(); ?>
         $archives_cache[$archive_context] = $archives_posts;
         set_transient('zen_archives_public_posts_v3', $archives_cache, HOUR_IN_SECONDS);
     }
+}
+?>
+<header class="zen-directory-heading zen-archive-heading">
+    <p class="zen-directory-kicker" lang="en" aria-hidden="true">Archive</p>
+    <h1 class="zen-directory-title"><?php echo esc_html(zen_post_title()); ?></h1>
+    <?php if ($archives_posts) : ?>
+        <p class="zen-directory-meta">
+            <?php echo esc_html(sprintf(__('共 %d 篇文章', 'zen'), count($archives_posts))); ?>
+            <span aria-hidden="true">·</span>
+            <?php echo esc_html(__('最近发布', 'zen')); ?>
+            <time datetime="<?php echo esc_attr($archives_posts[0]['date']); ?>"><?php echo esc_html(str_replace('-', '.', $archives_posts[0]['date'])); ?></time>
+        </p>
+    <?php endif; ?>
+</header>
 
-    $year_prev = null;
-    // Cache the civil date, not its presentation, so switching styles takes effect immediately.
+<?php if ($archive_locked) : ?>
+    <div class="entry-content zen-reading-shell"><?php echo get_the_password_form(); ?></div>
+    <?php get_footer(); return; ?>
+<?php endif; ?>
+
+<div class="zen-archives-directory">
+    <?php
+    // Group the cached civil dates for display without changing their stored format.
+    $archive_years = array();
+    foreach ($archives_posts as $archive_post) {
+        $archive_years[$archive_post['year']][substr($archive_post['date'], 5, 2)][] = $archive_post;
+    }
     $date_format = zen_post_date_format('directory');
-
-    if (!empty($archives_posts)) :
-        foreach ($archives_posts as $archive_post) :
-            $year_current = $archive_post['year'];
-
-            if ($year_current !== $year_prev) {
-                if ($year_prev !== null) { ?>
+    $open_month = true;
+    ?>
+    <?php foreach ($archive_years as $year => $months) : ?>
+        <section class="zen-archive-group">
+            <header class="zen-archive-year-head">
+                <h2 class="zen-archive-year"><?php echo esc_html($year); ?></h2>
+                <p class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), array_sum(array_map('count', $months)))); ?></p>
+            </header>
+            <?php foreach ($months as $month => $rows) : ?>
+                <details class="zen-archive-month"<?php if ($open_month) echo ' open'; ?>>
+                    <summary>
+                        <span class="zen-archive-month-label"><?php echo esc_html(sprintf(__('%d 月', 'zen'), (int) $month)); ?></span>
+                        <span class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), count($rows))); ?></span>
+                        <span class="zen-archive-toggle" aria-hidden="true">
+                            <span class="zen-archive-expand"><?php echo esc_html(__('展开', 'zen')); ?></span>
+                            <span class="zen-archive-collapse"><?php echo esc_html(__('收起', 'zen')); ?></span>
+                        </span>
+                    </summary>
+                    <ul class="zen-post-list zen-archive-list">
+                        <?php foreach ($rows as $archive_post) : ?>
+                            <li class="zen-archive-row zen-post-item">
+                                <?php $post_date = DateTimeImmutable::createFromFormat('!Y-m-d', $archive_post['date']); ?>
+                                <?php if ($post_date) : ?>
+                                    <time class="zen-post-date zen-meta-field" datetime="<?php echo esc_attr($archive_post['date']); ?>"><?php echo esc_html($post_date->format($date_format)); ?></time>
+                                <?php endif; ?>
+                                <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link"><?php echo esc_html(trim($archive_post['title']) === '' ? __('无标题', 'zen') : $archive_post['title']); ?></a>
+                            </li>
+                        <?php endforeach; ?>
                     </ul>
-                </section>
-                <?php } ?>
-
-                <section>
-                    <h2 class="zen-archive-year"><?php echo esc_html($year_current); ?></h2>
-                    <ul class="zen-post-list">
-            <?php } ?>
-
-            <li class="zen-archive-row zen-post-item flex items-baseline justify-between group">
-                <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link">
-                    <?php echo esc_html(trim($archive_post['title']) === '' ? __('无标题', 'zen') : $archive_post['title']); ?>
-                </a>
-                <?php $post_date = DateTimeImmutable::createFromFormat('!Y-m-d', $archive_post['date']); ?>
-                <?php if ($post_date) : ?>
-                    <time class="zen-post-date zen-meta-field" datetime="<?php echo esc_attr($archive_post['date']); ?>"><?php echo esc_html($post_date->format($date_format)); ?></time>
-                <?php endif; ?>
-            </li>
-
-            <?php $year_prev = $year_current; ?>
-
-        <?php endforeach; ?>
-            </ul>
+                </details>
+                <?php $open_month = false; ?>
+            <?php endforeach; ?>
         </section>
-    <?php else : ?>
-        <p class="text-center text-gray-600">暂无文章。</p>
+    <?php endforeach; ?>
+    <?php if (!$archive_years) : ?>
+        <p class="zen-empty-state"><?php echo esc_html(__('暂无文章。', 'zen')); ?></p>
     <?php endif; ?>
 </div>
 

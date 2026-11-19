@@ -12,6 +12,7 @@ function the_content() { $GLOBALS['content_calls']++; echo $GLOBALS['toc_fixture
 function zen_get_option($name) { return $name === 'zen_show_toc' ? 1 : 0; }
 function zen_show_reading_count() { return false; }
 function zen_post_title() { return 'Title'; }
+function has_excerpt() { return false; }
 function zen_get_primary_category() { return null; }
 function zen_posted_on_link() {}
 function has_post_thumbnail() { return false; }

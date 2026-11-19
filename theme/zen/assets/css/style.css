@@ -553,30 +553,32 @@ select {
 /* The same semantic palette drives both appearances. */
 :root {
     --zen-bg: #f5f4ed;
-    --zen-bg-soft: #ebe9df;
+    --zen-bg-soft: #e8e6dc;
     --zen-surface: #faf9f5;
     --zen-surface-elevated: var(--zen-surface);
-    --zen-border: #cbc6b7;
-    --zen-border-soft: #dedacf;
+    --zen-border: #d8d5c8;
+    --zen-border-soft: #e5e3d8;
     --zen-input-border: #898171;
-    --zen-text: #25241f;
-    --zen-muted: #625d52;
+    --zen-text: #141413;
+    --zen-secondary: #504e49;
+    --zen-muted: #6b6a64;
     --zen-shadow: rgb(37 36 31 / 11%);
     --zen-accent: #1b365d;
     --zen-accent-soft: #e4ecf5;
     --zen-on-accent: #faf9f5;
 }
 .dark {
-    --zen-bg: #201f1c;
-    --zen-bg-soft: #2b2924;
-    --zen-surface: #272620;
-    --zen-border: #5e584b;
-    --zen-border-soft: #3e3b33;
+    --zen-bg: #141413;
+    --zen-bg-soft: #262624;
+    --zen-surface: #30302e;
+    --zen-border: #44443e;
+    --zen-border-soft: #373732;
     --zen-input-border: #888071;
-    --zen-text: #eeeadf;
-    --zen-muted: #bdb5a5;
+    --zen-text: #f5f4ed;
+    --zen-secondary: #d2cfc4;
+    --zen-muted: #aaa79e;
     --zen-shadow: rgb(0 0 0 / 30%);
-    --zen-accent: #adc5e5;
+    --zen-accent: #84aad6;
     --zen-accent-soft: #303d50;
     --zen-on-accent: #172838;
 }
@@ -672,10 +674,6 @@ select:focus-visible {
 .zen-icon-btn[hidden] { display: none; }
 .zen-site-header {
     background: var(--zen-bg);
-    border-bottom: 1px solid var(--zen-border-soft);
-}
-.zen-site-footer {
-    border-top: 1px solid var(--zen-border-soft);
 }
 .zen-lightbox {
     background: color-mix(in srgb, var(--zen-bg) 95%, transparent);
@@ -693,18 +691,15 @@ select:focus-visible {
     gap: 0.35rem;
 }
 .zen-header-tool {
-    color: var(--zen-muted);
-    border-radius: 6px;
+    color: var(--zen-text);
+    border-radius: 4px;
 }
 .zen-header-tool:hover { background: var(--zen-bg-soft); color: var(--zen-accent); }
-.zen-primary-menu a,
 .zen-action-link,
 .zen-ui-link {
     display: inline-flex;
     align-items: center;
 }
-.zen-primary-menu a { min-height: 44px; }
-.zen-primary-menu a:is(:hover, :focus-visible, [aria-current="page"]),
 .zen-action-link,
 .zen-index-heading a:hover {
     color: var(--zen-accent);
@@ -1612,7 +1607,6 @@ select:focus-visible {
     .animate-pop-in {
         animation: none;
     }
-    #mobile-menu a,
     .comment-reply-link,
     .wp-block-file .wp-block-file__button,
     .zen-action-link,

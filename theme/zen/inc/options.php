@@ -26,21 +26,17 @@ function zen_get_option_defaults() {
             'zen_show_post_navigation' => 1,
             'zen_show_reading_progress'=> 1,
             'zen_theme_mode_default'   => 'auto',
-            'zen_font_family'          => 'kami',
-            'zen_content_width'        => 900,
-            'zen_reading_width'        => 720,
+            'zen_content_width'        => 992,
+            'zen_reading_width'        => 768,
             'zen_list_style'           => 'standard',
             'zen_show_site_intro'      => 1,
             'zen_show_latest_card'      => 1,
-            'zen_date_style'            => 'editorial',
             'zen_category_ids'         => array(),
             'zen_show_featured_image'  => 1,
             'zen_show_back_to_top'     => 1,
             'zen_show_lightbox'        => 1,
             'zen_show_search_shortcut' => 1,
             'zen_footer_text'          => '',
-            'zen_show_footer_theme_by' => 0,
-            'zen_show_footer_wordpress'=> 0,
             'zen_show_footer_rss'      => 1,
             'zen_copyright_license'    => 'none',
             'zen_site_start_date'      => '',
@@ -81,8 +77,6 @@ function zen_register_options() {
         'zen_show_back_to_top',
         'zen_show_lightbox',
         'zen_show_search_shortcut',
-        'zen_show_footer_theme_by',
-        'zen_show_footer_wordpress',
         'zen_show_footer_rss',
     );
 
@@ -101,10 +95,6 @@ function zen_register_options() {
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_theme_mode',
     ));
-    register_setting('zen_options', 'zen_font_family', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_font_family',
-    ));
     register_setting('zen_options', 'zen_content_width', array(
         'type'              => 'integer',
         'sanitize_callback' => 'zen_sanitize_content_width',
@@ -116,10 +106,6 @@ function zen_register_options() {
     register_setting('zen_options', 'zen_list_style', array(
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_list_style',
-    ));
-    register_setting('zen_options', 'zen_date_style', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_date_style',
     ));
     register_setting('zen_options', 'zen_category_ids', array(
         'type'              => 'array',
@@ -277,14 +263,6 @@ function zen_sanitize_list_style($value) {
     return in_array($value, array('standard', 'compact'), true) ? $value : 'standard';
 }
 
-function zen_sanitize_date_style($value) {
-    if (in_array($value, array('editorial', 'classic'), true)) {
-        return $value;
-    }
-    add_settings_error('zen_date_style', 'zen_date_style_invalid', __('日期样式无效；已保留上次保存值。', 'zen'));
-    return zen_get_option('zen_date_style');
-}
-
 function zen_sanitize_category_ids($value) {
     $ids = array();
     foreach (is_array($value) ? $value : array() as $id) {
@@ -297,10 +275,6 @@ function zen_sanitize_category_ids($value) {
 
 function zen_sanitize_theme_mode($value) {
     return in_array($value, array('auto', 'light', 'dark'), true) ? $value : 'auto';
-}
-
-function zen_sanitize_font_family($value) {
-    return in_array($value, array('kami', 'inter', 'space-grotesk', 'system'), true) ? $value : 'system';
 }
 
 function zen_sanitize_copyright_license($value) {
@@ -333,78 +307,6 @@ function zen_sanitize_site_start_date($value) {
     add_settings_error('zen_site_start_date', 'zen_site_start_date_invalid', __('请输入有效日期（YYYY-MM-DD）；已保留上次保存值。', 'zen'));
     return zen_get_option('zen_site_start_date');
 }
-
-function zen_fetch_update_info() {
-    $transient_key = 'zen_theme_update_info';
-
-    $cached = zen_get_update_info();
-    if (false !== $cached) {
-        return $cached;
-    }
-
-    $result = array(
-        'latest_version' => '',
-        'url'            => 'https://github.com/yahuisme/wordpress-zen/releases',
-        'error'          => '',
-    );
-    $response = wp_remote_get('https://api.github.com/repos/yahuisme/wordpress-zen/releases/latest', array(
-        'timeout'    => 5,
-        'user-agent' => 'Zen/' . wp_get_theme(get_template())->get('Version'),
-        'headers'    => array('Accept' => 'application/vnd.github+json'),
-    ));
-
-    if (is_wp_error($response)) {
-        $result['error'] = $response->get_error_message();
-    } elseif (200 !== wp_remote_retrieve_response_code($response)) {
-        $result['error'] = __('暂时无法连接 GitHub。', 'zen');
-    } else {
-        $release = json_decode(wp_remote_retrieve_body($response), true);
-        $tag = isset($release['tag_name']) ? sanitize_text_field($release['tag_name']) : '';
-        if (preg_match('/^v?(\d+\.\d+\.\d+)$/', $tag, $matches)) {
-            $result['latest_version'] = $matches[1];
-            $result['url'] = !empty($release['html_url']) ? esc_url_raw($release['html_url']) : $result['url'];
-        } else {
-            $result['error'] = __('GitHub 返回的版本信息无效。', 'zen');
-        }
-    }
-
-    // 成功时缓存 12 小时；失败时只缓存 30 分钟，便于快速重试。
-    $cache_ttl = $result['error'] ? 30 * MINUTE_IN_SECONDS : 12 * HOUR_IN_SECONDS;
-    set_transient($transient_key, $result, $cache_ttl);
-    return $result;
-}
-
-function zen_get_update_info() {
-    $cached = get_transient('zen_theme_update_info');
-    return is_array($cached)
-        && isset($cached['latest_version'], $cached['url'], $cached['error'])
-        && is_string($cached['latest_version']) && is_string($cached['url']) && is_string($cached['error'])
-        ? $cached : false;
-}
-
-function zen_update_info_message($update, $version) {
-    if ($update['error']) {
-        $message = $update['error'];
-    } elseif (!$update['latest_version']) {
-        $message = __('暂未获得有效的最新版本信息。', 'zen');
-    } elseif (version_compare($update['latest_version'], $version, '>')) {
-        $message = sprintf(__('有新版本 v%s 可供下载。', 'zen'), $update['latest_version']);
-    } else {
-        $message = sprintf(__('当前版本 v%s 已是最新版本。', 'zen'), $version);
-    }
-    return $message;
-}
-
-function zen_ajax_update_info() {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(array('message' => __('你没有查看更新信息的权限。', 'zen')), 403);
-    }
-    check_ajax_referer('zen_update_info', 'nonce');
-    $update = zen_fetch_update_info();
-    $version = wp_get_theme(get_template())->get('Version');
-    wp_send_json_success(array('message' => zen_update_info_message($update, $version), 'url' => $update['url']));
-}
-add_action('wp_ajax_zen_update_info', 'zen_ajax_update_info');
 
 function zen_get_published_block_pattern($ref) {
     if (!is_int($ref) || $ref <= 0) {
@@ -490,10 +392,6 @@ function zen_options_admin_assets($hook) {
     $uri = get_template_directory_uri();
     wp_enqueue_style('zen-admin', $uri . '/assets/css/admin.css', array(), filemtime($dir . '/assets/css/admin.css'));
     wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', array(), filemtime($dir . '/assets/js/admin.js'), true);
-    wp_localize_script('zen-admin', 'zenAdminSettings', array(
-        'ajaxUrl' => admin_url('admin-ajax.php'),
-        'nonce'   => wp_create_nonce('zen_update_info'),
-    ));
 }
 add_action('admin_enqueue_scripts', 'zen_options_admin_assets');
 
@@ -535,25 +433,18 @@ function zen_options_page_html() {
                             </select><p class="description"><?php esc_html_e('访客首次访问时的默认模式。', 'zen'); ?></p></td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="zen_font_family"><?php esc_html_e('排版方案', 'zen'); ?></label></th>
-                            <td><select name="zen_font_family" id="zen_font_family" aria-describedby="zen-font-help">
-                                <?php foreach (array('kami' => 'Kami 纸感（默认）', 'system' => '系统排版', 'inter' => '现代衬线', 'space-grotesk' => '现代无衬线') as $value => $label) : ?>
-                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_font_family')); ?>><?php echo esc_html($label); ?></option>
-                                <?php endforeach; ?>
-                            </select><p class="description" id="zen-font-help"><?php esc_html_e('Kami 使用本地 Charter；中文优先用仓耳今楷，不可用时回退至系统中文字体。Kami 和系统排版均不请求第三方字体；现代衬线和现代无衬线从 Google Fonts 加载字体。', 'zen'); ?></p></td>
-                        </tr>
-                        <tr>
                             <th scope="row"><label for="zen_reading_width"><?php esc_html_e('正文宽度', 'zen'); ?></label></th>
                             <td>
                                 <label class="screen-reader-text" for="zen_reading_width_preset"><?php esc_html_e('正文宽度预设', 'zen'); ?></label>
                                 <select id="zen_reading_width_preset" aria-describedby="zen-reading-width-help">
-                                    <?php foreach (array(600, 720, 800, 960) as $width) : ?>
+                                    <?php $zen_reading_presets = array(600, 720, 768, 800, 960); ?>
+                                    <?php foreach ($zen_reading_presets as $width) : ?>
                                         <option value="<?php echo esc_attr($width); ?>" <?php selected($width, $reading_width); ?>><?php echo esc_html($width . ' px'); ?></option>
                                     <?php endforeach; ?>
-                                    <option value="custom" <?php selected(false, in_array((int) $reading_width, array(600, 720, 800, 960), true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
+                                    <option value="custom" <?php selected(false, in_array((int) $reading_width, $zen_reading_presets, true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
                                 </select>
                                 <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text" aria-describedby="zen-reading-width-help"> px
-                                <p class="description" id="zen-reading-width-help"><?php esc_html_e('正文最大宽度，默认 720px；自定义范围 600–960px。选择预设或直接输入。', 'zen'); ?></p>
+                                <p class="description" id="zen-reading-width-help"><?php esc_html_e('正文最大宽度，默认 768px；自定义范围 600–960px。选择预设或直接输入。', 'zen'); ?></p>
                             </td>
                         </tr>
                         <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
@@ -565,7 +456,7 @@ function zen_options_page_html() {
                         <table class="form-table" role="presentation"><tr>
                             <th scope="row"><label for="zen_content_width"><?php esc_html_e('整体内容宽度', 'zen'); ?></label></th>
                             <td><input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="1" required class="small-text"> px
-                            <p class="description"><?php esc_html_e('整体版面最大宽度，默认 900px（600–1920px）。保留原有值，不等同于正文宽度。', 'zen'); ?></p></td>
+                            <p class="description"><?php esc_html_e('整体版面最大宽度，默认 992px（600–1920px）。保留原有值，不等同于正文宽度。', 'zen'); ?></p></td>
                         </tr></table>
                     </details>
                 </div>
@@ -580,15 +471,10 @@ function zen_options_page_html() {
                             <option value="standard" <?php selected('standard', zen_get_option('zen_list_style')); ?>><?php esc_html_e('标准', 'zen'); ?></option>
                             <option value="compact" <?php selected('compact', zen_get_option('zen_list_style')); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
                         </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式省略卡片及文章列表的摘要。', 'zen'); ?></p></td></tr>
-                    <tr><th scope="row"><label for="zen_date_style"><?php esc_html_e('文章日期样式', 'zen'); ?></label></th>
-                        <td><select name="zen_date_style" id="zen_date_style" aria-describedby="zen-date-style-help">
-                            <option value="editorial" <?php selected('editorial', zen_get_option('zen_date_style')); ?>><?php esc_html_e('简洁日期（2026.11.17）', 'zen'); ?></option>
-                            <option value="classic" <?php selected('classic', zen_get_option('zen_date_style')); ?>><?php esc_html_e('完整中文（2026年11月17日）', 'zen'); ?></option>
-                        </select><p class="description" id="zen-date-style-help"><?php esc_html_e('简洁样式在列表中把今年的日期缩写为「11月 17日」，年度归档只显示月日。仅改变 Zen 的文案格式，不影响日期链接或 WordPress 通用设置。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text"> 字
                         <p class="description"><?php esc_html_e('标准模式下卡片和列表的摘要长度（1–300 字）。', 'zen'); ?></p></td></tr>
-                    <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类导航', 'zen'); ?></th>
+                    <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类归档导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
                             <?php $categories = get_categories(array('hide_empty' => false, 'lang' => '')); ?>
@@ -596,7 +482,7 @@ function zen_options_page_html() {
                             <?php if (!is_wp_error($categories)) : foreach ($categories as $category) : ?>
                                 <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, in_array((int) $category->term_id, $selected_category_ids, true)); ?>> <?php echo esc_html($category->name); ?></label>
                             <?php endforeach; endif; ?>
-                            </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('全部不勾选时显示所有非空分类；勾选后仅显示所选分类。', 'zen'); ?></p>
+                            </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('仅在分类归档中显示。全部不勾选时显示所有非空分类。', 'zen'); ?></p>
                         </td></tr>
                 </table></div>
             </details>
@@ -633,8 +519,6 @@ function zen_options_page_html() {
                     <tr><th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
                         <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
                         <p class="description"><?php esc_html_e('页脚运行时间的起点（YYYY-MM-DD）。留空按首篇公开文章计算。', 'zen'); ?></p></td></tr>
-                    <?php zen_checkbox_field('zen_show_footer_theme_by', __('主题署名', 'zen'), __('显示 Theme By RyanZ', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_footer_wordpress', __('WordPress 署名', 'zen'), __('显示 Powered By WordPress', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_footer_rss', __('RSS', 'zen'), __('显示 RSS 订阅链接', 'zen')); ?>
                 </table></div>
             </details>
@@ -661,19 +545,6 @@ function zen_options_page_html() {
             <input type="hidden" name="action" value="zen_reset_options">
             <?php wp_nonce_field('zen_reset_options', 'zen_reset_nonce', false); ?>
         </form>
-        <section class="zen-options-group zen-options-about" id="zen-about" aria-labelledby="zen-about-title">
-            <h2 id="zen-about-title"><?php esc_html_e('关于更新', 'zen'); ?></h2>
-            <?php
-            $version = wp_get_theme(get_template())->get('Version');
-            $update = zen_get_update_info();
-            ?>
-            <p id="zen-update-status" role="status"
-               data-update-pending="<?php echo false === $update ? 'true' : 'false'; ?>"
-               data-error="<?php echo esc_attr(__('更新检查失败。', 'zen')); ?>">
-                <?php echo esc_html(false === $update ? sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version) : zen_update_info_message($update, $version)); ?>
-            </p>
-            <a id="zen-update-link" class="button button-secondary" href="<?php echo esc_url(false === $update ? 'https://github.com/yahuisme/wordpress-zen/releases' : $update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
-        </section>
     </div>
     <?php
 }

@@ -6,7 +6,7 @@ function add_action(...$args) {}
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 require ABSPATH . 'inc/template-tags.php';
 $cache = array(); $counts = array(); $post_id = 42; $logged_in = false;
-function zen_get_option($key) { return $key === 'zen_show_reading_count' ? true : ''; }
+function zen_get_option($key) { return $key === 'zen_show_reading_count' ? true : ($GLOBALS['footer_options'][$key] ?? ''); }
 function is_singular($type) { return true; }
 function is_preview() { return false; }
 function is_feed() { return false; }
@@ -55,9 +55,17 @@ check(str_contains($archive, 'zen_archives_public_posts_v3'), 'archive ignores o
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
 function esc_url($value) { return esc_html($value); }
 function date_i18n($format) { return '2026'; }
-function get_bloginfo($key) { return '<Fixture>'; }
+function get_bloginfo($key) { return $key === 'rss2_url' ? 'https://example.test/feed/' : '<Fixture>'; }
 $cache['zen_site_uptime'] = array('year' => '2022', 'days' => 123);
-function has_nav_menu($location) { return false; }
+function has_nav_menu($location) { return $location === 'footer' && !empty($GLOBALS['custom_footer_menu']); }
+function wp_nav_menu($args) {
+    check($args['theme_location'] === 'footer', 'assigned footer menu location');
+    printf($args['items_wrap'] ?? '<ul id="%1$s" class="%2$s">%3$s</ul>', 'fixture-menu', 'menu', '<li><a href="/custom/">Custom</a></li>');
+}
+define('OBJECT', 'OBJECT');
+function get_page_by_path($path, $output, $type) {
+    return $path === 'about' && $type === array('page') ? ($GLOBALS['about_page'] ?? null) : null;
+}
 function wp_footer() {}
 ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $html = ob_get_clean();
 check(str_contains($html, 'Since 2022 · 123 Days'), 'rendered dynamic English footer');
@@ -65,17 +73,40 @@ check(str_contains($html, '&lt;Fixture&gt;'), 'footer escaping retained');
 $cache['zen_site_uptime']['days'] = 1;
 ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $singular = ob_get_clean();
 check(str_contains($singular, 'Since 2022 · 1 Day</div>'), 'singular English uptime');
+check(!str_contains($html, '>About</a>'), 'missing About page must not produce a broken link');
+$GLOBALS['about_page'] = (object) array('ID' => 77, 'post_status' => 'publish');
+ob_start(); require ABSPATH . 'footer.php'; $with_about = ob_get_clean();
+check(str_contains($with_about, 'href="/post/77">About</a>'), 'published About page uses its native permalink');
+check(!str_contains($with_about, '/feed/'), 'RSS off hides feed link');
+$GLOBALS['footer_options']['zen_show_footer_rss'] = 1;
+foreach (array(false => '>About</a>', true => '>Custom</a>') as $custom => $expected_menu_item) {
+    $GLOBALS['custom_footer_menu'] = $custom;
+    ob_start(); require ABSPATH . 'footer.php'; $footer_with_rss = ob_get_clean();
+    preg_match('~<nav class="zen-footer-navigation"[^>]*>(.*?)</nav>~s', $footer_with_rss, $nav);
+    preg_match_all('~<a\b[^>]*>.*?</a>~s', $nav[1] ?? '', $links);
+    check(str_contains($nav[1] ?? '', $expected_menu_item) && str_contains(end($links[0]) ?: '', 'href="https://example.test/feed/"'), 'RSS is the last link in both default and custom footer menus');
+    check(substr_count($footer_with_rss, 'href="https://example.test/feed/"') === 1, 'RSS appears exactly once');
+}
+unset($GLOBALS['custom_footer_menu'], $GLOBALS['footer_options']);
+$GLOBALS['about_page']->post_status = 'private';
+ob_start(); require ABSPATH . 'footer.php'; $private_about = ob_get_clean();
+check(!str_contains($private_about, '>About</a>'), 'private About page must not be linked');
 define('HOUR_IN_SECONDS', 3600);
 function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
+function __($value, $domain = '') { return $value; }
 function post_password_required() { return false; }
 function the_title() { echo 'Archive'; }
 function get_option($key) { return ''; }
 function get_the_title($post = null) { return $post ? 'Post' : 'Archive'; }
-function get_permalink($post) { return '/post/7'; }
+function get_permalink($post) { return '/post/' . (is_object($post) ? $post->ID : (int) $post); }
 function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026-10-05'; }
 function esc_attr($value) { return esc_html($value); }
+function esc_attr_e($value, $domain = '') { echo esc_attr($value); }
+function esc_html_e($value, $domain = '') { echo esc_html($value); }
+function get_pages($args) { return array(); }
+function home_url($path) { return 'https://example.test' . $path; }
 function wp_reset_postdata() {}
 class WP_Query {
     public $posts; public $max_num_pages = 1;
@@ -83,7 +114,7 @@ class WP_Query {
 }
 $cache['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7, 'date' => '2025年4月1日')));
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; $html = ob_get_clean();
-check(str_contains($html, '2026年10月5日') && !str_contains($html, '2025年4月1日'), 'legacy cache safely rebuilt');
+check(str_contains($html, '>10月 5日</time>') && !str_contains($html, '2025年4月1日'), 'legacy cache safely rebuilt');
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; ob_end_clean();
 check($GLOBALS['archive_queries'] === 1, 'warm v3 cache avoids rebuild');
 

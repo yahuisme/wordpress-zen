@@ -188,8 +188,6 @@ test('global keyboard handling registers one document listener', async t => {
 
 const searchMarkup = `
     <header>
-        <button id="mobile-menu-btn" aria-expanded="false" hidden>Menu</button>
-        <nav id="mobile-menu"><a href="/about">About</a></nav>
         <button id="search-toggle" aria-expanded="false" hidden>Search</button>
     </header>
     <main><button id="outside">Outside</button></main>
@@ -197,33 +195,17 @@ const searchMarkup = `
         <button id="search-close" hidden>Close</button><input id="search-input"><button>Submit</button>
     </div>`;
 
-test('bound controls enhance the already-present links and search without replacing them', async t => {
-    const { document } = await page(t, searchMarkup);
-    const menu = document.getElementById('mobile-menu');
+test('bound search opens a dialog and restores its trigger on close', async t => {
+    const { document, flush } = await page(t, searchMarkup);
     const search = document.getElementById('search-modal');
-    const menuButton = document.getElementById('mobile-menu-btn');
-    const searchButton = document.getElementById('search-toggle');
-    assert.equal(menuButton.hidden, false);
-    assert.equal(searchButton.hidden, false);
-    assert.ok(menu.classList.contains('hidden'));
+    const toggle = document.getElementById('search-toggle');
+    assert.equal(toggle.hidden, false);
     assert.ok(search.classList.contains('hidden'));
     assert.equal(search.getAttribute('role'), 'dialog');
     assert.equal(search.getAttribute('aria-modal'), 'true');
-    menuButton.click();
-    assert.equal(document.activeElement, menu.querySelector('a'));
-    searchButton.click();
-    assert.equal(document.activeElement, search.querySelector('input'));
-});
-
-test('search click closes the menu and restores its visible trigger', async t => {
-    const { document, flush } = await page(t, searchMarkup);
-    document.getElementById('mobile-menu-btn').click();
-    const toggle = document.getElementById('search-toggle');
     toggle.focus();
     toggle.click();
     flush();
-    assert.equal(document.getElementById('mobile-menu').classList.contains('hidden'), true);
-
     assert.equal(document.activeElement.id, 'search-input');
     document.getElementById('search-close').click();
     flush();
@@ -231,7 +213,7 @@ test('search click closes the menu and restores its visible trigger', async t =>
     assert.equal(toggle.closest('[inert], [aria-hidden="true"]'), null);
 });
 
-test('search shortcut preserves focus outside the mobile menu', async t => {
+test('search shortcut preserves focus on the page', async t => {
     const { document, press, flush } = await page(t, searchMarkup);
     const outside = document.getElementById('outside');
     outside.focus();
@@ -278,15 +260,10 @@ test('search focuses immediately and traps Tab around usable controls only', asy
     assert.equal(document.activeElement.id, 'submit');
 });
 
-test('a focused disclosure closes on Escape, but cannot steal focus from the page', async t => {
+test('Escape does not steal focus when there is no active modal', async t => {
     const { document, press } = await page(t, searchMarkup);
-    const trigger = document.getElementById('mobile-menu-btn');
     const outside = document.getElementById('outside');
-    trigger.click();
-    assert.equal(press('Escape'), false);
-    assert.equal(document.activeElement, trigger);
-    trigger.click(); outside.focus();
-    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    outside.focus();
     assert.equal(press('Escape'), true);
     assert.equal(document.activeElement, outside);
 });
@@ -326,38 +303,17 @@ test('pointer lightbox returns focus to the actual image trigger', async t => {
     assert.equal(document.activeElement.id, 'image');
 });
 
-for (const modifier of ['ctrlKey', 'metaKey']) {
-    test(`search ${modifier} returns focus to a visible control after closing the mobile menu`, async t => {
-        const { document, press, flush } = await page(t, searchMarkup);
-        const menu = document.getElementById('mobile-menu');
-        const menuButton = document.getElementById('mobile-menu-btn');
-        const modal = document.getElementById('search-modal');
-        menuButton.click();
-        assert.equal(document.activeElement, menu.querySelector('a'));
-        press('k', { [modifier]: true });
-        flush();
-        assert.equal(document.activeElement.id, 'search-input');
-        assert.equal(menu.classList.contains('hidden'), true, 'shortcut closes the menu immediately');
-        press('Escape');
-        flush();
-        assert.equal(modal.classList.contains('hidden'), true);
-        // jsdom permits hidden focus: assert the actual visible return target explicitly.
-        assert.equal(document.activeElement, menuButton);
-        assert.equal(document.activeElement.closest('.hidden, [inert], [aria-hidden="true"]'), null);
-        assert.equal(menu.classList.contains('hidden'), true);
-        assert.equal(menuButton.getAttribute('aria-expanded'), 'false');
-        assert.equal(menuButton.getAttribute('aria-label'), '打开菜单');
-        assert.equal(document.body.style.overflow, '');
-    });
-}
-
-test('mobile menu communicates its close state with the shipped icon', async t => {
-    const { document } = await page(t, searchMarkup.replace('>Menu</button>', '><i class="ph ph-list"></i></button>'));
-    const trigger = document.getElementById('mobile-menu-btn');
-    trigger.click();
-    assert.ok(trigger.querySelector('.ph-x'), 'opened menu uses a close glyph');
-    trigger.click();
-    assert.ok(trigger.querySelector('.ph-list'), 'closed menu uses the list glyph');
+test('search Meta+k opens and closes without losing footer link focus', async t => {
+    const { document, press, flush } = await page(t, `${searchMarkup}<footer><a href="/about">About</a></footer>`);
+    const about = document.querySelector('footer a');
+    about.focus();
+    press('k', { metaKey: true });
+    flush();
+    assert.equal(document.activeElement.id, 'search-input');
+    press('Escape');
+    flush();
+    assert.equal(document.activeElement, about);
+    assert.equal(document.body.style.overflow, '');
 });
 
 test('both local and header directory triggers share state and restore the activating control', async t => {

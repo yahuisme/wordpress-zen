@@ -23,7 +23,10 @@ function the_permalink() { echo '/article/'; }
 function get_the_title($post = null) { return 'Fixture'; }
 function get_the_category() { return array(); }
 function is_search() { return false; }
-function get_the_date($format = '') { return '2026-10-27'; }
+function get_the_date($format = '', $post = null) {
+    return gmdate($format ?: 'Y-m-d', strtotime('2026-10-27T12:00:00Z'));
+}
+function wp_date($format) { return gmdate($format, strtotime('2026-11-01T12:00:00Z')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function get_the_excerpt() { return $GLOBALS['content_excerpt']; }
 require ABSPATH . 'inc/template-tags.php';

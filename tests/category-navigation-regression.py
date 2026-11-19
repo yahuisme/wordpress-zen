@@ -1,10 +1,13 @@
-"""Category navigation on isolated WordPress; run inside a bounded cgroup."""
+"""Run on isolated WordPress in a bounded cgroup: <evidence-dir> <category-id>."""
 import json
 import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 origin = 'http://127.0.0.1:18765'
+category_id = int(sys.argv[2])
+assert category_id > 0
+archive_url = f'{origin}/?cat={category_id}'
 out = Path(sys.argv[1])
 out.mkdir(parents=True, exist_ok=True)
 results = []
@@ -30,18 +33,15 @@ with sync_playwright() as p:
         page.set_viewport_size({'width': width, 'height': 900})
         for dark in (False, True):
             page.goto(origin, wait_until='networkidle')
+            assert page.locator('.zen-category-nav').count() == 0
+            page.goto(archive_url, wait_until='networkidle')
             page.evaluate('(dark) => document.documentElement.classList.toggle("dark",dark)', dark)
             nav = page.locator('.zen-category-nav')
             links = nav.locator('.zen-category-track > a')
             track = nav.locator('.zen-category-track')
-            upper = page.locator('.zen-masthead')
-            if not upper.count():
-                upper = page.locator('.zen-site-header')
-            upper_box = upper.bounding_box()
-            before_track = track.bounding_box()['y'] - (upper_box['y'] + upper_box['height'])
-            after_track = track.evaluate('''e => e.parentElement.getBoundingClientRect().bottom
-                - e.getBoundingClientRect().bottom - parseFloat(getComputedStyle(e.parentElement).borderBottomWidth)''')
-            assert abs(before_track - after_track) <= 1, ('homepage category spacing', width, before_track, after_track)
+            current = nav.locator('[aria-current="page"]').inner_text()
+            # JS may initially scroll the active term into view.
+            track.evaluate('e => { e.scrollLeft = 0; e.dispatchEvent(new Event("scroll")); }')
             assert len(set(links.evaluate_all('(es)=>es.map(e=>e.getBoundingClientRect().top)'))) == 1
             if track.evaluate('e=>e.scrollWidth>e.clientWidth+1'):
                 assert nav.locator('.zen-category-next').is_visible()
@@ -64,7 +64,7 @@ with sync_playwright() as p:
             assert links.count() > 5, 'Use a fixture with more than five categories'
             assert nav.locator('details,summary').count() == 0
             assert all(link.is_visible() for link in links.all())
-            assert nav.locator('[aria-current="page"]').inner_text() == '全部'
+            assert current in links.all_text_contents() and current != '全部'
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
             before = links.all_text_contents()
             # Keyboard navigation reveals offscreen categories without losing focus.
@@ -83,15 +83,15 @@ with sync_playwright() as p:
             assert page.locator('.zen-category-nav [aria-current="page"]').inner_text() == before[1]
             page.locator('.zen-category-track > a').first.click()
             page.wait_for_load_state('networkidle')
+            assert page.locator('.zen-category-nav').count() == 0
+            page.goto(archive_url, wait_until='networkidle')
             page.evaluate('(dark) => document.documentElement.classList.toggle("dark",dark)', dark)
             page.wait_for_timeout(400)
             page.screenshot(path=str(out / f'categories-{width}-{dark}.png'), full_page=True)
             # Even an unusually long unbroken name must remain reachable without page overflow.
             page.locator('.zen-category-track > a').last.evaluate('e => e.textContent = "LongCategoryName".repeat(15)')
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), ('long-name', width)
-            results.append({'width': width, 'dark': dark, 'links': len(before),
-                            'spacing': [before_track, after_track],
-                            'intro': page.locator('.zen-site-intro').count() == 1, 'passed': True})
+            results.append({'width': width, 'dark': dark, 'links': len(before), 'passed': True})
     browser.close()
     # Single-process Chromium needs a fresh launch for a different context.
     browser = launch_chromium(p)
@@ -99,6 +99,8 @@ with sync_playwright() as p:
     no_script.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
     page = no_script.new_page()
     page.goto(origin, wait_until='domcontentloaded')
+    assert page.locator('.zen-category-nav').count() == 0
+    page.goto(archive_url, wait_until='domcontentloaded')
     links = page.locator('.zen-category-track > a')
     assert links.count() > 5 and all(link.is_visible() for link in links.all())
     results.append({'javascript': False, 'passed': True})

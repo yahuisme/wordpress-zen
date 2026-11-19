@@ -4,6 +4,7 @@ define('ABSPATH',dirname(__DIR__).'/theme/zen/');define('HOUR_IN_SECONDS',3600);
 $cache=[];$batch_sizes=[];$batch_posts=[500,500,201];
 function add_action($hook,$callback,...$args){}
 function get_header(){}function get_footer(){}function the_title(){echo 'Archives';}
+function __($value,$domain=''){return $value;}
 function post_password_required(){return false;}
 function get_locale(){return 'en_US';}
 function get_transient($key){return $GLOBALS['cache'][$key]??false;}

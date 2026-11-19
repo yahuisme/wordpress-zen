@@ -1,6 +1,7 @@
 <?php
 /** Execute actual theme templates with explicit WP boundary doubles; no core/DB/browser claim. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
+define('HOUR_IN_SECONDS', 3600);
 require __DIR__ . '/html-api-bootstrap.php';
 $GLOBALS['options'] = array();
 $GLOBALS['is_search'] = false;
@@ -96,6 +97,8 @@ function get_template_part($slug, $name = null, $args = array()) {
 function get_bloginfo($key) { return array('name' => '站点名称', 'description' => '记录技术与日常')[$key] ?? ''; }
 function home_url($path = '') { return 'https://example.test' . $path; }
 function get_option($name, $default = false) { return $GLOBALS['native_options'][$name] ?? $default; }
+function get_posts($args) { return array(); }
+function set_transient(...$args) {}
 function get_permalink($post = null) { return '/post/' . (is_object($post) ? $post->ID : $post); }
 function is_category() { return $GLOBALS['category_archive'] ?? false; }
 function get_queried_object_id() { return $GLOBALS['current_category'] ?? 0; }
@@ -109,20 +112,16 @@ function get_categories($args) {
     }
     return isset($args['number']) ? array_slice($all, 0, $args['number']) : $all;
 }
-test('home intro is optional and complete categories are directly visible', function () {
+test('home intro is optional and the index has no category strip', function () {
     $GLOBALS['options']['zen_show_site_intro'] = 1;
     $GLOBALS['options']['zen_category_ids'] = array();
     $GLOBALS['loop_left'] = 0;
     $html = render('index.php');
     check(str_contains($html, '记录技术与日常'), 'native site description missing');
-    check(str_contains($html, '<h1>站点名称</h1>'), 'publication title missing');
-    check(!str_contains($html, '全部归档'), 'unconfigured annual archive should not have a shortcut');
-    check(!str_contains($html, '<details') && !str_contains($html, '<summary') && str_contains($html, '分类8'), 'categories must be visible without expanding a control');
-    preg_match('/<nav class="zen-category-nav"[^>]*>(.*?)<\/nav>/s', $html, $nav);
-    check(substr_count($nav[1] ?? '', '<a ') === 9, 'all eight categories plus all-posts link must render');
-    check(!str_contains($html, '面包屑'), 'category choices are not breadcrumbs');
+    check(str_contains($html, '<h1 class="zen-site-intro">记录技术与日常</h1>'), 'native tagline must be the cover headline; the wordmark already names the site');
+    check(!str_contains($html, '全部篇目'), 'unconfigured annual archive should not have a shortcut');
+    check(!str_contains($html, 'zen-category-nav') && !str_contains($html, '分类8'), 'index still renders the category strip');
     check(str_contains($html, 'zen-post-list'), 'shared list wrapper missing');
-    check(($GLOBALS['category_args']['hide_empty'] ?? null) === true, 'only nonempty categories should be requested by default');
     $GLOBALS['paged'] = true;
     check(!str_contains(render('index.php'), '记录技术与日常'), 'later index pages repeat the masthead');
     unset($GLOBALS['paged']);
@@ -132,20 +131,23 @@ test('home intro is optional and complete categories are directly visible', func
 test('selected category order is preserved and all uses native posts page', function () {
     $GLOBALS['options']['zen_category_ids'] = array(7, 2, 5);
     $GLOBALS['native_options'] = array('show_on_front' => 'page', 'page_for_posts' => 42);
-    $html = render('index.php');
+    $GLOBALS['category_archive'] = true;
+    $GLOBALS['loop_left'] = 0;
+    $html = render('archive.php');
     check(strpos($html, '分类7') < strpos($html, '分类2') && strpos($html, '分类2') < strpos($html, '分类5'), 'selected order changed');
     check(!str_contains($html, '分类1') && str_contains($html, 'href="/post/42"'), 'selection or native posts URL lost');
+    $GLOBALS['category_archive'] = false;
 });
 function wp_date($format) { return $format === 'Y' ? '2026' : ''; }
 test('published date is compact Chinese and field cannot wrap internally', function () {
     $html = capture('zen_posted_on_link');
-    check(str_contains($html, '2026年10月5日'), 'date format is inconsistent');
+    check(str_contains($html, '2026.10.05') && str_contains($html, '2026年10月5日'), 'visible date and accessible label must use their intended formats');
     check(str_contains($html, 'zen-meta-field'), 'nowrap meta field contract missing');
 });
 test('editorial dates retain older years; a later sticky position cannot pick an older card', function () {
-    $GLOBALS['options']['zen_date_style'] = 'editorial';
-    check(zen_post_date_format('list', '2025') === 'Y.m.d' && zen_post_date_format('list', '2026') === 'n月 j日', 'year context lost');
     $GLOBALS['options']['zen_date_style'] = 'classic';
+    check(zen_post_date_format('list', '2025') === 'Y.m.d' && zen_post_date_format('list', '2026') === 'n月 j日' && zen_post_date_format('directory') === 'n月 j日', 'legacy date setting must not override the new contextual format');
+    unset($GLOBALS['options']['zen_date_style']);
     $older = (object) array('post_type' => 'post', 'post_status' => 'publish', 'post_password' => '', 'post_date' => '2026-10-01 12:00:00', 'ID' => 4);
     $newer = clone $older;
     $newer->ID = 7;
@@ -183,7 +185,13 @@ function the_content() { echo '<p>正文内容</p>'; }
 function wp_link_pages($args) { $GLOBALS['split_calls'][] = $args; }
 function comments_open() { return $GLOBALS['comments_open'] ?? false; }
 function get_comments_number() { return 0; }
-function comments_template() { echo '<section id="native-comments"></section>'; }
+function comments_template($file = '/comments.php') {
+    if ($file === '/comments.php') {
+        echo '<section id="native-comments"></section>';
+        return;
+    }
+    echo render(ltrim($file, '/'));
+}
 function get_the_modified_date($format = '') { return get_the_date($format); }
 function get_the_author() { return $GLOBALS['author'] ?? ''; }
 function get_the_tags() { return $GLOBALS['tags'] ?? false; }
@@ -235,7 +243,7 @@ test('single consolidates notes hides absent author and tags and stacks adjacent
     $html = single_fixture();
     check(substr_count($html, 'class="zen-article-notes') === 1, 'notes are not consolidated');
     check(!str_contains($html, '本文作者') && !str_contains($html, '暂无标签') && !str_contains($html, 'zen-post-taxonomy'), 'absent content rendered');
-    check(str_contains($html, '最后更新：<time class="zen-post-date"') && str_contains($html, '>2026年10月5日</time>'), 'updated date not consistent');
+    check(str_contains($html, '最后更新：<time class="zen-post-date"') && str_contains($html, '>2026.10.05</time>'), 'updated date not consistent');
     check(str_contains($html, 'zen-post-nav-label') && str_contains($html, 'zen-post-nav-title'), 'adjacent posts need separate label/title lines');
     check(!str_contains($html, 'mt-12'), 'repeated giant section gaps remain');
     $GLOBALS['author'] = '实际作者';
@@ -273,18 +281,14 @@ test('header uses native custom logo without admin Gravatar or nested home links
     $html = render('header.php');
     check(!str_contains($html, '/logo.png') && str_contains($html, '站点名称'), 'no-logo title fallback missing');
 });
-test('header uses one native menu for both breakpoints and preserves the prepared TOC control', function () {
-    $GLOBALS['has_menu'] = false;
-    $html = render('header.php');
-    check(!str_contains($html, 'id="mobile-menu-btn"') && !str_contains($html, 'id="mobile-menu"'), 'empty mobile navigation visible');
+test('header omits the assigned primary menu and retains search and article controls', function () {
     $GLOBALS['has_menu'] = true;
     $GLOBALS['menu_calls'] = array();
     $GLOBALS['singular_post'] = true;
     $GLOBALS['options']['zen_show_toc'] = 1;
     $html = render('header.php');
-    check(count($GLOBALS['menu_calls']) === 1 && substr_count($html, 'href="/about/"') === 1, 'primary navigation is rendered more than once');
-    check(str_contains($html, '<noscript>') && str_contains($html, 'zen-noscript-menu'), 'no-JS mobile navigation missing');
-    foreach ($GLOBALS['menu_calls'] as $args) check($args['depth'] === 1 && $args['fallback_cb'] === false, 'single-level native menu contract lost');
+    check(!$GLOBALS['menu_calls'] && !str_contains($html, 'mobile-menu'), 'assigned menu still rendered');
+    check(str_contains($html, 'id="search-fallback"') && str_contains($html, 'id="theme-toggle"'), 'tools disappeared with the primary menu');
     check((bool) preg_match('/<button[^>]*id="header-toc-btn"[^>]*\bhidden[^>]*>/', $html), 'prepared header TOC control missing');
     $GLOBALS['singular_post'] = false;
     check(!str_contains(render('header.php'), 'id="header-toc-btn"'), 'header TOC on nonpost');
@@ -303,6 +307,17 @@ function is_year() { return false; }
 function single_cat_title($prefix, $display) { return '分类名称'; }
 function the_archive_title(...$args) { echo '归档'; }
 function get_the_archive_description() { return ''; }
+test('blank native search renders only the form even if WordPress has Loop posts', function () {
+    $GLOBALS['archive_pages'] = array((object) array('ID' => 19));
+    foreach (array('', '  ') as $query) {
+        $GLOBALS['query'] = $query;
+        $GLOBALS['loop_left'] = 1;
+        $html = render('search.php');
+        check(substr_count($html, 'name="s"') === 1, 'native search form missing');
+        check(!str_contains($html, 'zen-post-list') && !str_contains($html, '找到') && !str_contains($html, '浏览归档'), 'blank search shows results or empty-state recovery');
+        check($GLOBALS['loop_left'] === 1, 'blank search consumes the main Loop');
+    }
+});
 test('search edits current query and archive links only identify an actual published archive', function () {
     $GLOBALS['query'] = '0 <script>';
     $GLOBALS['archive_pages'] = array();
@@ -316,12 +331,23 @@ test('search edits current query and archive links only identify an actual publi
     check(str_contains($html, 'href="/post/19"') && str_contains($html, '浏览归档'), 'real archive link missing');
     check(($GLOBALS['page_args']['post_status'] ?? '') === 'publish', 'private/draft archive must not be offered');
 });
+test('search treats a literal zero as a keyword and retains result highlighting', function () {
+    $GLOBALS['query'] = '0';
+    $GLOBALS['fixture_title'] = '第0章';
+    $GLOBALS['loop_left'] = 1;
+    try {
+        $html = render('search.php');
+        check(str_contains($html, 'value="0"') && str_contains($html, '<mark'), 'search query or title highlighting was lost');
+    } finally {
+        unset($GLOBALS['fixture_title']);
+    }
+});
 test('404 preserves HTTP status and offers search home and real archive only', function () {
     $GLOBALS['archive_pages'] = array();
     $GLOBALS['status'] = 404;
     $html = render('404.php');
     check($GLOBALS['status'] === 404, '404 status changed');
-    check(str_contains($html, '<h1') && str_contains($html, 'name="s"') && str_contains($html, '返回首页'), '404 recovery missing');
+    check(str_contains($html, '<h1') && str_contains($html, 'href="https://example.test/?s="') && str_contains($html, '返回首页'), '404 recovery missing');
     check(!str_contains($html, '数字的海洋') && !str_contains($html, '浏览归档'), 'unhelpful copy or false archive destination');
     $GLOBALS['archive_pages'] = array((object) array('ID' => 19));
     check(str_contains(render('404.php'), 'href="/post/19"'), 'published archive recovery missing');
@@ -337,7 +363,21 @@ test('archive uses shared list and category navigation without changing category
     $GLOBALS['category_archive'] = false;
 });
 
-function post_password_required() { return false; }
+function post_password_required() { return $GLOBALS['locked_page'] ?? false; }
+test('guestbook renders native open comments, an explicit closed state, and no UI behind a password', function () {
+    $GLOBALS['comments_open'] = true;
+    $GLOBALS['loop_left'] = 1;
+    check(str_contains(render('page-notes.php'), 'id="native-comment-form"'), 'open guestbook does not load native comments');
+    $GLOBALS['comments_open'] = false;
+    $GLOBALS['loop_left'] = 1;
+    check(str_contains(render('page-notes.php'), '目前不接受留言'), 'empty closed guestbook looks broken');
+    $GLOBALS['locked_page'] = $GLOBALS['comments_open'] = true;
+    $GLOBALS['loop_left'] = 1;
+    $html = render('page-notes.php');
+    check(!str_contains($html, 'zen-notes-board') && !str_contains($html, '目前不接受留言'), 'protected guestbook exposed comment UI');
+    unset($GLOBALS['locked_page'], $GLOBALS['comments_open']);
+});
+function has_excerpt() { return !empty($GLOBALS['article_excerpt']); }
 function wp_get_current_commenter() { return array('comment_author' => '', 'comment_author_email' => ''); }
 function admin_url($path) { return '/wp-admin/' . $path; }
 function wp_logout_url($path) { return '/logout/'; }
@@ -363,6 +403,20 @@ test('existing comments precede native form while reply pagination and required 
     $html = render('comments.php');
     check(str_contains($html, 'native-comment') && !str_contains($html, 'native-comment-form'), 'closed comments must preserve list without a form');
 });
+test('guestbook places one native form before existing comments and uses distinct copy', function () {
+    $GLOBALS['comments_open'] = $GLOBALS['has_comments'] = true;
+    $GLOBALS['loop_left'] = 1;
+    $html = render('page-notes.php');
+    $form = strpos($html, 'id="native-comment-form"');
+    $first = strpos($html, 'id="native-comment"');
+    check($form !== false && $first !== false && $form < $first, 'guestbook must show the native form before existing comments');
+    check(substr_count($html, 'id="native-comment-form"') === 1, 'guestbook must not duplicate the form');
+    check(($GLOBALS['comment_form_args']['title_reply'] ?? '') === '写留言', 'guestbook form title must be 写留言');
+    check(($GLOBALS['comment_form_args']['label_submit'] ?? '') === '提交留言', 'guestbook button copy missing');
+    check(str_contains($html, '留言内容') && str_contains($html, '邮箱不会公开'), 'guestbook field label or email privacy notice missing');
+    check(str_contains($html, '?replytocom=1') && str_contains($html, '?cpage=2'), 'guestbook must keep native replies and pagination');
+    unset($GLOBALS['comments_open'], $GLOBALS['has_comments']);
+});
 test('native page uses same reading wrapper and split navigation', function () {
     $GLOBALS['loop_left'] = 1;
     $GLOBALS['split_calls'] = array();
@@ -371,21 +425,30 @@ test('native page uses same reading wrapper and split navigation', function () {
     check(count($GLOBALS['split_calls']) === 1 && str_contains($html, 'entry-content'), 'native content/split contract lost');
 });
 function get_bookmarks($args) { return $GLOBALS['bookmarks'] ?? array(); }
-test('friend links label new-window destinations and keep image-free initial fallback', function () {
+function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
+test('friend links label new-window destinations and only show explicitly saved images', function () {
     $GLOBALS['loop_left'] = 1;
     $GLOBALS['bookmarks'] = array((object) array('link_name' => '友站', 'link_target' => '_blank', 'link_url' => 'https://friend.test/', 'link_image' => '', 'link_rating' => 0, 'link_description' => '简介'));
     $html = render('page-links.php');
     check(str_contains($html, 'aria-label="友站 (在新窗口打开)"'), 'new-window accessible name missing');
-    check(str_contains($html, 'zen-link-avatar') && !str_contains($html, 'ph-arrow-up-right'), 'initial fallback or stable iconless layout missing');
+    check(!str_contains($html, 'zen-link-avatar') && str_contains($html, '>friend.test</bdi>'), 'image-free link should show destination without a placeholder avatar');
     check((bool) preg_match('/<div class="zen-reading-shell">\s*<div class="zen-directory-intro entry-content">/', $html), 'links introduction must preserve its own reading shell');
+    $GLOBALS['loop_left'] = 1;
+    $GLOBALS['bookmarks'][0]->link_image = 'https://friend.test/avatar.png';
+    check(str_contains(render('page-links.php'), 'src="https://friend.test/avatar.png"'), 'saved bookmark image no longer renders');
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
-test('archive directory has shared list item rhythm and unified Chinese dates', function () {
-    $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026-10-05')));
+test('archive directory groups all months using cached dates and opens only the latest month', function () {
+    $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(
+        array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026-10-05'),
+        array('id' => 6, 'url' => '/post/6', 'title' => '其他月份的文章', 'year' => '2026', 'date' => '2026-09-20'),
+        array('id' => 5, 'url' => '/post/5', 'title' => '上一年的文章', 'year' => '2025', 'date' => '2025-12-31'),
+    ));
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
-    check(str_contains($html, '2026年10月5日'), 'cached archive dates are not unified');
-    check(str_contains($html, 'zen-reading-shell') && !str_contains($html, '时光机'), 'archive shell or concise copy missing');
+    check(str_contains($html, '>10月 5日</time>'), 'cached archive dates are not unified');
+    check(substr_count($html, '<details class="zen-archive-month"') === 3 && substr_count($html, '<details class="zen-archive-month" open>') === 1, 'month disclosures missing or too many months opened by default');
+    check(substr_count($html, 'class="zen-archive-year"') === 2 && str_contains($html, '其他月份的文章') && str_contains($html, '上一年的文章'), 'older archive rows must remain present in their groups');
 });
 
 printf("%d tests, %d failures\n", $checks, $failures);

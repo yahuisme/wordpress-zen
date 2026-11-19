@@ -1,7 +1,7 @@
 <?php
 /**
  * Native directory/password and public-cache regressions; no server/browser.
- * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle]
+ * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary]
  * Use a disposable local loopback Zen installation with outbound HTTP/mail blocked.
  */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1])) exit(2);
@@ -15,13 +15,13 @@ require $argv[1];
 if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') {
     throw new RuntimeException('Disposable loopback Zen installation required');
 }
-foreach (array('page-archives.php', 'page-links.php', 'inc/template-tags.php') as $zen_directory_file) {
+foreach (array('page-archives.php', 'page-links.php', 'page-tags.php', 'search.php', 'inc/template-tags.php') as $zen_directory_file) {
     if (hash_file('sha256', get_template_directory() . '/' . $zen_directory_file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/' . $zen_directory_file)) {
         throw new RuntimeException('Source mismatch: ' . $zen_directory_file);
     }
 }
 $zen_directory_slice = $argv[2] ?? 'all';
-if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle'), true)) throw new RuntimeException('Unknown slice');
+if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary'), true)) throw new RuntimeException('Unknown slice');
 require_once ABSPATH . 'wp-admin/includes/bookmark.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 add_filter('pre_http_request', static function () { return new WP_Error('isolated', 'Outbound HTTP blocked'); }, 1);
@@ -299,6 +299,51 @@ function zen_directory_equal_dates() {
     zen_directory_check($actual === array_reverse($ids), 'equal-date posts cross a native batch boundary without duplicates or omissions');
     zen_directory_check($cold === zen_directory_render('page-archives.php', $page), 'equal-date archive has identical cold and warm HTML');
 }
+function zen_directory_secondary() {
+    $page_id = zen_directory_post(array('post_type'=>'page', 'post_title'=>'示例主题目录', 'post_content'=>'ZEN_TOPICS_INTRO', 'page_template'=>'page-tags.php'));
+    zen_directory_check(get_page_template_slug($page_id) === 'page-tags.php', 'tag directory is assignable as a native page template');
+    $tag_ids = array();
+    foreach (array('Zen Active Topic', 'Zen Empty Topic') as $name) {
+        $term = wp_insert_term($name, 'post_tag');
+        if (is_wp_error($term)) throw new RuntimeException($term->get_error_message());
+        $tag_ids[] = $term['term_id'];
+        $GLOBALS['zen_directory_terms'][] = array($term['term_id'], 'post_tag');
+    }
+    foreach (array('2022-03-01' => 'ZEN_TOPICS_OLDER', '2023-03-01' => 'ZEN_TOPICS_RECENT', '2024-03-01' => 'ZEN_TOPICS_DRAFT') as $date => $title) {
+        $post_id = zen_directory_post(array('post_title'=>$title, 'post_status'=>$title === 'ZEN_TOPICS_DRAFT' ? 'draft' : 'publish', 'post_date'=>$date . ' 12:00:00'));
+        wp_set_post_tags($post_id, array($tag_ids[0]));
+    }
+    $html = zen_directory_render('page-tags.php', $page_id);
+    zen_directory_check(str_contains($html, '示例主题目录') && str_contains($html, 'ZEN_TOPICS_INTRO'), 'tag directory uses saved page title and content');
+    zen_directory_check(str_contains($html, 'href="' . esc_url(get_tag_link($tag_ids[0])) . '"') && !str_contains($html, 'Zen Empty Topic'), 'tag directory includes native nonempty term links only');
+    zen_directory_check(str_contains($html, 'ZEN_TOPICS_RECENT') && !str_contains($html, 'ZEN_TOPICS_OLDER') && !str_contains($html, 'ZEN_TOPICS_DRAFT') && str_contains($html, '2 篇'), 'tag directory shows native count and newest published article');
+
+    wp_update_post(array('ID'=>$page_id, 'post_password'=>'directory-secret'));
+    $term_reads = 0;
+    $term_probe = static function ($terms, $taxonomies) use (&$term_reads) {
+        if (in_array('post_tag', $taxonomies, true)) $term_reads++;
+        return $terms;
+    };
+    add_filter('get_terms', $term_probe, 10, 2);
+    try {
+        $html = zen_directory_render('page-tags.php', $page_id);
+        zen_directory_check($term_reads === 0 && substr_count($html, 'class="post-password-form"') === 1 && !str_contains($html, 'Zen Active Topic') && !str_contains($html, 'ZEN_TOPICS_INTRO'), 'locked tag directory offers native password form without reading tags or exposing content');
+    } finally { remove_filter('get_terms', $term_probe, 10); }
+
+    foreach (array('', 'ZEN_TOPICS_RECENT') as $query) {
+        wp(array('s'=>$query));
+        zen_directory_check(is_search() && have_posts(), 'native search query is populated for ' . ($query === '' ? 'empty search' : $query));
+        ob_start();
+        try { include get_template_directory() . '/search.php'; $html = ob_get_contents(); }
+        finally { ob_end_clean(); wp_reset_query(); }
+        zen_directory_check((bool) preg_match('/<form[^>]+class="search-form"/', $html) && str_contains($html, 'name="s"'), 'search keeps Core GET form');
+        if ($query === '') {
+            zen_directory_check(!str_contains($html, 'zen-post-list') && !str_contains($html, 'zen-search-count'), 'blank native search hides existing Loop posts and statistics');
+        } else {
+            zen_directory_check(str_contains($html, 'zen-search-count') && (bool) preg_match('/<mark[^>]*>ZEN_TOPICS_RECENT<\/mark>/', $html), 'nonblank native search retains results and title highlighting');
+        }
+    }
+}
 try {
     wp_set_current_user(0);
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
@@ -308,11 +353,13 @@ try {
         zen_directory_lifecycle();
         zen_directory_equal_dates();
     }
+    if (in_array($zen_directory_slice, array('all', 'secondary'), true)) zen_directory_secondary();
 } finally {
     wp_reset_query();
     foreach (array_reverse($zen_directory_posts) as $post_id) wp_delete_post($post_id, true);
     foreach ($zen_directory_users as $user_id) if (get_user_by('id', $user_id)) wp_delete_user($user_id);
     foreach ($zen_directory_links as $link_id) wp_delete_link($link_id);
+    foreach ($zen_directory_terms as list($term_id, $taxonomy)) wp_delete_term($term_id, $taxonomy);
     foreach ($zen_directory_options as $key=>$value) { if ($value === null) delete_option($key); else update_option($key, $value); }
     delete_transient('zen_archives_public_posts_v3');
     delete_transient('zen_site_uptime');

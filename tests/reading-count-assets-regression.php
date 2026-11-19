@@ -6,7 +6,7 @@ $singular = true; $preview = false; $enabled = 1;
 $post = (object) array('post_type' => 'post', 'post_status' => 'publish', 'post_password' => '');
 function add_action(...$args) {}
 function add_filter($hook, $callback) { $GLOBALS['hooks'][$hook] = $callback; }
-function get_option($key, $default = false) { return $key === 'zen_show_reading_count' ? $GLOBALS['enabled'] : ($key === 'zen_font_family' ? 'system' : $default); }
+function get_option($key, $default = false) { return $key === 'zen_show_reading_count' ? $GLOBALS['enabled'] : $default; }
 function get_template_directory() { return ABSPATH; }
 function get_template_directory_uri() { return 'https://zen.test/themes/zen'; }
 function is_singular($type = '') { return $GLOBALS['singular']; }

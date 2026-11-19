@@ -1,9 +1,25 @@
 <?php
 if (post_password_required()) return;
+
+$zen_guestbook = !empty($args['guestbook']);
+$zen_render_comment_list = static function () {
+    if (!have_comments()) return;
+    ?>
+    <ol class="comment-list">
+        <?php wp_list_comments(array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
+    </ol>
+    <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
+        <nav class="comment-pagination flex justify-between gap-4" aria-label="评论分页">
+            <div class="nav-previous"><?php previous_comments_link('&larr; 较早的评论'); ?></div>
+            <div class="nav-next"><?php next_comments_link('较新的评论 &rarr;'); ?></div>
+        </nav>
+    <?php endif;
+};
 ?>
 
-<section id="comments" class="zen-comments zen-reading-shell scroll-mt-24">
+<section id="comments" class="zen-comments zen-reading-shell scroll-mt-24<?php echo $zen_guestbook ? ' zen-notes-board' : ''; ?>">
     <div class="zen-comments-inner">
+        <?php if (!$zen_guestbook) : ?>
         <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="zen-comments-title">
@@ -22,16 +38,7 @@ if (post_password_required()) return;
             <?php endif; ?>
         </header>
 
-        <?php if (have_comments()) : ?>
-            <ol class="comment-list">
-                <?php wp_list_comments(array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
-            </ol>
-            <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
-            <nav class="comment-pagination flex justify-between gap-4" aria-label="评论分页">
-                <div class="nav-previous"><?php previous_comments_link('&larr; 较早的评论'); ?></div>
-                <div class="nav-next"><?php next_comments_link('较新的评论 &rarr;'); ?></div>
-            </nav>
-            <?php endif; ?>
+        <?php $zen_render_comment_list(); ?>
         <?php endif; ?>
 
         <?php if (comments_open()) : ?>
@@ -56,16 +63,17 @@ if (post_password_required()) return;
                 // Core adds cookies consent according to Discussion settings.
             );
 
-            $args = array(
+            $comment_label = $zen_guestbook ? __('留言内容', 'zen') : '你的想法';
+            $form_args = array(
                 'fields' => $fields,
-                'comment_field' => '<p class="comment-form-comment"><label for="comment">你的想法 ' . $comment_required . '</label><textarea id="comment" name="comment" rows="2" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" maxlength="65525" placeholder="写点什么..."></textarea></p>',
+                'comment_field' => '<p class="comment-form-comment"><label for="comment">' . esc_html($comment_label) . ' ' . $comment_required . '</label><textarea id="comment" name="comment" rows="' . ($zen_guestbook ? '3' : '2') . '" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" maxlength="65525" placeholder="写点什么..."></textarea></p>',
                 'class_container' => 'comment-respond zen-comment-panel p-5 sm:p-7',
                 'class_submit' => 'zen-submit',
-                'label_submit' => '发布评论',
+                'label_submit' => $zen_guestbook ? __('提交留言', 'zen') : '发布评论',
                 'submit_button' => '<button name="%1$s" type="submit" id="%2$s" class="%3$s"><span>%4$s</span><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i></button>',
-                'title_reply' => '写下评论',
-                'title_reply_before' => '<h3 id="reply-title" class="comment-reply-title text-xl">',
-                'title_reply_after' => '</h3>',
+                'title_reply' => $zen_guestbook ? __('写留言', 'zen') : '写下评论',
+                'title_reply_before' => '<' . ($zen_guestbook ? 'h2' : 'h3') . ' id="reply-title" class="comment-reply-title text-xl">',
+                'title_reply_after' => $zen_guestbook ? '</h2>' : '</h3>',
                 'title_reply_to' => '回复给 %s',
                 'cancel_reply_link' => '取消回复',
                 'comment_notes_before' => '',
@@ -75,12 +83,21 @@ if (post_password_required()) return;
                 'submit_field' => '<p class="form-submit">%1$s %2$s</p>',
             );
 
-            comment_form($args);
+            comment_form($form_args);
             ?>
         <?php else : ?>
-            <p class="text-sm text-gray-500 dark:text-gray-400">评论已关闭。</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400"><?php echo $zen_guestbook ? esc_html(__('目前不接受留言。', 'zen')) : '评论已关闭。'; ?></p>
         <?php endif; ?>
 
-
+        <?php if ($zen_guestbook) : ?>
+            <div class="zen-notes-stream">
+                <h2 class="zen-comments-title"><?php esc_html_e('留言', 'zen'); ?></h2>
+                <?php if (have_comments()) : ?>
+                    <?php $zen_render_comment_list(); ?>
+                <?php else : ?>
+                    <p class="zen-notes-empty"><?php esc_html_e('还没有留言。', 'zen'); ?></p>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </section>

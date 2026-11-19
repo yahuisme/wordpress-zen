@@ -2,7 +2,6 @@
 /** Run: php tests/assets-regression.php. WordPress boundary doubles, no I/O. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 require __DIR__ . '/html-api-bootstrap.php';
-$GLOBALS['font'] = 'system';
 $GLOBALS['styles'] = array();
 $GLOBALS['inline'] = array();
 $GLOBALS['scripts'] = array();
@@ -10,15 +9,11 @@ function add_action(...$args) {}
 function add_filter(...$args) {}
 function remove_action(...$args) {}
 function get_option($key, $default = false) {
-    if ($key === 'zen_font_family') return $GLOBALS['font'];
     return $GLOBALS['asset_options'][$key] ?? $default;
 }
 function wp_get_theme() { return new class { public function get($key) { return 'test'; } }; }
 function get_template_directory_uri() { return 'https://example.test/zen'; }
 function get_template_directory() { return ABSPATH; }
-function get_theme_file_path($file) {
-    return $GLOBALS['kai_fixture_files'][$file] ?? ABSPATH . $file;
-}
 function get_theme_file_uri($file) { return 'https://example.test/zen/' . $file; }
 function esc_url_raw($url) { return $url; }
 function is_singular() { return $GLOBALS['asset_singular'] ?? false; }
@@ -56,40 +51,15 @@ function check($condition, $label) {
     echo ($condition ? 'PASS ' : 'FAIL ') . $label . "\n";
     if (!$condition) $failures++;
 }
-check(zen_sanitize_font_family('system') === 'system', 'system font can be saved');
-zen_scripts();
-check(!isset($GLOBALS['styles']['zen-google-fonts']), 'system font omits Google stylesheet');
-check(count($GLOBALS['scripts']) === 1 && !str_contains($GLOBALS['scripts'][0][0] ?? '', 'highlight'), 'non-article pages omit code highlighter');
-check(zen_resource_hints(array(), 'preconnect') === array(), 'system font omits Google preconnect');
-check(!preg_match('/Inter|Space Grotesk|Noto Sans SC|Noto Serif SC/', implode('', $GLOBALS['inline'])), 'system font CSS uses local stacks');
-$GLOBALS['font'] = 'kami';
-$GLOBALS['styles'] = $GLOBALS['inline'] = array();
-zen_scripts();
-$kami = zen_typography();
-check($kami['body'] === $kami['heading'] && str_contains($kami['body'], 'Charter') && str_contains($kami['body'], '"TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC"'), 'Kami pairs Charter with the prescribed Chinese fallback');
-check(!isset($GLOBALS['styles']['zen-google-fonts']) && zen_resource_hints(array(), 'preconnect') === array(), 'Kami never contacts Google Fonts');
-$vars = implode('', $GLOBALS['inline']);
-$editor = implode('', array_column(zen_editor_settings(array('styles' => array()))['styles'], 'css'));
-check(str_contains($vars, $editor) && !str_contains($editor, '@font-face') && !str_contains($editor, '@import'), 'Kami editor and reader share the same stack and do not request a missing Kai file');
-// Stray font files in an old installation must not produce dynamic font URLs.
-$GLOBALS['kai_fixture_files'] = array('assets/fonts/TsangerJinKai02-W04.woff2' => ABSPATH . 'assets/fonts/charter_regular.woff2');
-$GLOBALS['kai_fixture_files']['assets/fonts/TsangerJinKai02-W05.woff2'] = ABSPATH . 'assets/fonts/charter_bold.woff2';
-$GLOBALS['inline'] = array();
-zen_scripts();
-$vars = $GLOBALS['inline'][0];
-$editor = implode('', array_column(zen_editor_settings(array('styles' => array()))['styles'], 'css'));
-check($vars === $editor && !str_contains($vars, 'url('), 'leftover font files cannot inject dynamic font URLs into the reader or editor');
-foreach (array('inter', 'space-grotesk') as $font) {
-    $GLOBALS['font'] = $font;
-    $GLOBALS['styles'] = array();
+foreach (array('system', 'kami', 'inter', 'space-grotesk') as $retired_font) {
+    $GLOBALS['asset_options']['zen_font_family'] = $retired_font;
+    $GLOBALS['styles'] = $GLOBALS['inline'] = $GLOBALS['scripts'] = array();
     zen_scripts();
-    check(isset($GLOBALS['styles']['zen-google-fonts']), "$font retains font stylesheet");
-    check(count(zen_resource_hints(array(), 'preconnect')) === 2, "$font retains preconnect");
-    check(!str_contains(zen_design_variables(), 'TsangerJinKai02'), "$font does not load Kami Kai");
+    check(isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), "$retired_font cannot switch the new theme to an old font");
+    check(count($GLOBALS['scripts']) === 1 && $GLOBALS['scripts'][0][0] === 'zen-main', 'non-article pages omit code highlighter');
+    check(!str_contains(implode('', $GLOBALS['inline']), 'url('), 'saved settings cannot inject font URLs');
 }
-unset($GLOBALS['kai_fixture_files']);
 $GLOBALS['asset_singular'] = true;
-$GLOBALS['font'] = 'system';
 $GLOBALS['asset_posts'][42] = (object) array('post_type' => 'wp_block', 'post_status' => 'publish', 'post_password' => '', 'post_content' => '<pre><code>synced code</code></pre>');
 foreach (array(
     'locked code article' => array('<pre><code>secret</code></pre>', true, 1, false),

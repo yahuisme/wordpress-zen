@@ -70,7 +70,7 @@ try:
         page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin + '/?p=' + post, wait_until='networkidle')
         check('no script removes unusable directory reservation', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0 and page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
-        check('no script preserves content and native search', page.locator('#post-content h2').count() > 0 and page.locator('.zen-noscript-search input[type="search"]').is_visible())
+        check('no script preserves content and native search', page.locator('#post-content h2').count() > 0 and page.locator('#search-fallback').is_visible())
         context.close()
         for width in (390, 768, 1440):
             for name, identifier in (('headings', post), ('plain', plain)):
@@ -116,13 +116,12 @@ try:
             page = context.new_page()
             page.goto(origin, wait_until='domcontentloaded')
             assert blocked, 'main.js must genuinely be blocked with JavaScript enabled'
-            menu = page.get_by_role('navigation', name='主菜单', exact=True)
-            link = menu.get_by_role('link').first
-            page.locator('.zen-site-brand').focus()
-            page.keyboard.press('Tab')
-            check(f'{width} blocked main preserves native navigation', link.evaluate('e=>e===document.activeElement') and not page.locator('#mobile-menu-btn').is_visible())
-            search = page.locator('#search-input')
-            check(f'{width} blocked main leaves only inline header search', search.is_visible() and not page.locator('#search-toggle').is_visible())
+            footer = page.locator('.zen-footer-navigation')
+            check(f'{width} blocked main preserves native footer navigation', footer.get_by_role('link').first.is_visible() and not page.locator('.zen-site-header nav, #mobile-menu-btn').count())
+            fallback = page.locator('#search-fallback')
+            check(f'{width} blocked main leaves only native search link', fallback.is_visible() and not page.locator('#search-toggle').is_visible())
+            fallback.click()
+            search = page.locator('main form[role=search] input[type=search]')
             search.fill('WordPress')
             with page.expect_navigation(wait_until='domcontentloaded'):
                 search.press('Enter')

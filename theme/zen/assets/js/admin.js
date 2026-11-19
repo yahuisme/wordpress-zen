@@ -28,7 +28,7 @@
         }
         function syncPreset() {
             if (!width || !preset) return;
-            preset.value = ['600', '720', '800', '960'].includes(width.value) ? width.value : 'custom';
+            preset.value = Array.from(preset.options).some(option => option.value === width.value) ? width.value : 'custom';
         }
         if (width && preset) {
             syncPreset();
@@ -60,28 +60,6 @@
                 if (!window.confirm(button.dataset.zenConfirm)) event.preventDefault();
             });
         });
-        var updateStatus = document.getElementById('zen-update-status');
-        var adminSettings = window.zenAdminSettings || {};
-        if (updateStatus && updateStatus.dataset.updatePending === 'true' && adminSettings.ajaxUrl && adminSettings.nonce) {
-            window.fetch(adminSettings.ajaxUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                body: new URLSearchParams({ action: 'zen_update_info', nonce: adminSettings.nonce }).toString()
-            }).then(function (response) {
-                if (!response.ok) throw new Error('update request failed');
-                return response.json();
-            }).then(function (payload) {
-                if (!payload || !payload.success || !payload.data || typeof payload.data.message !== 'string') throw new Error('invalid update response');
-                updateStatus.textContent = payload.data.message;
-                var link = document.getElementById('zen-update-link');
-                if (link && typeof payload.data.url === 'string' && /^https:\/\/github\.com\/yahuisme\/wordpress-zen\/releases(?:\/tag\/v?\d+\.\d+\.\d+)?$/.test(payload.data.url)) {
-                    link.href = payload.data.url;
-                }
-            }).catch(function () {
-                updateStatus.textContent = updateStatus.dataset.error || '更新检查失败。';
-            });
-        }
         function clearSubmission() { submission = null; }
         window.addEventListener('pageshow', clearSubmission);
         document.addEventListener('click', clearSubmission, true);

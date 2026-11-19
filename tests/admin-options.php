@@ -3,7 +3,7 @@
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['options'] = $GLOBALS['settings'] = $GLOBALS['errors'] = $GLOBALS['assets'] = array();
 $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => true);
-function add_action(...$args) {}
+function add_action($hook, ...$args) { $GLOBALS['hooks'][] = $hook; }
 function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?? $default; }
 function current_user_can($cap) { return $GLOBALS['caps'][$cap] ?? false; }
 function register_setting($group, $key, $args) { $GLOBALS['settings'][$key] = $args; }
@@ -48,11 +48,24 @@ function test($name, $callback) { global $failed, $total; $total++; try { $callb
 function expect($value, $message) { if (!$value) throw new RuntimeException($message); }
 function render() { ob_start(); zen_options_page_html(); return ob_get_clean(); }
 if (in_array('--html', $argv, true)) { echo render(); exit; }
+test('retired design and attribution controls are neither saved nor reset', function () {
+    zen_register_options();
+    $legacy = array('zen_font_family' => 'inter', 'zen_date_style' => 'classic', 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1);
+    $GLOBALS['options'] = $legacy;
+    $html = render();
+    foreach ($legacy as $key => $value) {
+        expect(!array_key_exists($key, zen_get_option_defaults()), "$key still in reset schema");
+        expect(!array_key_exists($key, $GLOBALS['settings']), "$key still accepted by Settings API");
+        expect(!str_contains($html, 'name="' . $key . '"'), "$key still appears in the form");
+        expect(get_option($key) === $value, "$key was rewritten or deleted");
+    }
+    $GLOBALS['options'] = array();
+});
 test('new installations use conservative defaults and explicit legacy values survive', function () {
-    foreach (array('zen_font_family' => 'kami', 'zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_theme_by' => 0, 'zen_show_footer_wordpress' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 720, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 900) as $key => $default) {
+    foreach (array('zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 768, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_show_latest_card' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 992) as $key => $default) {
         expect(zen_get_option($key) === $default, "$key default differs");
     }
-    foreach (array('zen_font_family' => 'inter', 'zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1) as $key => $legacy) {
+    foreach (array('zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_rss' => 0) as $key => $legacy) {
         $GLOBALS['options'][$key] = $legacy;
         expect(zen_get_option($key) === $legacy, "$key legacy value overwritten");
     }
@@ -60,12 +73,11 @@ test('new installations use conservative defaults and explicit legacy values sur
 });
 test('registered new options sanitize values and reject invalid numbers without losing saved settings', function () {
     zen_register_options();
-    foreach (array('zen_show_latest_card', 'zen_date_style') as $key) {
-        expect(isset($GLOBALS['settings'][$key]), "$key not registered");
-    }
-    foreach (array('zen_reading_width', 'zen_list_style', 'zen_category_ids', 'zen_show_site_intro', 'zen_show_featured_image') as $key) {
-        expect(isset($GLOBALS['settings'][$key]), "$key not registered");
-    }
+    $schema = array_keys(zen_get_option_defaults());
+    $registered = array_keys($GLOBALS['settings']);
+    sort($schema);
+    sort($registered);
+    expect($schema === $registered, 'registered fields and reset schema must match');
     expect(zen_sanitize_reading_width('800') === 800, 'valid reading width rejected');
     $GLOBALS['options']['zen_reading_width'] = 760;
     $GLOBALS['options']['zen_content_width'] = 1080;
@@ -81,12 +93,6 @@ test('registered new options sanitize values and reject invalid numbers without 
     expect(zen_sanitize_category_ids(array('2', '9', '2', '-2', '0', '2.5', array(5))) === array(2, 9), 'category IDs must be positive unique integers');
     expect(zen_sanitize_category_ids('') === array(), 'empty categories must mean all');
     expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
-    expect(zen_sanitize_font_family('bogus') === 'system', 'font fallback mismatch');
-    expect(($GLOBALS['settings']['zen_font_family']['sanitize_callback'])('kami') === 'kami', 'Kami setting rejected');
-    expect(zen_get_option('zen_show_latest_card') === 1 && zen_get_option('zen_date_style') === 'editorial', 'editorial defaults missing');
-    expect(zen_sanitize_date_style('editorial') === 'editorial' && zen_sanitize_date_style('classic') === 'classic', 'date enum mismatch');
-    $GLOBALS['options']['zen_date_style'] = 'classic';
-    expect(zen_sanitize_date_style(array('invalid')) === 'classic' && end($GLOBALS['errors'])['code'] === 'zen_date_style_invalid', 'invalid date style must retain prior choice');
     expect(zen_sanitize_copyright_license('bogus') === 'none', 'invalid license should not impose a license');
     $GLOBALS['caps']['unfiltered_html'] = false;
     $GLOBALS['options']['zen_code_head'] = '<script>saved()</script>';
@@ -101,13 +107,12 @@ test('single settings form groups all old and new fields', function () {
     expect(count($ids[1]) === count(array_unique($ids[1])), 'Settings API and reset forms must not duplicate element IDs');
     expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');
-    expect(str_contains($html, '<option value="kami"  selected="selected">Kami'), 'Kami preset is not selected by default');
-    foreach (array('reading', 'list', 'post', 'footer', 'code', 'about') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
+    foreach (array('reading', 'list', 'post', 'footer', 'code') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
     foreach (array_keys($GLOBALS['settings']) as $key) expect(str_contains($html, 'name="' . $key . ($key === 'zen_category_ids' ? '[]' : '') . '"'), "$key input omitted");
     expect(substr_count($html, 'name="zen_reading_width"') === 1, 'preset and number must not submit conflicting names');
     expect((bool) preg_match('/<details[^>]*id="zen-code"[^>]*>/', $html, $code) && !str_contains($code[0], ' open'), 'risky code must start collapsed');
     expect((bool) preg_match('/<details[^>]*id="zen-layout"[^>]*>/', $html, $width) && !str_contains($width[0], ' open'), 'advanced width must start collapsed');
-    expect(strpos($html, '</form>') < strpos($html, 'id="zen-about"'), 'updates must be outside form');
+    expect(!str_contains($html, 'id="zen-update-status"') && !str_contains($html, '关于更新'), 'theme update interface still present');
     expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
     expect(str_contains($html, '同一 IP 五分钟内计数一次，登录用户不计数。') && str_contains($html, '更换主题'), 'current counter boundary and code risk explanations missing');
     expect(!str_contains($html, '整页缓存命中不计数'), 'cache-safe AJAX counter must not claim page cache hits never count');
@@ -124,15 +129,9 @@ test('limited permissions hide code editors without leaking or removing saved co
     $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => true);
     $GLOBALS['options'] = array();
 });
-test('no post yields no invented article link and failed updates never claim success', function () {
-    $GLOBALS['public_posts'] = array();
-    $GLOBALS['update_info'] = array('latest_version' => '', 'url' => 'https://example.test/releases', 'error' => '连接失败');
-    $html = render();
-    expect(!str_contains($html, 'https://example.test/post-'), 'nonexistent article link invented');
-    expect(str_contains($html, '连接失败') && !str_contains($html, '已是最新'), 'cached error displays without claiming success');
-    $GLOBALS['update_info']['error'] = '';
-    expect(!str_contains(render(), '已是最新'), 'unknown version disguised as success');
-    unset($GLOBALS['public_posts'], $GLOBALS['update_info']);
+test('theme updater no longer registers an AJAX endpoint', function () {
+    expect(!in_array('wp_ajax_zen_update_info', $GLOBALS['hooks'], true), 'retired update hook still exists');
+    expect(in_array('wp_ajax_zen_post_view', $GLOBALS['hooks'], true), 'unrelated reading-count AJAX must stay registered');
 });
 test('admin assets are isolated to the existing top-level hook', function () {
     zen_options_admin_assets('settings_page_other');

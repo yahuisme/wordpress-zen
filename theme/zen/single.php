@@ -9,12 +9,14 @@ get_header();
 <div class="zen-reading-shell">
     <header class="zen-article-header">
         <h1 class="zen-article-title"><?php echo esc_html(zen_post_title()); ?></h1>
+        <?php $zen_deck = has_excerpt() && !post_password_required() ? zen_display_excerpt(get_the_excerpt()) : ''; ?>
+        <?php if ($zen_deck !== '') : ?><p class="zen-article-deck"><?php echo $zen_deck; // Escaped by zen_display_excerpt(). ?></p><?php endif; ?>
         <div class="zen-post-meta">
+            <?php zen_posted_on_link(); ?>
             <?php $cat = zen_get_primary_category(); ?>
             <?php if ($cat) : ?>
             <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-meta-category zen-ui-link"><?php echo esc_html($cat->name); ?></a>
             <?php endif; ?>
-            <?php zen_posted_on_link(); ?>
             <?php if (zen_show_reading_count()) : ?>
             <span class="zen-meta-field">浏览次数 <span id="zen-reading-count" class="zen-reading-count" data-post-id="<?php echo esc_attr(get_the_ID()); ?>"><?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?></span></span>
             <?php endif; ?>
@@ -49,7 +51,7 @@ get_header();
         <?php
         $zen_reading_width = max(600, min(960, (int) zen_get_option('zen_reading_width')));
         $zen_site_width = max(600, min(1920, (int) zen_get_option('zen_content_width')));
-        $zen_featured_sizes = '(max-width: 639.98px) min(calc(100vw - 32px), ' . min($zen_reading_width, $zen_site_width - 32) . 'px), min(calc(100vw - 48px), ' . min($zen_reading_width, $zen_site_width - 48) . 'px)';
+        $zen_featured_sizes = '(max-width: 639.98px) min(calc(100vw - 56px), ' . min($zen_reading_width, $zen_site_width - 56) . 'px), min(calc(100vw - 64px), ' . min($zen_reading_width, $zen_site_width - 64) . 'px)';
         the_post_thumbnail('large', array('class' => 'zen-featured-image', 'sizes' => $zen_featured_sizes));
         ?>
     </div>

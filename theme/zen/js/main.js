@@ -176,7 +176,6 @@ const zenInit = () => {
         }
     };
 
-    let dismissMobileMenu;
     let searchShortcutHandler;
     document.addEventListener('keydown', (event) => {
         if (event.defaultPrevented || event.isComposing) return;
@@ -186,8 +185,6 @@ const zenInit = () => {
             if (activeModal) {
                 event.preventDefault();
                 activeModal.dismiss();
-            } else if (dismissMobileMenu?.()) {
-                event.preventDefault();
             }
         } else {
             searchShortcutHandler?.(event);
@@ -594,60 +591,7 @@ const zenInit = () => {
         }
     }
 
-    // --- 5. Mobile Menu ---
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const mobileMenuIcon = mobileMenuBtn?.querySelector('i');
-    const isMenuOpen = () => mobileMenuBtn?.getAttribute('aria-expanded') === 'true';
-
-    const closeMobileMenuVisuals = () => {
-        if (!isMenuOpen()) return;
-        mobileMenu.classList.add('hidden');
-
-        mobileMenuBtn?.setAttribute('aria-expanded', 'false');
-        mobileMenuBtn?.setAttribute('aria-label', '打开菜单');
-        if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-list text-2xl';
-    };
-
-    if (mobileMenuBtn && mobileMenu) {
-        const inDisclosure = (target) => target === mobileMenuBtn || mobileMenu.contains(target);
-        dismissMobileMenu = () => {
-            if (!isMenuOpen() || !inDisclosure(document.activeElement)) return false;
-            closeMobileMenuVisuals();
-            mobileMenuBtn.focus({ preventScroll: true });
-            return true;
-        };
-        mobileMenuBtn.addEventListener('click', () => {
-            if (activeModal) return;
-            if (isMenuOpen()) {
-                closeMobileMenuVisuals();
-                mobileMenuBtn.focus({ preventScroll: true });
-                return;
-            }
-            mobileMenu.classList.remove('hidden');
-
-            mobileMenuBtn.setAttribute('aria-expanded', 'true');
-            mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
-            if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-x text-2xl';
-            mobileMenu.querySelector('a[href]')?.focus();
-        });
-
-        mobileMenu.addEventListener('click', (event) => {
-            if (event.target.closest('a')) closeMobileMenuVisuals();
-        });
-        const closeOnFocusLeave = (event) => {
-            if (event.relatedTarget && !inDisclosure(event.relatedTarget)) closeMobileMenuVisuals();
-        };
-        mobileMenu.addEventListener('focusout', closeOnFocusLeave);
-        mobileMenuBtn.addEventListener('focusout', closeOnFocusLeave);
-        window.matchMedia?.('(min-width: 768px)').addEventListener?.('change', (event) => {
-            if (event.matches) closeMobileMenuVisuals();
-        });
-        mobileMenu.classList.add('zen-menu-ready', 'hidden');
-        mobileMenuBtn.hidden = false;
-    }
-
-    // --- 6. Audio Player ---
+    // --- Audio Player ---
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
         if (audio.error || audio.closest('.zen-audio-player, .wp-audio-shortcode, .mejs-container, .mejs-mediaelement')) return;
@@ -810,10 +754,6 @@ const zenInit = () => {
                 searchCloseTimer = null;
             } else {
                 lastActiveElementBeforeSearch = trigger;
-                if (isMenuOpen() && mobileMenu.contains(trigger)) {
-                    lastActiveElementBeforeSearch = mobileMenuBtn || searchToggle;
-                }
-                closeMobileMenuVisuals();
             }
             searchModal.classList.remove('hidden');
             const opening = ++searchOpening;
@@ -863,7 +803,10 @@ const zenInit = () => {
         searchModal.setAttribute('aria-modal', 'true');
         searchModal.setAttribute('aria-label', '全站搜索');
         if (searchClose) searchClose.hidden = false;
+        searchModal.hidden = false;
         searchToggle.hidden = false;
+        const searchFallback = document.getElementById('search-fallback');
+        if (searchFallback) searchFallback.hidden = true;
     }
 
     // Optional enhancement runs only after every basic control has its listeners.

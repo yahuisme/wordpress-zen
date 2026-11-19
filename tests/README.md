@@ -98,7 +98,7 @@ ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-
 
 ## 浏览器
 
-`python tests/editorial-regression.py /path/to/fixture` 检查标准列表、首屏最新文章卡片、分页去重及四种宽度的日期栏与摘要对齐。可追加 `--settings`，用隔离管理员 Cookie 保存并复原卡片和日期样式，检查首页、搜索、文章和归档的实际回显。需要有站点简介、年度归档和至少两页文章的隔离样站。
+`python tests/editorial-regression.py /path/to/fixture` 检查标准列表、首屏最新文章卡片、分页去重及四种宽度的日期栏与摘要对齐。可追加 `--settings`，用隔离管理员 Cookie 保存并复原最新卡片开关，检查首页、搜索、文章和归档的日期格式。需要有站点简介、年度归档和至少两页文章的隔离样站。
 
 ```sh
 python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
@@ -122,7 +122,7 @@ python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
 python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.json
 ```
 
-额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个主菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，选择系统字体以隔离外部网络。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
+额外准备 `page` 普通页面、`direct` 原生代码文章、`synced` 引用已发布代码样板的文章及至少一个页脚菜单链接。`normal` 包含四张原生媒体库图片：首图在首屏，第四张文件名以 `distant` 开头，放在足够长的正文之后；接着放带尺寸的 `/embed.html` iframe、代码、末节及三秒 `/tone.wav` 原生音频。不要预填图片的 `loading` 属性，由 `the_content` 生成。保持默认 900px 内容宽度、auto 外观及相关开关，使用本地主题字体栈。覆盖媒体请求时机、滚动/减弱动效、键盘焦点、暗色模式、音频、复制、响应式页面及禁用 JS 的内容回退。
 
 原生内容块定向验收：
 
@@ -149,7 +149,7 @@ python tests/native-interaction-regression.py /path/to/fixture
 
 颜色测试覆盖 Cover/Group 的局部黑白文字、浅深模式、显式标题色和无脚本原生搜索；可追加 `colors` 或 `noscript`。交互测试通过延迟真实高亮库与 WAV 响应，覆盖音频取消/失败单播放器、目录 Enter 后的 Tab 顺序、Escape 焦点返回，以及高亮未到达时基础交互可用；可追加 `audio`、`toc` 或 `highlight`。这些测试要求上述 loopback fixture，浏览器串行且使用外部内存硬限，不伪造媒体状态。
 
-列表宽度测试可在 `green` 后加 `--focused`，仅跑系统字体、900px版面下的15个原生保存/视口场景；仍断言真实文章ID与非空样本。逐页测试可用 `--routes=tag,article` 只补指定页面族，报告仅对应几何场景，不包含完整交互与后台验收。
+列表宽度测试可在 `green` 后加 `--focused`，仅跑900px版面下的15个原生保存/视口场景；仍断言真实文章ID与非空样本。逐页测试可用 `--routes=tag,article` 只补指定页面族，报告仅对应几何场景，不包含完整交互与后台验收。
 
 ## 定向修复验收
 
@@ -175,4 +175,4 @@ python tests/archive-spacing-regression.py
 
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
 
-列表宽度测试通过原生设置保存「标准 → 紧凑 → 标准」，跨3种字体、600/900/1050/1200/1920px版面和320/390/768/1440/2560px视口，比较标题与摘要实际边界。逐页测试的 `fixture.json` 还需 `tag`、`emptycat`、`protected`、`multipage` 对象ID，覆盖15类前台页面、后台及其实际操作。站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。
+列表宽度测试通过原生设置保存「标准 → 紧凑 → 标准」，跨600/900/1050/1200/1920px版面和320/390/768/1440/2560px视口，比较标题与摘要实际边界。逐页测试的 `fixture.json` 还需 `tag`、`emptycat`、`protected`、`multipage` 对象ID，覆盖15类前台页面、后台及其实际操作。站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。

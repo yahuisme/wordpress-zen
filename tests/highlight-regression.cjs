@@ -112,7 +112,11 @@ test('Markdown headings and Makefile targets meet normal text contrast on both c
         prepare(window, blocks) {
             for (const name of ['github-dark.min.css', 'style.css', 'reading.css', 'layout.css']) {
                 const sheet = window.document.createElement('style');
-                sheet.textContent = readFileSync(join(root, 'assets/css', name), 'utf8');
+                const palette = readFileSync(join(root, 'assets/css', 'style.css'), 'utf8');
+                // JSDOM does not resolve CSS variables in computed colors; use the shipped light palette.
+                sheet.textContent = readFileSync(join(root, 'assets/css', name), 'utf8')
+                    .replace(/var\((--zen-[\w-]+),\s*#[0-9a-f]+\)/gi, (whole, key) =>
+                        palette.match(new RegExp(`${key}:\\s*(#[0-9a-f]+);`, 'i'))?.[1] ?? whole);
                 window.document.head.append(sheet);
             }
             blocks[0].className = 'language-markdown';
@@ -131,8 +135,9 @@ test('Markdown headings and Makefile targets meet normal text contrast on both c
         assert.ok(token, 'bundled grammar emits this token');
         const foreground = window.getComputedStyle(token).color;
         const background = window.getComputedStyle(blocks[i]).backgroundColor;
-        assert.equal(background, ['rgb(32, 43, 54)', 'rgb(13, 17, 23)'][i]);
-        assert.ok((luminance(foreground) + 0.05) / (luminance(background) + 0.05) >= 4.5, `${foreground} on ${background}`);
+        assert.equal(background, ['rgb(250, 249, 245)', 'rgb(13, 17, 23)'][i]);
+        const levels = [luminance(foreground), luminance(background)];
+        assert.ok((Math.max(...levels) + 0.05) / (Math.min(...levels) + 0.05) >= 4.5, `${foreground} on ${background}`);
     });
 });
 

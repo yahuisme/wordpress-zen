@@ -2,12 +2,10 @@
 /** Execute the real enqueue/setup callbacks with explicit WordPress boundaries. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['hooks'] = $GLOBALS['supports'] = $GLOBALS['styles'] = $GLOBALS['inline'] = array();
-$GLOBALS['font'] = 'system';
 function add_action($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $callback; }
 function add_filter($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $callback; }
 function remove_action(...$args) {}
-function get_option($key, $default = false) { return $key === 'zen_font_family' ? $GLOBALS['font'] : $default; }
-function zen_get_option($key) { return get_option($key, array('zen_font_family'=>'system','zen_content_width'=>900,'zen_reading_width'=>720)[$key] ?? 1); }
+function zen_get_option($key) { return array('zen_content_width'=>900,'zen_reading_width'=>720)[$key] ?? 1; }
 function add_theme_support($feature, ...$args) { $GLOBALS['supports'][$feature] = $args; }
 function register_nav_menus(...$args) {}
 function add_editor_style($styles) { $GLOBALS['editor_styles'] = (array) $styles; }
@@ -37,11 +35,18 @@ verify(isset($GLOBALS['styles']['zen-reading-style']), 'shared reading styleshee
 $css = implode('', array_merge(...array_values($GLOBALS['inline'])));
 verify(str_contains($css, '--zen-reading-width:720px'), 'reading width independent from site width');
 verify(str_contains($css, '--zen-content-width:900px'), 'legacy site width preserved');
-verify(isset($GLOBALS['hooks']['block_editor_settings_all']), 'editor receives saved typography settings');
+verify(isset($GLOBALS['hooks']['block_editor_settings_all']), 'editor receives saved width settings');
 if (isset($GLOBALS['hooks']['block_editor_settings_all'])) {
     $settings = ($GLOBALS['hooks']['block_editor_settings_all'][0])(array('styles'=>array()));
     $editor = implode('', array_column($settings['styles'], 'css'));
     verify(str_contains($editor, '--zen-reading-width:720px'), 'editor receives same reading width');
-    verify(str_contains($editor, 'system-ui'), 'editor receives same font stack');
 }
+$reading_css = file_get_contents(ABSPATH . 'assets/css/reading.css');
+verify(preg_match('/--zen-font-body:\s*"Zen Kami Kai", "TsangerJinKai02"/', $reading_css) && str_contains($reading_css, '--zen-font-heading: var(--zen-font-body)'), 'reader and editor body/title use the same Kai stack');
+verify(preg_match('/--zen-font-mono:\s*"TsangerJinKai02 Code CJK", "Google Sans Code"/', $reading_css), 'mixed code uses separate CJK and Latin families');
+verify($GLOBALS['editor_styles'] === array('assets/css/zen-bins-google-code.css', 'assets/css/reading.css'), 'editor registers the shared text and code font styles');
+verify(in_array('zen-bins-google-code', $GLOBALS['styles']['zen-reading-style'][1], true), 'reader style keeps its code font dependency');
+verify(isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), 'reference code font is self-hosted');
+verify(in_array('assets/css/zen-bins-google-code.css', $GLOBALS['editor_styles'], true), 'editor loads the same local code font');
+verify(!isset($GLOBALS['styles']['zen-bins-kai']), 'public package does not request missing optional Kai fonts');
 exit($failed ? 1 : 0);

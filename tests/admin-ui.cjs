@@ -66,8 +66,8 @@ test('presets update the single submitted width while custom selection alone sta
     assert.equal(unloading(dom), true);
     edit(dom, 'zen_reading_width', '731');
     assert.equal(doc.getElementById('zen_reading_width_preset').value, 'custom');
-    edit(dom, 'zen_reading_width', '720');
-    assert.equal(doc.getElementById('zen_reading_width_preset').value, '720');
+    edit(dom, 'zen_reading_width', '768');
+    assert.equal(doc.getElementById('zen_reading_width_preset').value, '768');
     assert.equal(unloading(dom), false);
     dom.window.close();
 });
@@ -145,43 +145,15 @@ for (const outcome of ['confirmed', 'declined', 'canceled later']) {
     });
 }
 
-for (const cachedMessage of ['当前版本 v2.7.4 已是最新版本。', '连接失败']) {
-    test(`cached update status makes no AJAX request: ${cachedMessage}`, async () => {
-        let requests = 0;
-        const dom = boot(window => {
-            const status = window.document.getElementById('zen-update-status');
-            status.dataset.updatePending = 'false';
-            status.textContent = cachedMessage;
-            window.zenAdminSettings = { ajaxUrl: '/admin-ajax.php', nonce: 'test-nonce' };
-            window.fetch = async () => { requests++; throw new Error('cache hit must not request'); };
-        });
-        await new Promise(resolve => setImmediate(resolve));
-        assert.equal(requests, 0);
-        assert.equal(dom.window.document.getElementById('zen-update-status').textContent, cachedMessage);
-        dom.window.close();
-    });
-}
-
-test('update cache miss requests once with nonce and links to the release', async () => {
-    const requests = [];
-    const release = 'https://github.com/yahuisme/wordpress-zen/releases/tag/v3.0.0';
+test('settings initialization does not check for updates', async () => {
+    let requests = 0;
     const dom = boot(window => {
-        window.document.getElementById('zen-update-status').dataset.updatePending = 'true';
-        window.zenAdminSettings = { ajaxUrl: '/admin-ajax.php', nonce: 'test-nonce' };
-        window.fetch = async (url, options) => {
-            requests.push({ url, options });
-            return { ok: true, json: async () => ({ success: true, data: { message: '<b>new release</b>', url: release } }) };
-        };
+        window.fetch = async () => { requests++; throw new Error('unexpected admin request'); };
     });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].url, '/admin-ajax.php');
-    assert.equal(requests[0].options.credentials, 'same-origin');
-    assert.equal(requests[0].options.body, 'action=zen_update_info&nonce=test-nonce');
-    const status = dom.window.document.getElementById('zen-update-status');
-    assert.equal(status.textContent, '<b>new release</b>');
-    assert.equal(status.querySelector('b'), null);
-    assert.equal(dom.window.document.getElementById('zen-update-link').href, release);
+    assert.equal(requests, 0);
+    assert.equal(dom.window.document.getElementById('zen-update-status'), null);
+    assert.equal(dom.window.document.getElementById('zen-update-link'), null);
     dom.window.close();
 });
 

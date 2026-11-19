@@ -192,6 +192,7 @@ foreach (array('page.php', 'single.php', 'page-links.php') as $template) {
 }
 
 function get_bookmarks($args) { return $GLOBALS['zen_test_bookmarks'] ?? array(); }
+function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
 foreach (array('' => '_self', '_self' => '_self', '_blank' => '_blank', '_parent' => '_parent', '_top' => '_top', 'invalid' => '_blank') as $target => $expected) {
     zen_test("bookmark target '$target' renders as $expected", function () use ($target, $expected) {
         $GLOBALS['zen_test_bookmarks'] = array((object) array(
@@ -208,6 +209,7 @@ function zen_tag_has_attribute($html, $id, $attribute) {
     return isset($tag[0]) && (bool) preg_match('/\s' . preg_quote($attribute, '/') . '(?:\s|=|\/?>)/', $tag[0]);
 }
 function post_password_required() { return false; }
+function has_excerpt() { return false; }
 function wp_get_current_commenter() { return array('comment_author' => '', 'comment_author_email' => ''); }
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function get_permalink() { return 'https://example.test/fixture/'; }
