@@ -8,8 +8,21 @@ origin = 'http://127.0.0.1:18765'
 out = Path(sys.argv[1])
 out.mkdir(parents=True, exist_ok=True)
 results = []
+
+
+def launch_chromium(playwright):
+    browser = playwright.chromium.launch(
+        executable_path='/usr/lib/chromium/chromium',
+        args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'],
+    )
+    processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+    cgroup = Path('/proc/self/cgroup').read_text()
+    assert processes and all(Path(f'/proc/{process["id"]}/cgroup').read_text() == cgroup for process in processes)
+    return browser
+
+
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+    browser = launch_chromium(p)
     context = browser.new_context(reduced_motion='reduce')
     page = context.new_page()
     page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin) else route.abort())
@@ -21,6 +34,14 @@ with sync_playwright() as p:
             nav = page.locator('.zen-category-nav')
             links = nav.locator('.zen-category-track > a')
             track = nav.locator('.zen-category-track')
+            upper = page.locator('.zen-site-intro')
+            if not upper.count():
+                upper = page.locator('.zen-site-header')
+            upper_box = upper.bounding_box()
+            before_track = track.bounding_box()['y'] - (upper_box['y'] + upper_box['height'])
+            after_track = track.evaluate('''e => e.parentElement.getBoundingClientRect().bottom
+                - e.getBoundingClientRect().bottom - parseFloat(getComputedStyle(e.parentElement).borderBottomWidth)''')
+            assert abs(before_track - after_track) <= 1, ('homepage category spacing', width, before_track, after_track)
             assert len(set(links.evaluate_all('(es)=>es.map(e=>e.getBoundingClientRect().top)'))) == 1
             if track.evaluate('e=>e.scrollWidth>e.clientWidth+1'):
                 assert nav.locator('.zen-category-next').is_visible()
@@ -68,10 +89,15 @@ with sync_playwright() as p:
             # Even an unusually long unbroken name must remain reachable without page overflow.
             page.locator('.zen-category-track > a').last.evaluate('e => e.textContent = "LongCategoryName".repeat(15)')
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), ('long-name', width)
-            results.append({'width': width, 'dark': dark, 'links': len(before), 'passed': True})
-    context.close()
-    context = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 844})
-    page = context.new_page()
+            results.append({'width': width, 'dark': dark, 'links': len(before),
+                            'spacing': [before_track, after_track],
+                            'intro': page.locator('.zen-site-intro').count() == 1, 'passed': True})
+    browser.close()
+    # Single-process Chromium needs a fresh launch for a different context.
+    browser = launch_chromium(p)
+    no_script = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 844})
+    no_script.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
+    page = no_script.new_page()
     page.goto(origin, wait_until='domcontentloaded')
     links = page.locator('.zen-category-track > a')
     assert links.count() > 5 and all(link.is_visible() for link in links.all())

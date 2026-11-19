@@ -125,7 +125,7 @@ body .font-serif {
 
 .zen-site-intro {
     max-width: 42rem;
-    margin: 0 auto var(--zen-space-4);
+    margin: 0 auto var(--zen-space-3);
     color: var(--zen-muted);
     text-align: center;
 }
@@ -192,6 +192,12 @@ body .font-serif {
     margin-bottom: var(--zen-space-4);
     padding-bottom: 14px;
     border-bottom: 1px solid var(--zen-border-soft);
+}
+.home #main-content:has(> .zen-category-nav:first-child) {
+    padding-top: var(--zen-space-3);
+}
+.home #main-content > .zen-category-nav {
+    padding-bottom: var(--zen-space-3);
 }
 .zen-category-track {
     display: flex;
