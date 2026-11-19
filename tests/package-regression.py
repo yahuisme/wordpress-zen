@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import warnings
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1] / 'theme' / 'zen'
@@ -47,8 +48,11 @@ assert 'assets/css/admin.css' in expected_files, 'Design asset missing from expe
 assert 'assets/css/reading.css' in expected_files
 assert 'assets/css/layout.css' in expected_files
 assert 'assets/js/admin.js' in expected_files
-for notice in ('licenses/Highlight-BSD-3-Clause.txt', 'licenses/Tailwind-MIT.txt'):
+for notice in ('licenses/Highlight-BSD-3-Clause.txt', 'licenses/Tailwind-MIT.txt', 'licenses/Bitstream-Charter.txt'):
     assert notice in expected_files, 'Third-party license missing: ' + notice
+for face in ('regular', 'bold', 'italic', 'bold_italic'):
+    font_file = f'assets/fonts/charter_{face}.woff2'
+    assert font_file in expected_files and (ROOT / font_file).read_bytes().startswith(b'wOF2'), font_file
 assert 'undefined and other contributors' not in (ROOT / 'assets/js/highlight.min.js').read_text(), 'Highlighter attribution must name its copyright holder'
 highlight_license = (ROOT / 'licenses/Highlight-BSD-3-Clause.txt').read_text()
 assert all(text in highlight_license for text in ('Ivan Sagalaev', 'Redistribution and use', 'Neither the name', 'THIS SOFTWARE IS PROVIDED'))
@@ -102,6 +106,14 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
         archive.writestr('zen/tests/unwanted.txt', 'maintenance file')
     assert validate().returncode != 0
     print('PASS rejects extra maintenance files')
+
+    package.write_bytes(original)
+    with warnings.catch_warnings(), zipfile.ZipFile(package, 'a') as archive:
+        warnings.filterwarnings('ignore', message='Duplicate name:')
+        archive.writestr('zen/style.css', members['zen/style.css'])
+    result = validate()
+    assert result.returncode != 0 and '重复文件' in result.stderr, 'Duplicate ZIP member must be rejected'
+    print('PASS rejects duplicate archive members')
 
     if len(sys.argv) == 2:
         output = Path(sys.argv[1]).resolve()

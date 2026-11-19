@@ -1,4 +1,30 @@
 /* Shared article typography: loaded by both reader and WordPress editor. */
+@font-face {
+    font-family: "Zen Charter";
+    src: url("../fonts/charter_regular.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Zen Charter";
+    src: url("../fonts/charter_bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Zen Charter";
+    src: url("../fonts/charter_italic.woff2") format("woff2");
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Zen Charter";
+    src: url("../fonts/charter_bold_italic.woff2") format("woff2");
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+}
 :root {
     --zen-reading-width: 720px;
     --zen-font-body:

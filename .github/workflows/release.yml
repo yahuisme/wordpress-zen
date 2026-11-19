@@ -42,7 +42,13 @@ jobs:
           import sys, zipfile, re
           version = sys.argv[1]
           with zipfile.ZipFile('zen.zip') as archive:
-              names = {name for name in archive.namelist() if not name.endswith('/')}
+              entries = archive.namelist()
+              if len(entries) != len(set(entries)):
+                  raise SystemExit('发布包包含重复文件')
+              corrupt = archive.testzip()
+              if corrupt:
+                  raise SystemExit('发布包文件损坏：' + corrupt)
+              names = {name for name in entries if not name.endswith('/')}
               forbidden = {n for n in names if n.startswith('zen/tests/') or n.startswith('zen/.github/') or n == 'zen/AGENTS.md'}
               if forbidden:
                   raise SystemExit('发布包含开发文件：' + ', '.join(sorted(forbidden)))
@@ -51,6 +57,9 @@ jobs:
                   'zen/assets/css/github-dark.min.css', 'zen/assets/css/phosphor-icons.css', 'zen/assets/css/style.css',
                   'zen/assets/css/admin.css', 'zen/assets/css/reading.css', 'zen/assets/css/layout.css', 'zen/assets/js/admin.js',
                   'zen/assets/fonts/Phosphor.woff2', 'zen/assets/js/highlight.min.js',
+                  'zen/assets/fonts/charter_regular.woff2', 'zen/assets/fonts/charter_bold.woff2',
+                  'zen/assets/fonts/charter_italic.woff2', 'zen/assets/fonts/charter_bold_italic.woff2',
+                  'zen/licenses/Bitstream-Charter.txt',
                   'zen/licenses/Phosphor-MIT.txt',
                   'zen/licenses/Highlight-BSD-3-Clause.txt', 'zen/licenses/Tailwind-MIT.txt',
                   'zen/comments.php', 'zen/footer.php', 'zen/functions.php',

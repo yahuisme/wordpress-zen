@@ -46,7 +46,7 @@ function expect($value, $message) { if (!$value) throw new RuntimeException($mes
 function render() { ob_start(); zen_options_page_html(); return ob_get_clean(); }
 if (in_array('--html', $argv, true)) { echo render(); exit; }
 test('new installations use conservative defaults and explicit legacy values survive', function () {
-    foreach (array('zen_font_family' => 'system', 'zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_theme_by' => 0, 'zen_show_footer_wordpress' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 720, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 900) as $key => $default) {
+    foreach (array('zen_font_family' => 'kami', 'zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_theme_by' => 0, 'zen_show_footer_wordpress' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 720, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 900) as $key => $default) {
         expect(zen_get_option($key) === $default, "$key default differs");
     }
     foreach (array('zen_font_family' => 'inter', 'zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1) as $key => $legacy) {
@@ -79,6 +79,7 @@ test('registered new options sanitize values and reject invalid numbers without 
     expect(zen_sanitize_category_ids('') === array(), 'empty categories must mean all');
     expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
     expect(zen_sanitize_font_family('bogus') === 'system', 'font fallback mismatch');
+    expect(($GLOBALS['settings']['zen_font_family']['sanitize_callback'])('kami') === 'kami', 'Kami setting rejected');
     expect(zen_get_option('zen_show_latest_card') === 1 && zen_get_option('zen_date_style') === 'editorial', 'editorial defaults missing');
     expect(zen_sanitize_date_style('editorial') === 'editorial' && zen_sanitize_date_style('classic') === 'classic', 'date enum mismatch');
     $GLOBALS['options']['zen_date_style'] = 'classic';
@@ -97,6 +98,7 @@ test('single settings form groups all old and new fields', function () {
     expect(count($ids[1]) === count(array_unique($ids[1])), 'Settings API and reset forms must not duplicate element IDs');
     expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');
+    expect(str_contains($html, '<option value="kami"  selected="selected">Kami'), 'Kami preset is not selected by default');
     foreach (array('reading', 'list', 'post', 'footer', 'code', 'about') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
     foreach (array_keys($GLOBALS['settings']) as $key) expect(str_contains($html, 'name="' . $key . ($key === 'zen_category_ids' ? '[]' : '') . '"'), "$key input omitted");
     expect(substr_count($html, 'name="zen_reading_width"') === 1, 'preset and number must not submit conflicting names');

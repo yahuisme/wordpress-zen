@@ -26,7 +26,7 @@ function zen_get_option_defaults() {
             'zen_show_post_navigation' => 1,
             'zen_show_reading_progress'=> 1,
             'zen_theme_mode_default'   => 'auto',
-            'zen_font_family'          => 'system',
+            'zen_font_family'          => 'kami',
             'zen_content_width'        => 900,
             'zen_reading_width'        => 720,
             'zen_list_style'           => 'standard',
@@ -300,7 +300,7 @@ function zen_sanitize_theme_mode($value) {
 }
 
 function zen_sanitize_font_family($value) {
-    return in_array($value, array('inter', 'space-grotesk', 'system'), true) ? $value : 'system';
+    return in_array($value, array('kami', 'inter', 'space-grotesk', 'system'), true) ? $value : 'system';
 }
 
 function zen_sanitize_copyright_license($value) {
@@ -537,10 +537,10 @@ function zen_options_page_html() {
                         <tr>
                             <th scope="row"><label for="zen_font_family"><?php esc_html_e('排版方案', 'zen'); ?></label></th>
                             <td><select name="zen_font_family" id="zen_font_family" aria-describedby="zen-font-help">
-                                <?php foreach (array('system' => '系统排版', 'inter' => '现代衬线', 'space-grotesk' => '现代无衬线') as $value => $label) : ?>
+                                <?php foreach (array('kami' => 'Kami 纸感（默认）', 'system' => '系统排版', 'inter' => '现代衬线', 'space-grotesk' => '现代无衬线') as $value => $label) : ?>
                                     <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_font_family')); ?>><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
-                            </select><p class="description" id="zen-font-help"><?php esc_html_e('系统排版不加载外部字体；Inter 使用无衬线正文与 Noto Serif SC 标题，Space Grotesk 使用几何无衬线组合。后两者从 Google Fonts 加载字体，会向其发送字体请求。', 'zen'); ?></p></td>
+                            </select><p class="description" id="zen-font-help"><?php esc_html_e('Kami 使用本地 Charter；中文优先用仓耳今楷，不可用时回退至系统中文字体。Kami 和系统排版均不请求第三方字体；现代衬线和现代无衬线从 Google Fonts 加载字体。', 'zen'); ?></p></td>
                         </tr>
                         <tr>
                             <th scope="row"><label for="zen_reading_width"><?php esc_html_e('正文宽度', 'zen'); ?></label></th>

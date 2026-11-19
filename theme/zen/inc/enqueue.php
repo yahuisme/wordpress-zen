@@ -7,7 +7,10 @@ function zen_typography() {
     $system = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
     $serif = '"Songti SC", "SimSun", "Noto Serif CJK SC", ui-serif, Georgia, serif';
     $fonts = '';
-    if ('space-grotesk' === $family) {
+    if ('kami' === $family) {
+        // Private builds may declare Zen Kami Kai in the shared reading stylesheet.
+        $body = $heading = '"Zen Kami Kai", "Zen Charter", "TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC", "Source Han Serif CN", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, Palatino, "Times New Roman", serif';
+    } elseif ('space-grotesk' === $family) {
         $body = '"Space Grotesk", "Noto Sans SC", ' . $system;
         $heading = $body;
         $fonts = 'family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700';

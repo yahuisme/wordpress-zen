@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) exit;
  * Resource hints.
  */
 function zen_resource_hints($urls, $relation_type) {
-    if ('preconnect' === $relation_type && 'system' !== zen_get_option('zen_font_family')) {
+    if ('preconnect' === $relation_type && zen_typography()['fonts']) {
         $urls[] = 'https://fonts.googleapis.com';
         $urls[] = array(
             'href' => 'https://fonts.gstatic.com',

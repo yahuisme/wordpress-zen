@@ -21,7 +21,7 @@
 
 主题设置位于后台左侧的「Zen 主题设置」一级菜单中，位置在 WordPress 自带的「设置」菜单下方。
 
-- 「排版与阅读」可选择系统排版（不加载外部字体），调整 600–960px 正文宽度；原有整体版面宽度保留在折叠的高级设置中。
+- 「排版与阅读」默认使用 Kami 纸感，也可选回系统排版或旧方案；已有保存值保留。正文宽度可设为 600–960px，整站版面宽度仍在高级设置中。
 - 「首页与文章列表」可关闭最新文章卡片、切换简洁或完整中文日期、选择列表密度。紧凑模式省略摘要。所有分组一次保存。
 - 站点身份、Logo、站点图标、菜单、阅读与讨论在 WordPress 原生页面维护；主导航支持一级菜单。
 - 文章编辑器与前台共享正文排版；特色图在文章页展示，首页不加载文章缩略图。
@@ -29,6 +29,10 @@
 - 浏览次数默认关闭；启用后为简单累计计数，同一服务端识别的 IP 对同一文章五分钟内只计一次。文章页加载后通过同源 AJAX 更新，因此整页缓存命中仍可计数；关闭后停止计数。已有明确设置值保留。主题不信任请求中的 X-Forwarded-For；使用反向代理时，请在 Web 服务器层仅对可信代理解析真实 IP，否则同一代理后的访客会共享去重桶。
 - 新安装不预设文章授权协议；已有明确选择保留。默认隐藏主题与 WordPress 署名，RSS 保持开启。
 - 启用 Yoast、Rank Math、AIOSEO 或 SEOPress 时，主题让出描述和文章结构化数据输出。
+
+### Kami 字体
+
+[Kami 规范](https://github.com/tw93/Kami/blob/main/skills/kami/references/design.md)为英文选用 Charter、中文选用仓耳今楷。公开包只内置 Charter；中文优先匹配访客已安装的仓耳今楷，否则使用本机的思源宋体、Noto Serif CJK SC 等，不请求第三方字体。
 
 ### 归档页面
 
@@ -40,4 +44,4 @@
 
 ## 许可证
 
-本项目采用 [GPL-3.0](LICENSE) 许可证。第三方资源许可见 `licenses/`：Highlight.js（BSD-3-Clause）、Tailwind CSS 与 Phosphor Icons（MIT）。
+本项目采用 [GPL-3.0](LICENSE) 许可证。第三方资源许可见 `licenses/`：Highlight.js（BSD-3-Clause）、Tailwind CSS 与 Phosphor Icons（MIT）、[Charter](https://practicaltypography.com/charter.html)（Bitstream Charter）。
