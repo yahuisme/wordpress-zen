@@ -7,7 +7,7 @@ get_header(); ?>
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
     <header class="zen-article-header">
-        <h1 class="zen-article-title"><?php the_title(); ?></h1>
+        <h1 class="zen-article-title"><?php echo esc_html(zen_post_title()); ?></h1>
     </header>
     <div class="zen-reading-shell">
         <div class="zen-directory-intro entry-content">

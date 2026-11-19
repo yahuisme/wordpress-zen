@@ -79,11 +79,14 @@ try:
                 page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(origin + '/?p=' + identifier, wait_until='commit'); page.wait_for_timeout(800)
                 assert held, 'Main script must genuinely be held'
-                before = page.locator('#post-content').evaluate('e=>e.getBoundingClientRect().top')
+                # The recoverable header/menu/search may occupy extra document flow until
+                # main binds. Measure TOC startup within main, independently of the header.
+                post_offset = 'e=>e.getBoundingClientRect().top-e.closest("main").getBoundingClientRect().top'
+                before = page.locator('#post-content').evaluate(post_offset)
                 for route in held: route.continue_()
                 page.wait_for_load_state('networkidle')
-                after = page.locator('#post-content').evaluate('e=>e.getBoundingClientRect().top')
-                check(f'{width}/{name} delayed script keeps article position', abs(after-before) <= 1, {'before': before, 'after': after})
+                after = page.locator('#post-content').evaluate(post_offset)
+                check(f'{width}/{name} delayed script keeps article position within main', abs(after-before) <= 1, {'before': before, 'after': after})
                 if name == 'headings':
                     trigger = page.locator('#header-toc-btn' if width < 1280 else '#toc-container')
                     check(f'{width}/headings released directory is usable', trigger.is_visible() and page.locator('#toc-nav .toc-link').count() > 0)
@@ -103,6 +106,28 @@ try:
                 if name == 'plain':
                     check(f'{width}/plain no unused directory slot', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0)
                 context.close()
+        for width in (320, 390):
+            context = browser.new_context(viewport={'width': width, 'height': 900})
+            blocked = []
+            def block_main(route):
+                blocked.append(route.request.url)
+                route.abort()
+            context.route('**/js/main.js?*', block_main)
+            page = context.new_page()
+            page.goto(origin, wait_until='domcontentloaded')
+            assert blocked, 'main.js must genuinely be blocked with JavaScript enabled'
+            menu = page.get_by_role('navigation', name='主菜单', exact=True)
+            link = menu.get_by_role('link').first
+            page.locator('.zen-site-brand').focus()
+            page.keyboard.press('Tab')
+            check(f'{width} blocked main preserves native navigation', link.evaluate('e=>e===document.activeElement') and not page.locator('#mobile-menu-btn').is_visible())
+            search = page.locator('#search-input')
+            check(f'{width} blocked main leaves only inline header search', search.is_visible() and not page.locator('#search-toggle').is_visible())
+            search.fill('WordPress')
+            with page.expect_navigation(wait_until='domcontentloaded'):
+                search.press('Enter')
+            check(f'{width} blocked main submits native search', 's=WordPress' in page.url and page.locator('main .zen-post-item').count() > 0)
+            context.close()
         browser.close()
 finally:
     for post_id in posts: wp('post', 'delete', post_id, '--force')

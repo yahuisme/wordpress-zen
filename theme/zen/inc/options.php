@@ -591,7 +591,7 @@ function zen_options_page_html() {
                     <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
-                            <?php $categories = get_categories(array('hide_empty' => false)); ?>
+                            <?php $categories = get_categories(array('hide_empty' => false, 'lang' => '')); ?>
                             <?php $selected_category_ids = zen_sanitize_category_ids(zen_get_option('zen_category_ids')); ?>
                             <?php if (!is_wp_error($categories)) : foreach ($categories as $category) : ?>
                                 <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, in_array((int) $category->term_id, $selected_category_ids, true)); ?>> <?php echo esc_html($category->name); ?></label>
@@ -617,7 +617,11 @@ function zen_options_page_html() {
                             <?php foreach (array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0') as $value => $label) : ?>
                                 <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_copyright_license')); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
-                        </select><p class="description"><?php esc_html_e('文章底部的协议声明。请仅选择你明确授予的许可。', 'zen'); ?></p></td></tr>
+                        </select><p class="description"><?php esc_html_e('文章底部的协议声明。请仅选择你明确授予的许可。', 'zen'); ?></p>
+                        <?php $legacy_copyright = get_option('zen_show_copyright', null); ?>
+                        <?php if (null !== $legacy_copyright && !$legacy_copyright && 'none' !== zen_get_option('zen_copyright_license')) : ?>
+                            <p><?php esc_html_e('旧版曾关闭版权声明，但当前已选协议。如不打算公开声明，请改为「不显示」并保存。', 'zen'); ?></p>
+                        <?php endif; ?></td></tr>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-footer" open>
@@ -668,7 +672,7 @@ function zen_options_page_html() {
                data-error="<?php echo esc_attr(__('更新检查失败。', 'zen')); ?>">
                 <?php echo esc_html(false === $update ? sprintf(__('当前版本 v%s。正在检查更新…', 'zen'), $version) : zen_update_info_message($update, $version)); ?>
             </p>
-            <a class="button button-secondary" href="<?php echo esc_url(false === $update ? 'https://github.com/yahuisme/wordpress-zen/releases' : $update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
+            <a id="zen-update-link" class="button button-secondary" href="<?php echo esc_url(false === $update ? 'https://github.com/yahuisme/wordpress-zen/releases' : $update['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(__('GitHub 发布页（在新窗口打开）', 'zen')); ?>"><?php esc_html_e('GitHub 发布页', 'zen'); ?></a>
         </section>
     </div>
     <?php
@@ -677,6 +681,15 @@ function zen_options_page_html() {
 /* -------------------------------------------------------------------------
  * Front-end: reading count
  * ---------------------------------------------------------------------- */
+
+function zen_can_count_post($post) {
+    return $post && 'post' === $post->post_type && 'publish' === $post->post_status && '' === $post->post_password;
+}
+
+function zen_show_reading_count() {
+    return zen_get_option('zen_show_reading_count') && is_singular('post') && !is_preview() && !is_feed()
+        && zen_can_count_post(get_queried_object());
+}
 
 /** Return the current count, or false for a disabled/unavailable article. */
 function zen_track_post_view($post_id = 0) {
@@ -694,7 +707,7 @@ function zen_track_post_view($post_id = 0) {
 
     if (!is_int($post_id) || $post_id <= 0) return false;
     $post = get_post($post_id);
-    if (!$post || 'post' !== $post->post_type || 'publish' !== $post->post_status || '' !== $post->post_password) {
+    if (!zen_can_count_post($post)) {
         return false;
     }
     $count = (int) get_post_meta($post_id, 'zen_view_count', true);

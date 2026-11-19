@@ -76,8 +76,9 @@ for (const enabled of [true, false]) {
         const { blocks, codes, observers, copied } = await page(t, { enabled });
         const text = 'const message = "<safe>";\nconsole.log(message);';
         for (const block of blocks) {
-            const button = block.querySelector('.zen-code-copy');
-            assert.equal(block.querySelectorAll('.zen-code-copy').length, 1);
+            const button = block.previousElementSibling;
+            assert.ok(button?.matches('.zen-code-copy'), 'copy is outside the scrolling pre and before its code');
+            assert.equal(block.parentElement.querySelectorAll('.zen-code-copy').length, 1);
             assert.equal(button.type, 'button');
             assert.equal(button.getAttribute('aria-label'), '复制代码');
             assert.equal(button.querySelector('i').getAttribute('aria-hidden'), 'true');
@@ -103,6 +104,36 @@ test('does not create an observer without pending code', async t => {
         assert.equal(observers.length, 0);
         assert.equal(calls.length, positions.length);
     }
+});
+
+test('Markdown headings and Makefile targets meet normal text contrast on both code backgrounds', async t => {
+    const { window, codes, blocks } = await page(t, {
+        positions: [20, 20],
+        prepare(window, blocks) {
+            for (const name of ['github-dark.min.css', 'style.css', 'reading.css', 'layout.css']) {
+                const sheet = window.document.createElement('style');
+                sheet.textContent = readFileSync(join(root, 'assets/css', name), 'utf8');
+                window.document.head.append(sheet);
+            }
+            blocks[0].className = 'language-markdown';
+            blocks[0].firstElementChild.textContent = '# Heading';
+            blocks[1].className = 'wp-block-code language-makefile';
+            blocks[1].firstElementChild.textContent = 'build:\n\ttrue';
+            window.document.body.append(blocks[1]);
+        },
+    });
+    const luminance = rgb => rgb.match(/\d+/g).map(Number).map(channel => {
+        const s = channel / 255;
+        return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
+    codes.forEach((code, i) => {
+        const token = code.querySelector('.hljs-section');
+        assert.ok(token, 'bundled grammar emits this token');
+        const foreground = window.getComputedStyle(token).color;
+        const background = window.getComputedStyle(blocks[i]).backgroundColor;
+        assert.equal(background, ['rgb(32, 43, 54)', 'rgb(13, 17, 23)'][i]);
+        assert.ok((luminance(foreground) + 0.05) / (luminance(background) + 0.05) >= 4.5, `${foreground} on ${background}`);
+    });
 });
 
 test('skips pre-highlighted code and bare pre while handling standalone Gutenberg code', async t => {
@@ -168,7 +199,7 @@ test('large unmarked code stays literal without autodetection while explicit lan
         assert.equal(code.textContent, text);
     }
     assert.ok(codes[2].querySelector('.hljs-keyword'), 'large explicitly labelled code is not disabled');
-    blocks[0].querySelector('.zen-code-copy').click(); await Promise.resolve();
+    blocks[0].previousElementSibling.click(); await Promise.resolve();
     assert.deepEqual(copied, [text]);
 });
 

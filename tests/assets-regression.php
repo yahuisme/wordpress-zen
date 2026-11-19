@@ -1,6 +1,7 @@
 <?php
 /** Run: php tests/assets-regression.php. WordPress boundary doubles, no I/O. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
+require __DIR__ . '/html-api-bootstrap.php';
 $GLOBALS['font'] = 'system';
 $GLOBALS['styles'] = array();
 $GLOBALS['inline'] = array();
@@ -96,6 +97,8 @@ foreach (array(
     'public code article' => array('<pre><code>public</code></pre>', false, 1, true),
     'public synced code article' => array('<!-- wp:block {"ref":42} /-->', false, 1, true),
     'public plain article' => array('<p>plain</p>', false, 1, false),
+    'plain preformatted block' => array('<!-- wp:preformatted --><pre>Text only</pre><!-- /wp:preformatted -->', false, 1, false),
+    'inline code next to preformatted text' => array('<pre>Text only</pre><p><code>inline</code></p>', false, 1, false),
     'disabled code highlighting' => array('<pre>code</pre>', false, 0, false),
 ) as $name => $case) {
     $GLOBALS['post'] = (object) array('post_content' => $case[0], 'post_password' => str_contains($name, 'password') || $case[1] ? 'fixture' : '');

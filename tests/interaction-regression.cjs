@@ -188,14 +188,32 @@ test('global keyboard handling registers one document listener', async t => {
 
 const searchMarkup = `
     <header>
-        <button id="mobile-menu-btn" aria-expanded="false">Menu</button>
-        <div id="mobile-menu" class="hidden" aria-hidden="true"><a href="/about">About</a></div>
-        <button id="search-toggle" aria-expanded="false">Search</button>
+        <button id="mobile-menu-btn" aria-expanded="false" hidden>Menu</button>
+        <nav id="mobile-menu"><a href="/about">About</a></nav>
+        <button id="search-toggle" aria-expanded="false" hidden>Search</button>
     </header>
     <main><button id="outside">Outside</button></main>
-    <div id="search-modal" class="hidden opacity-0">
-        <button id="search-close">Close</button><input id="search-input"><button>Submit</button>
+    <div id="search-modal">
+        <button id="search-close" hidden>Close</button><input id="search-input"><button>Submit</button>
     </div>`;
+
+test('bound controls enhance the already-present links and search without replacing them', async t => {
+    const { document } = await page(t, searchMarkup);
+    const menu = document.getElementById('mobile-menu');
+    const search = document.getElementById('search-modal');
+    const menuButton = document.getElementById('mobile-menu-btn');
+    const searchButton = document.getElementById('search-toggle');
+    assert.equal(menuButton.hidden, false);
+    assert.equal(searchButton.hidden, false);
+    assert.ok(menu.classList.contains('hidden'));
+    assert.ok(search.classList.contains('hidden'));
+    assert.equal(search.getAttribute('role'), 'dialog');
+    assert.equal(search.getAttribute('aria-modal'), 'true');
+    menuButton.click();
+    assert.equal(document.activeElement, menu.querySelector('a'));
+    searchButton.click();
+    assert.equal(document.activeElement, search.querySelector('input'));
+});
 
 test('search click closes the menu and restores its visible trigger', async t => {
     const { document, flush } = await page(t, searchMarkup);
@@ -205,7 +223,7 @@ test('search click closes the menu and restores its visible trigger', async t =>
     toggle.click();
     flush();
     assert.equal(document.getElementById('mobile-menu').classList.contains('hidden'), true);
-    assert.equal(document.getElementById('mobile-menu').getAttribute('aria-hidden'), 'true');
+
     assert.equal(document.activeElement.id, 'search-input');
     document.getElementById('search-close').click();
     flush();
@@ -327,7 +345,6 @@ for (const modifier of ['ctrlKey', 'metaKey']) {
         assert.equal(document.activeElement, menuButton);
         assert.equal(document.activeElement.closest('.hidden, [inert], [aria-hidden="true"]'), null);
         assert.equal(menu.classList.contains('hidden'), true);
-        assert.equal(menu.getAttribute('aria-hidden'), 'true');
         assert.equal(menuButton.getAttribute('aria-expanded'), 'false');
         assert.equal(menuButton.getAttribute('aria-label'), '打开菜单');
         assert.equal(document.body.style.overflow, '');
@@ -540,6 +557,63 @@ test('WordPress and MediaElement audio keep native ownership while plain and blo
         assert.equal(audio.style.display, 'none');
         assert.ok(audio.nextElementSibling.classList.contains('zen-audio-player'));
     }
+});
+
+test('muted or zero-volume audio can be unmuted or adjusted in its native player', async t => {
+    const { document } = await page(t, `
+        <audio id="muted" controls muted src="/audio.wav"></audio>
+        <figure class="wp-block-audio"><audio id="muted-block" controls muted src="/audio.wav"></audio></figure>
+        <audio id="runtime-muted" src="/audio.wav"></audio>
+        <audio id="silent" controls src="/audio.wav"></audio>`, window => {
+        window.document.getElementById('runtime-muted').muted = true;
+        window.document.getElementById('silent').volume = 0;
+    });
+    assert.equal(document.querySelectorAll('.zen-audio-player').length, 0);
+    for (const audio of document.querySelectorAll('audio')) {
+        assert.equal(audio.controls, true);
+        assert.notEqual(audio.style.display, 'none');
+    }
+});
+
+test('keyboard back-to-top moves focus to the first page link without a second scroll', async t => {
+    const scrolls = [];
+    const focusOptions = [];
+    const { document } = await page(t, `
+        <a class="skip-link" href="#main-content">Skip to content</a><main id="main-content"></main>
+        <button id="back-to-top" disabled>Back to top</button>`, window => {
+        window.matchMedia = query => ({ matches: query === '(prefers-reduced-motion: reduce)' });
+        window.scrollY = 700;
+        window.scrollTo = options => { scrolls.push([options.top, options.behavior]); };
+        const skip = window.document.querySelector('.skip-link');
+        const originalFocus = skip.focus.bind(skip);
+        skip.focus = options => { focusOptions.push(options?.preventScroll); originalFocus(options); };
+    });
+    const button = document.getElementById('back-to-top');
+    button.focus();
+    button.click();
+    assert.equal(document.activeElement, document.querySelector('.skip-link'));
+    assert.deepEqual(focusOptions, [true]);
+    assert.deepEqual(scrolls, [[0, 'auto']]);
+});
+
+test('responsive lightbox uses its own slot and clears responsive attributes for a single image', async t => {
+    const { document, press } = await page(t, `
+        <div class="entry-content">
+            <img id="responsive" src="small.jpg" srcset="small.jpg 320w, large.jpg 1200w" sizes="320px">
+            <img id="single" src="single.jpg">
+        </div>
+        <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
+    const large = document.getElementById('lightbox-img');
+    const bodyImage = document.getElementById('responsive');
+    bodyImage.click();
+    assert.equal(large.srcset, bodyImage.srcset);
+    assert.equal(large.sizes, 'min(92vw, 72rem)');
+    assert.equal(bodyImage.sizes, '320px');
+    press('Escape');
+    document.getElementById('single').click();
+    assert.equal(large.hasAttribute('srcset'), false);
+    assert.equal(large.hasAttribute('sizes'), false);
+    assert.equal(large.getAttribute('src'), 'https://zen.test/single.jpg');
 });
 
 test('audio that already failed before startup retains native controls', async t => {

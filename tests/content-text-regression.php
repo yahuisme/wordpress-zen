@@ -20,7 +20,7 @@ function zen_get_option($key) { return array('zen_list_style' => 'standard', 'ze
 function get_the_ID() { return 17; }
 function post_class($class) { echo 'class="' . esc_attr($class) . '"'; }
 function the_permalink() { echo '/article/'; }
-function the_title() { echo 'Fixture'; }
+function get_the_title($post = null) { return 'Fixture'; }
 function get_the_category() { return array(); }
 function is_search() { return false; }
 function get_the_date($format = '') { return '2026-10-27'; }
@@ -55,9 +55,17 @@ ob_start();
 include ABSPATH . 'template-parts/content-excerpt.php';
 $html = ob_get_clean();
 content_check(!str_contains($html, '<img') && str_contains($html, '&lt;img'), 'encoded excerpt markup remains escaped at the HTML boundary');
+$GLOBALS['content_excerpt'] = 'A & B';
+ob_start();
+include ABSPATH . 'template-parts/content-excerpt.php';
+$html = ob_get_clean();
+content_check(str_contains($html, 'A &amp; B') && !str_contains($html, '&amp;amp;'), 'plain ampersands are escaped exactly once in list excerpts');
 foreach (array(
     array('中文 &amp;amp; literal', '中文 &amp;…'),
     array('English &amp;lt;tag&amp;gt; literal', 'English &lt;tag&gt; literal'),
+    array('English &amp;#65; decimal literal', 'English &#65; decimal literal'),
+    array('English &amp;#x41; lowercase hex literal', 'English &#x41; lowercase hex literal'),
+    array('English &amp;#X41; uppercase hex literal', 'English &#X41; uppercase hex literal'),
     array('English &lt;code&gt;literal&lt;/code&gt; words here', 'English <code>literal</code> words here'),
 ) as list($source, $visible)) {
     $GLOBALS['content_excerpt'] = $source;

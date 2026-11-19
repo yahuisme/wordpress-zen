@@ -39,7 +39,7 @@ function nocache_headers() { $GLOBALS['nocache'] = true; }
 function check($condition, $message) { ++$GLOBALS['checks']; if (!$condition) throw new RuntimeException($message); }
 $source = file_get_contents(dirname(__DIR__) . '/theme/zen/inc/options.php');
 check(!str_contains($source, '整页缓存命中不计数'), 'settings must not claim cache hits never count');
-$start = strpos($source, 'function zen_track_post_view');
+$start = strpos($source, 'function zen_can_count_post');
 $end = strpos($source, 'function zen_get_reading_count', $start);
 if (false === $start || false === $end) throw new RuntimeException('Counter source boundary not found');
 // Execute only trusted repository source against explicit WordPress boundary doubles.

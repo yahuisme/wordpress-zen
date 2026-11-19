@@ -111,6 +111,7 @@ const zenInit = () => {
             setStoredThemeMode(themeMode);
             applyThemeMode(themeMode);
         });
+        themeToggle.hidden = false;
     }
 
     // One Zen modal owns focus and the background until its close finishes.
@@ -229,8 +230,7 @@ const zenInit = () => {
             if (className.startsWith('language-')) code.classList.add(className);
         });
 
-        if (!block.querySelector('.zen-code-copy')) {
-            block.classList.add('zen-code-block');
+        if (!block.parentElement.matches('.zen-code-block')) {
             const copyBtn = document.createElement('button');
             copyBtn.type = 'button';
             copyBtn.className = 'zen-code-copy';
@@ -265,7 +265,10 @@ const zenInit = () => {
                 });
             });
 
-            block.appendChild(copyBtn);
+            const frame = document.createElement('div');
+            frame.className = 'zen-code-block';
+            block.before(frame);
+            frame.append(copyBtn, block);
         }
     });
 
@@ -294,8 +297,9 @@ const zenInit = () => {
                 lightboxImg.src = img.currentSrc || img.src;
                 lightboxImg.alt = img.alt || '放大图片';
                 if (img.srcset) {
+                    // Match the lightbox's width cap, not the inline image's sizes.
+                    lightboxImg.sizes = 'min(92vw, 72rem)';
                     lightboxImg.srcset = img.srcset;
-                    lightboxImg.sizes = img.sizes || '92vw';
                 } else {
                     lightboxImg.removeAttribute('srcset');
                     lightboxImg.removeAttribute('sizes');
@@ -594,12 +598,12 @@ const zenInit = () => {
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
     const mobileMenuIcon = mobileMenuBtn?.querySelector('i');
-    const isMenuOpen = () => !!mobileMenu && !mobileMenu.classList.contains('hidden');
+    const isMenuOpen = () => mobileMenuBtn?.getAttribute('aria-expanded') === 'true';
 
     const closeMobileMenuVisuals = () => {
         if (!isMenuOpen()) return;
         mobileMenu.classList.add('hidden');
-        mobileMenu.setAttribute('aria-hidden', 'true');
+
         mobileMenuBtn?.setAttribute('aria-expanded', 'false');
         mobileMenuBtn?.setAttribute('aria-label', '打开菜单');
         if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-list text-2xl';
@@ -621,7 +625,7 @@ const zenInit = () => {
                 return;
             }
             mobileMenu.classList.remove('hidden');
-            mobileMenu.removeAttribute('aria-hidden');
+
             mobileMenuBtn.setAttribute('aria-expanded', 'true');
             mobileMenuBtn.setAttribute('aria-label', '关闭菜单');
             if (mobileMenuIcon) mobileMenuIcon.className = 'ph ph-x text-2xl';
@@ -639,12 +643,19 @@ const zenInit = () => {
         window.matchMedia?.('(min-width: 768px)').addEventListener?.('change', (event) => {
             if (event.matches) closeMobileMenuVisuals();
         });
+        mobileMenu.classList.add('zen-menu-ready', 'hidden');
+        mobileMenuBtn.hidden = false;
     }
 
     // --- 6. Audio Player ---
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
         if (audio.error || audio.closest('.zen-audio-player, .wp-audio-shortcode, .mejs-container, .mejs-mediaelement')) return;
+        // The condensed Zen UI has no volume control. Preserve it natively when needed.
+        if (audio.defaultMuted || audio.muted || audio.volume === 0) {
+            audio.controls = true;
+            return;
+        }
         const player = document.createElement('div');
         player.className = 'zen-audio-player';
 
@@ -777,7 +788,8 @@ const zenInit = () => {
 
     // --- 7. Back to Top ---
     if (backToTopBtn) {
-        backToTopBtn.addEventListener('click', () => {
+        backToTopBtn.addEventListener('click', (event) => {
+            if (event.detail === 0) document.querySelector('.skip-link[href="#main-content"]')?.focus({ preventScroll: true });
             window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
         });
     }
@@ -846,6 +858,12 @@ const zenInit = () => {
                 event.preventDefault();
             }
         };
+        searchModal.classList.add('zen-search-modal', 'hidden', 'opacity-0');
+        searchModal.setAttribute('role', 'dialog');
+        searchModal.setAttribute('aria-modal', 'true');
+        searchModal.setAttribute('aria-label', '全站搜索');
+        if (searchClose) searchClose.hidden = false;
+        searchToggle.hidden = false;
     }
 
     // Optional enhancement runs only after every basic control has its listeners.

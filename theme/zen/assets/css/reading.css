@@ -153,6 +153,9 @@
     border: 0;
     color: inherit;
 }
+/* Keep the shipped section token readable on both Zen code backgrounds. */
+.entry-content pre .hljs .hljs-section,
+pre.wp-block-code .hljs .hljs-section { color: #58a6ff; }
 .entry-content code:not(pre code),
 .editor-styles-wrapper code:not(pre code) {
     font-size: 0.88em;

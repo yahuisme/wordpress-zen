@@ -11,7 +11,8 @@ function get_header() {}
 function get_footer() {}
 function have_posts() { return $GLOBALS['loop_left'] > 0; }
 function the_post() { $GLOBALS['loop_left']--; }
-function the_title() { echo 'Media regression'; }
+function zen_post_title() { return 'Media regression'; }
+function esc_html($value) { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
 function zen_get_primary_category() { return false; }
 function zen_posted_on_link() {}
 function has_post_thumbnail() { return $GLOBALS['has_thumbnail']; }

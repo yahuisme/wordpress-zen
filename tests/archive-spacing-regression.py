@@ -7,7 +7,7 @@ php = '''<?php
 function get_header() {}
 function get_footer() {}
 function post_password_required() { return false; }
-function the_title() { echo '归档'; }
+function get_the_title($post = null) { return '归档'; }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function esc_url($v) { return esc_html($v); }
 function get_locale() { return 'zh_CN'; }

@@ -1,32 +1,33 @@
 <?php
 // Buffer only the prefix so Core still processes header/featured media before body media.
-ob_start();
+$zen_show_toc = zen_get_option('zen_show_toc');
+if ($zen_show_toc) ob_start();
 get_header();
 ?>
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
 <div class="zen-reading-shell">
     <header class="zen-article-header">
-        <h1 class="zen-article-title"><?php the_title(); ?></h1>
+        <h1 class="zen-article-title"><?php echo esc_html(zen_post_title()); ?></h1>
         <div class="zen-post-meta">
             <?php $cat = zen_get_primary_category(); ?>
             <?php if ($cat) : ?>
             <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-meta-category zen-ui-link"><?php echo esc_html($cat->name); ?></a>
             <?php endif; ?>
             <?php zen_posted_on_link(); ?>
-            <?php if (zen_get_option('zen_show_reading_count')) : ?>
+            <?php if (zen_show_reading_count()) : ?>
             <span class="zen-meta-field">浏览次数 <span id="zen-reading-count" class="zen-reading-count" data-post-id="<?php echo esc_attr(get_the_ID()); ?>"><?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?></span></span>
             <?php endif; ?>
-            <?php if (zen_get_option('zen_show_reading_time')) : ?>
+            <?php if (zen_get_option('zen_show_reading_time') && !post_password_required()) : ?>
             <span class="zen-meta-field">阅读时间 <?php echo esc_html(zen_get_reading_time()); ?> 分钟</span>
             <?php endif; ?>
         </div>
-        <?php if (zen_get_option('zen_show_toc')) : ?>
+        <?php if ($zen_show_toc) : ?>
         <button id="floating-toc-btn" type="button" class="zen-inline-toc-btn zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden><i class="ph ph-list-bullets" aria-hidden="true"></i><span>目录</span><span aria-hidden="true">⌄</span></button>
         <?php endif; ?>
     </header>
 
-    <?php if (zen_get_option('zen_show_toc')) : ?>
+    <?php if ($zen_show_toc) : ?>
     <aside id="toc-container" class="zen-desktop-toc hidden xl:block opacity-0 transition-opacity duration-500" aria-label="文章目录">
         <h2 class="zen-toc-title">目录</h2>
         <nav id="toc-nav" class="custom-scrollbar" aria-label="桌面端目录导航"></nav>
@@ -55,11 +56,11 @@ get_header();
     <?php endif; ?>
 
     <?php
-    $zen_prefix = ob_get_clean();
-    ob_start();
-    the_content();
-    $zen_content = ob_get_clean();
-    if (zen_get_option('zen_show_toc')) {
+    if ($zen_show_toc) {
+        $zen_prefix = ob_get_clean();
+        ob_start();
+        the_content();
+        $zen_content = ob_get_clean();
         $zen_tags = new WP_HTML_Tag_Processor($zen_content);
         while ($zen_tags->next_tag()) {
             if (in_array($zen_tags->get_tag(), array('H2', 'H3'), true)) {
@@ -71,11 +72,11 @@ get_header();
                 break;
             }
         }
+        echo $zen_prefix; // Already rendered by the native template pipeline.
     }
-    echo $zen_prefix; // Native header, article metadata and featured media, already rendered.
     ?>
     <article id="post-content" class="focus:outline-none entry-content">
-        <?php echo $zen_content; // Already rendered by the native content pipeline. ?>
+        <?php if ($zen_show_toc) echo $zen_content; else the_content(); ?>
     </article>
     <?php wp_link_pages(array(
         'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
@@ -126,17 +127,17 @@ get_header();
     <nav class="zen-post-navigation" aria-label="文章导航">
         <div class="zen-post-nav-previous">
             <?php if ($previous_post) : ?>
-            <a href="<?php echo esc_url(get_permalink($previous_post)); ?>" class="zen-ui-link" title="<?php echo esc_attr(get_the_title($previous_post)); ?>">
+            <a href="<?php echo esc_url(get_permalink($previous_post)); ?>" class="zen-ui-link">
                 <span class="zen-post-nav-label">上一篇</span>
-                <span class="zen-post-nav-title"><?php echo esc_html(get_the_title($previous_post)); ?></span>
+                <span class="zen-post-nav-title"><?php echo esc_html(zen_post_title($previous_post)); ?></span>
             </a>
             <?php endif; ?>
         </div>
         <div class="zen-post-nav-next">
             <?php if ($next_post) : ?>
-            <a href="<?php echo esc_url(get_permalink($next_post)); ?>" class="zen-ui-link" title="<?php echo esc_attr(get_the_title($next_post)); ?>">
+            <a href="<?php echo esc_url(get_permalink($next_post)); ?>" class="zen-ui-link">
                 <span class="zen-post-nav-label">下一篇</span>
-                <span class="zen-post-nav-title"><?php echo esc_html(get_the_title($next_post)); ?></span>
+                <span class="zen-post-nav-title"><?php echo esc_html(zen_post_title($next_post)); ?></span>
             </a>
             <?php endif; ?>
         </div>
@@ -144,5 +145,5 @@ get_header();
     <?php endif; endif; ?>
     <?php if (comments_open() || get_comments_number()) comments_template(); ?>
 </div>
-<?php endwhile; else : echo ob_get_clean(); endif; ?>
+<?php endwhile; elseif ($zen_show_toc) : echo ob_get_clean(); endif; ?>
 <?php get_footer(); ?>

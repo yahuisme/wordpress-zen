@@ -26,6 +26,7 @@ php tests/archive-batching-regression.php
 php tests/options-boundaries-regression.php
 php tests/frontend-media-regression.php
 php tests/content-text-regression.php
+php -n tests/utf8-fallback-regression.php
 php tests/reading-count-regression.php
 php tests/reading-count-assets-regression.php
 ```

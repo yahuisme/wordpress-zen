@@ -18,7 +18,7 @@ function set_transient($key, $value, $ttl) { if (!in_array($ttl, array(300, 3600
 function get_post_meta($id, $key, $single) { return $GLOBALS['counts'][$id] ?? 0; }
 function update_post_meta($id, $key, $value) { $GLOBALS['counts'][$id] = $value; return true; }
 $source = file_get_contents(dirname(__DIR__) . '/theme/zen/inc/options.php');
-$start = strpos($source, 'function zen_track_post_view(');
+$start = strpos($source, 'function zen_can_count_post(');
 $end = strpos($source, 'function zen_ajax_post_view(', $start);
 if (false === $start || false === $end) throw new RuntimeException('Counter source boundary not found');
 // Execute only the trusted local counter function against WordPress doubles.
@@ -72,7 +72,7 @@ function get_footer() {}
 function post_password_required() { return false; }
 function the_title() { echo 'Archive'; }
 function get_option($key) { return ''; }
-function get_the_title($post) { return 'Post'; }
+function get_the_title($post = null) { return $post ? 'Post' : 'Archive'; }
 function get_permalink($post) { return '/post/7'; }
 function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026-10-05'; }
 function esc_attr($value) { return esc_html($value); }

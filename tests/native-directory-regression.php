@@ -174,6 +174,12 @@ function zen_directory_author() {
 function zen_directory_lifecycle() {
     zen_directory_option('permalink_structure', '/%category%/%postname%/');
     $page_id = zen_directory_post(array('post_type'=>'page'));
+    $before = zen_directory_warm($page_id);
+    $draft = zen_directory_post(array('post_status'=>'draft'));
+    wp_trash_post($draft);
+    wp_untrash_post($draft);
+    wp_delete_post($draft, true);
+    zen_directory_stable($before, 'trashing, restoring and deleting a draft leaves public caches warm');
     zen_directory_post();
     foreach (array('auto-draft', 'draft', 'pending', 'private', 'future') as $status) {
         $before = zen_directory_warm($page_id);
@@ -211,35 +217,37 @@ function zen_directory_lifecycle() {
     zen_directory_warm($page_id);
     wp_trash_post($post_id);
     zen_directory_evicted('published trash evicts both caches');
-    zen_directory_warm($page_id);
+    $before = zen_directory_warm($page_id);
     wp_untrash_post($post_id);
-    zen_directory_evicted('untrash retains existing invalidation boundary');
+    zen_directory_check(get_post_status($post_id) === 'draft', 'native restore returns a published post to draft');
+    zen_directory_stable($before, 'restoring to draft keeps both public caches warm');
     wp_update_post(array('ID'=>$post_id, 'post_status'=>'publish'));
     zen_directory_warm($page_id);
     wp_delete_post($post_id, true);
     zen_directory_evicted('published permanent deletion evicts both caches');
-    foreach (array('home'=>home_url('/directory-base'), 'permalink_structure'=>'/%postname%/', 'zen_site_start_date'=>'2001-02-03') as $key=>$value) {
-        zen_directory_warm($page_id);
+    foreach (array('home'=>home_url('/directory-base'), 'permalink_structure'=>'/%postname%/') as $key=>$value) {
+        $before = zen_directory_warm($page_id);
         zen_directory_option($key, $value);
-        zen_directory_evicted("$key update evicts both caches");
+        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], "$key update evicts only archive links");
     }
     $before = zen_directory_warm($page_id);
-    zen_directory_check($before[1]['year'] === '2001', 'configured start date populates uptime cache');
+    zen_directory_option('zen_site_start_date', '2001-02-03');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'changing explicit start date evicts only uptime');
+    zen_directory_check(zen_get_site_uptime()['year'] === '2001', 'configured start date populates uptime cache');
     zen_directory_check(delete_option('zen_site_start_date'), 'native delete removes explicit start date');
-    zen_directory_evicted('deleting explicit start date invalidates previously rendered uptime');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'deleting explicit start date evicts only uptime');
     zen_directory_check(zen_get_site_uptime()['year'] !== '2001', 'uptime falls back after deleting start date');
-    zen_directory_warm($page_id);
     add_option('zen_site_start_date', '2002-03-04');
-    zen_directory_evicted('first explicit start date invalidates fallback caches');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'adding explicit start date evicts only uptime');
     $category = wp_insert_term('Zen directory category', 'category');
     if (is_wp_error($category)) throw new RuntimeException($category->get_error_message());
     try {
-        zen_directory_warm($page_id);
+        $before = zen_directory_warm($page_id);
         wp_update_term($category['term_id'], 'category', array('slug'=>'zen-directory-renamed'));
-        zen_directory_evicted('category object editing preserves invalidation');
-        zen_directory_warm($page_id);
+        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'category editing evicts only archive links');
+        $before = zen_directory_warm($page_id);
         wp_delete_term($category['term_id'], 'category');
-        zen_directory_evicted('category object deletion preserves invalidation');
+        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'category deletion evicts only archive links');
     } finally { wp_delete_term($category['term_id'], 'category'); }
     foreach (array('timezone_string'=>'Asia/Shanghai', 'gmt_offset'=>3) as $key=>$value) {
         $before = zen_directory_warm($page_id);
@@ -266,11 +274,40 @@ function zen_directory_lifecycle() {
         if ($registered_here) unregister_taxonomy('language');
     }
 }
+function zen_directory_nested_link() {
+    $existing = get_pages(array('meta_key'=>'_wp_page_template', 'meta_value'=>'page-archives.php', 'hierarchical'=>false));
+    $parent = zen_directory_post(array('post_type'=>'page', 'post_title'=>'Native archive parent'));
+    $child = zen_directory_post(array('post_type'=>'page', 'post_title'=>'Nested archives', 'post_parent'=>$parent));
+    foreach ($existing as $page) delete_post_meta($page->ID, '_wp_page_template');
+    try {
+        update_post_meta($child, '_wp_page_template', 'page-archives.php');
+        zen_directory_check(zen_get_archives_url() === get_permalink($child), 'sole published archive template can be a nested page');
+    } finally {
+        foreach ($existing as $page) update_post_meta($page->ID, '_wp_page_template', 'page-archives.php');
+    }
+}
+function zen_directory_equal_dates() {
+    $page = zen_directory_post(array('post_type'=>'page'));
+    $ids = array();
+    for ($n = 0; $n < 501; $n++) {
+        $ids[] = zen_directory_post(array('post_date'=>'2023-03-22 04:05:06', 'post_date_gmt'=>'2023-03-22 04:05:06'));
+    }
+    $cold = zen_directory_render('page-archives.php', $page);
+    $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
+    $rows = get_transient('zen_archives_public_posts_v3')[$context];
+    $actual = array_values(array_intersect(array_column($rows, 'id'), $ids));
+    zen_directory_check($actual === array_reverse($ids), 'equal-date posts cross a native batch boundary without duplicates or omissions');
+    zen_directory_check($cold === zen_directory_render('page-archives.php', $page), 'equal-date archive has identical cold and warm HTML');
+}
 try {
     wp_set_current_user(0);
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
     if (in_array($zen_directory_slice, array('all', 'author'), true)) zen_directory_author();
-    if (in_array($zen_directory_slice, array('all', 'lifecycle'), true)) zen_directory_lifecycle();
+    if (in_array($zen_directory_slice, array('all', 'lifecycle'), true)) {
+        zen_directory_nested_link();
+        zen_directory_lifecycle();
+        zen_directory_equal_dates();
+    }
 } finally {
     wp_reset_query();
     foreach (array_reverse($zen_directory_posts) as $post_id) wp_delete_post($post_id, true);

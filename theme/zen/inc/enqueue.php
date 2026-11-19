@@ -50,16 +50,12 @@ function zen_scripts() {
         'theme_mode_default' => zen_get_option('zen_theme_mode_default'),
         'search_shortcut' => (int) zen_get_option('zen_show_search_shortcut'),
     ));
-    if (is_singular('post') && !is_preview() && zen_get_option('zen_show_reading_count')) {
-        // Match the AJAX eligibility rule even after a password has been entered.
-        $post = get_queried_object();
-        if ($post && 'publish' === $post->post_status && '' === $post->post_password) {
-            wp_enqueue_script('zen-reading-count', $uri . '/js/reading-count.js', array(), filemtime($dir . '/js/reading-count.js'), array('in_footer' => true, 'strategy' => 'defer'));
-            wp_localize_script('zen-reading-count', 'zenReadingCount', array(
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'enabled' => 1,
-            ));
-        }
+    if (zen_show_reading_count()) {
+        wp_enqueue_script('zen-reading-count', $uri . '/js/reading-count.js', array(), filemtime($dir . '/js/reading-count.js'), array('in_footer' => true, 'strategy' => 'defer'));
+        wp_localize_script('zen-reading-count', 'zenReadingCount', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'enabled' => 1,
+        ));
     }
     wp_enqueue_style('zen-compiled-style', $uri . '/assets/css/style.css', array(), filemtime($dir . '/assets/css/style.css'));
     wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array('zen-compiled-style'), filemtime($dir . '/assets/css/reading.css'));
@@ -92,6 +88,22 @@ function zen_editor_settings($settings) {
 }
 add_filter('block_editor_settings_all', 'zen_editor_settings');
 
+function zen_has_preformatted_code($content) {
+    if (false === stripos($content, '<pre') || false === stripos($content, '<code')) {
+        return false;
+    }
+    $tags = new WP_HTML_Tag_Processor($content);
+    $in_pre = false;
+    while ($tags->next_tag(array('tag_closers' => 'visit'))) {
+        if ('PRE' === $tags->get_tag()) {
+            $in_pre = !$tags->is_tag_closer();
+        } elseif ($in_pre && 'CODE' === $tags->get_tag() && !$tags->is_tag_closer()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function zen_has_code_blocks() {
     $post = get_post();
     if (!$post || post_password_required($post)) {
@@ -101,7 +113,7 @@ function zen_has_code_blocks() {
     $seen_refs = array();
     while ($pending) {
         $content = array_pop($pending);
-        if (has_block('core/code', $content) || preg_match('/<pre\b[^>]*>/i', $content)) {
+        if (has_block('core/code', $content) || zen_has_preformatted_code($content)) {
             return true;
         }
         if (!has_block('core/block', $content)) {

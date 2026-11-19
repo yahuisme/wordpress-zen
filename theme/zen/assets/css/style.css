@@ -669,15 +669,10 @@ select:focus-visible {
     align-items: center;
     justify-content: center;
 }
+.zen-icon-btn[hidden] { display: none; }
 .zen-site-header {
     background: var(--zen-bg);
-}
-.zen-mobile-menu,
-.zen-site-header {
     border-bottom: 1px solid var(--zen-border-soft);
-}
-.zen-mobile-menu {
-    background: var(--zen-surface);
 }
 .zen-site-footer {
     border-top: 1px solid var(--zen-border-soft);
@@ -691,9 +686,7 @@ select:focus-visible {
     box-shadow: 0 8px 32px var(--zen-shadow);
 }
 .zen-toc-drawer-header { border-bottom: 1px solid var(--zen-border-soft); }
-.zen-header-actions {
-    gap: 1.25rem;
-}
+
 .zen-header-tools {
     display: inline-flex;
     align-items: center;
@@ -838,12 +831,22 @@ select:focus-visible {
 }
 .zen-tag-pill:hover { text-decoration: underline; }
 .zen-search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     display: flex;
+    padding: 1rem;
     overflow-y: auto;
     transition: opacity 0.18s ease;
 }
-.zen-search-backdrop { background: rgb(19 18 16 / 46%); }
-.zen-search-shell { pointer-events: none; }
+.zen-search-backdrop { display: none; }
+.zen-search-modal .zen-search-backdrop {
+    position: absolute;
+    inset: 0;
+    display: block;
+    background: rgb(19 18 16 / 46%);
+}
+.zen-search-modal .zen-search-shell { pointer-events: none; }
 .zen-search-panel {
     position: relative;
     pointer-events: auto;
@@ -2890,6 +2893,9 @@ select:focus-visible {
 .zen-code-block {
     position: relative;
 }
+.zen-code-block > pre {
+    padding-block-start: 3rem;
+}
 .zen-code-copy {
     position: absolute;
     top: 0.5rem;
@@ -2961,7 +2967,7 @@ select:focus-visible {
     display: block;
     width: auto;
     height: auto;
-    max-width: 92vw;
+    max-width: min(92vw, 72rem);
     max-height: 86vh;
     border-radius: 0.5rem;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);

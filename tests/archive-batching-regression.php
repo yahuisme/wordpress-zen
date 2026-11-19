@@ -10,13 +10,13 @@ function get_transient($key){return $GLOBALS['cache'][$key]??false;}
 function set_transient($key,$value,$ttl){$GLOBALS['cache'][$key]=$value;}
 function get_option($key,$default=false){return $default;}
 function get_post_type($id){return 'post';}
-function get_the_title($post){return 'Post '.$post->ID;}
+function get_the_title($post=null){return $post ? 'Post '.$post->ID : 'Archives';}
 function get_permalink($post){return '/post/'.$post->ID;}
 function get_the_date($format,$post){return $format === 'Y' ? '2026' : '2026-10-19';}
 function esc_attr($value){return esc_html($value);}
 require ABSPATH.'inc/options.php';
 require ABSPATH.'inc/template-tags.php';
-function wp_reset_postdata(){}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}
+function wp_reset_postdata(){$GLOBALS['archive_loop_resets']=($GLOBALS['archive_loop_resets']??0)+1;}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}
 function esc_url($value){return esc_html($value);}
 class WP_Query {
     public $posts=[];
@@ -33,6 +33,8 @@ $checks=[
     [count($batch_sizes)===3, 'archive fetches all pages until a short batch'],
     [count(array_filter($batch_sizes,fn($args)=>true===$args['no_found_rows']))===3, 'archive batches disable total-row counting'],
     [count(array_filter($batch_sizes,fn($args)=>500===$args['posts_per_page']))===3, 'archive batch size remains bounded'],
+    [count(array_filter($batch_sizes,fn($args)=>$args['orderby']===array('date'=>'DESC','ID'=>'DESC')))===3, 'equal dates have a stable order across batch boundaries'],
+    [empty($archive_loop_resets), 'archive batching does not reset an unused secondary loop'],
     [substr_count($html,'class="zen-archive-row')===1201, 'all fetched posts remain rendered'],
 ];
 foreach($checks as [$ok,$label]){echo ($ok?'PASS ':'FAIL ').$label.PHP_EOL;if(!$ok)$failed++;}

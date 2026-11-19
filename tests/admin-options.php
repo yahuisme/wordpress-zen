@@ -27,7 +27,10 @@ function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
 function get_posts($args) { $GLOBALS['post_query'] = $args; return $GLOBALS['public_posts'] ?? array(42); }
 function get_permalink($post) { return 'https://example.test/post-' . $post . '/'; }
-function get_categories($args) { return array((object) array('term_id' => 2, 'name' => '设计'), (object) array('term_id' => 9, 'name' => '<研究>')); }
+function get_categories($args) {
+    if (($args['lang'] ?? null) !== '') throw new RuntimeException('Global settings must show categories from all languages');
+    return array((object) array('term_id' => 2, 'name' => '设计'), (object) array('term_id' => 9, 'name' => '<研究>'));
+}
 function is_wp_error($value) { return false; }
 function get_transient($key) { return array_key_exists('update_info', $GLOBALS) ? $GLOBALS['update_info'] : false; }
 function wp_create_nonce($action) { return 'fixture-nonce'; }

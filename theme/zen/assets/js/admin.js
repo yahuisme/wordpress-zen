@@ -74,6 +74,10 @@
             }).then(function (payload) {
                 if (!payload || !payload.success || !payload.data || typeof payload.data.message !== 'string') throw new Error('invalid update response');
                 updateStatus.textContent = payload.data.message;
+                var link = document.getElementById('zen-update-link');
+                if (link && typeof payload.data.url === 'string' && /^https:\/\/github\.com\/yahuisme\/wordpress-zen\/releases(?:\/tag\/v?\d+\.\d+\.\d+)?$/.test(payload.data.url)) {
+                    link.href = payload.data.url;
+                }
             }).catch(function () {
                 updateStatus.textContent = updateStatus.dataset.error || '更新检查失败。';
             });

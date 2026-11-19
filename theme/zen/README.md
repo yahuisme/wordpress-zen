@@ -30,6 +30,8 @@
 - 新安装不预设文章授权协议；已有明确选择保留。默认隐藏主题与 WordPress 署名，RSS 保持开启。
 - 启用 Yoast、Rank Math、AIOSEO 或 SEOPress 时，主题让出描述和文章结构化数据输出。
 
+从 1.3.4 或更早版本升级时，请核对「版权协议」。如果以前选择了协议，但关闭了旧版的版权显示开关，请将协议设为「不显示」。
+
 ### Kami 字体
 
 [Kami 规范](https://github.com/tw93/Kami/blob/main/skills/kami/references/design.md)为英文选用 Charter、中文选用仓耳今楷。公开包只内置 Charter；中文优先匹配访客已安装的仓耳今楷，否则使用本机的思源宋体、Noto Serif CJK SC 等，不请求第三方字体。

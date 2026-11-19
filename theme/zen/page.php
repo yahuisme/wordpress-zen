@@ -5,7 +5,7 @@
 <div class="zen-reading-shell">
     <header class="zen-article-header">
         <h1 class="zen-article-title">
-            <?php the_title(); ?>
+            <?php echo esc_html(zen_post_title()); ?>
         </h1>
     </header>
 

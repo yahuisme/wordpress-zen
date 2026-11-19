@@ -5,7 +5,7 @@ Template Name: Archives Template
 get_header(); ?>
 
 <header class="zen-article-header zen-archive-heading">
-    <h1 class="zen-article-title"><?php the_title(); ?></h1>
+    <h1 class="zen-article-title"><?php echo esc_html(zen_post_title()); ?></h1>
 </header>
 
 <?php if (post_password_required()) : ?>
@@ -31,8 +31,7 @@ get_header(); ?>
                 'posts_per_page' => $archive_batch_size,
                 'paged' => $archive_page,
                 'ignore_sticky_posts' => true,
-                'orderby' => 'date',
-                'order' => 'DESC',
+                'orderby' => array('date' => 'DESC', 'ID' => 'DESC'),
                 'no_found_rows' => true,
                 'update_post_meta_cache' => false,
                 'update_post_term_cache' => str_contains((string) get_option('permalink_structure'), '%category%'),
@@ -48,7 +47,7 @@ get_header(); ?>
                 );
             }
 
-            wp_reset_postdata();
+            // Iterating the returned posts without the_post() leaves the main Loop untouched.
             $archive_has_more = count($archives_query->posts) === $archive_batch_size;
             $archive_page++;
             unset($archives_query);
@@ -81,7 +80,7 @@ get_header(); ?>
 
             <li class="zen-archive-row zen-post-item flex items-baseline justify-between group">
                 <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link">
-                    <?php echo esc_html($archive_post['title']); ?>
+                    <?php echo esc_html(trim($archive_post['title']) === '' ? __('无标题', 'zen') : $archive_post['title']); ?>
                 </a>
                 <?php $post_date = DateTimeImmutable::createFromFormat('!Y-m-d', $archive_post['date']); ?>
                 <?php if ($post_date) : ?>

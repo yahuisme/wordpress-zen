@@ -13,6 +13,7 @@ const highlight = readFileSync(join(root, 'assets/js/highlight.min.js'), 'utf8')
 function scriptQueue() {
     return JSON.parse(execFileSync('php', ['-r', `
         define('ABSPATH', ${JSON.stringify(root + '/')});
+        require ${JSON.stringify(require('node:path').join(__dirname, 'html-api-bootstrap.php'))};
         function add_action(...$args) {}
         function add_filter(...$args) {}
         function zen_get_option($key) {
@@ -22,6 +23,7 @@ function scriptQueue() {
         function get_template_directory_uri() { return 'https://zen.test/theme'; }
         function is_singular($type = null) { return $type === null; }
         function is_preview() { return false; }
+        function zen_show_reading_count() { return false; }
         function get_post() { return (object) ['post_content' => '<pre><code>let x = 1;</code></pre>']; }
         function post_password_required($post) { return false; }
         function has_block(...$args) { return false; }

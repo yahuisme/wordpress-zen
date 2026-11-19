@@ -32,7 +32,7 @@ function get_the_category() { return array(); }
 function get_the_date($format = '', $post = null) { return date($format ?: 'Y-m-d', strtotime('2026-10-05')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
-function get_the_title($post = null) { return '清晰的文章标题'; }
+function get_the_title($post = null) { return $GLOBALS['fixture_title'] ?? '清晰的文章标题'; }
 function get_the_ID() { return $GLOBALS['child_excerpt_post_id'] ?? 42; }
 function the_title() { echo esc_html(get_the_title()); }
 function the_title_attribute() { echo esc_attr(get_the_title()); }
@@ -51,6 +51,15 @@ test('compact list omits excerpt at the WordPress boundary', function () {
     $html = render('template-parts/content-excerpt.php');
     check($GLOBALS['excerpt_calls'] === 0, 'compact list still fetches an excerpt');
     check(str_contains($html, 'zen-post-item--compact'), 'compact class missing');
+});
+test('untitled entries still expose a named reading link', function () {
+    $GLOBALS['fixture_title'] = '';
+    try {
+        $html = render('template-parts/content-excerpt.php');
+        check(str_contains($html, '无标题'), 'untitled entry has an empty reading link');
+    } finally {
+        unset($GLOBALS['fixture_title']);
+    }
 });
 test('standard list has a linked title and bounded excerpt without duplicate continuation or divider', function () {
     $GLOBALS['options']['zen_list_style'] = 'standard';
@@ -188,6 +197,7 @@ function the_post_thumbnail($size, $attr = array()) {
 }
 function number_format_i18n($value) { return number_format($value); }
 function zen_get_reading_count() { return 12; }
+function zen_show_reading_count() { return (bool) zen_get_option('zen_show_reading_count'); }
 function zen_get_reading_time() { return 3; }
 function single_fixture() {
     $GLOBALS['options'] = array('zen_show_toc' => 1, 'zen_show_featured_image' => 1, 'zen_show_updated_date' => 1, 'zen_copyright_license' => 'cc-by-4.0', 'zen_show_tags' => 1, 'zen_show_post_navigation' => 1, 'zen_show_reading_count' => 1);
@@ -263,7 +273,7 @@ test('header uses native custom logo without admin Gravatar or nested home links
     $html = render('header.php');
     check(!str_contains($html, '/logo.png') && str_contains($html, '站点名称'), 'no-logo title fallback missing');
 });
-test('header hides unconfigured mobile menu and exposes single-level noscript links and prepared TOC control', function () {
+test('header uses one native menu for both breakpoints and preserves the prepared TOC control', function () {
     $GLOBALS['has_menu'] = false;
     $html = render('header.php');
     check(!str_contains($html, 'id="mobile-menu-btn"') && !str_contains($html, 'id="mobile-menu"'), 'empty mobile navigation visible');
@@ -272,7 +282,8 @@ test('header hides unconfigured mobile menu and exposes single-level noscript li
     $GLOBALS['singular_post'] = true;
     $GLOBALS['options']['zen_show_toc'] = 1;
     $html = render('header.php');
-    check(str_contains($html, '<noscript>') && str_contains($html, 'zen-noscript-nav'), 'no-JS mobile navigation missing');
+    check(count($GLOBALS['menu_calls']) === 1 && substr_count($html, 'href="/about/"') === 1, 'primary navigation is rendered more than once');
+    check(str_contains($html, '<noscript>') && str_contains($html, 'zen-noscript-menu'), 'no-JS mobile navigation missing');
     foreach ($GLOBALS['menu_calls'] as $args) check($args['depth'] === 1 && $args['fallback_cb'] === false, 'single-level native menu contract lost');
     check((bool) preg_match('/<button[^>]*id="header-toc-btn"[^>]*\bhidden[^>]*>/', $html), 'prepared header TOC control missing');
     $GLOBALS['singular_post'] = false;

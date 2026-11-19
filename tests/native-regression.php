@@ -57,7 +57,8 @@ try {
         'missing reference' => array('<!-- wp:block {"ref":2147483647} /-->', false),
         'malformed reference' => array('<!-- wp:block {"ref":[1]} /-->', false),
         'direct code' => array($code, true),
-        'classic pre' => array('<pre>sample</pre>', true),
+        'classic code' => array('<pre><code>sample</code></pre>', true),
+        'preformatted text' => array('<pre>sample</pre>', false),
         'plain text' => array('<p>plain</p>', false),
     );
     foreach ($cases as $name => $case) {

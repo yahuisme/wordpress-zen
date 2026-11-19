@@ -15,6 +15,7 @@ function wp_get_theme() { return new class { public function get($key) { return 
 function get_template_directory_uri() { return 'https://example.test/zen'; }
 function get_template_directory() { return ABSPATH; }
 function is_singular() { return false; }
+function zen_show_reading_count() { return false; }
 function wp_enqueue_style($handle, ...$args) { $GLOBALS['styles'][$handle] = $args; }
 function wp_enqueue_script(...$args) {}
 function wp_script_is(...$args) { return false; }

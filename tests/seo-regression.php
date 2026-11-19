@@ -218,8 +218,9 @@ $GLOBALS['seo_filters']['zen_json_ld_enabled'][] = static fn() => false;
 $output = seo_output();
 seo_check(null !== seo_meta($output) && null === seo_schema($output), 'schema can be independently disabled');
 
-seo_context('post', array('excerpt' => '&lt;b&gt; &lt;/b&gt;', 'content' => 'Clean fallback'));
-seo_check('Clean fallback' === seo_meta(seo_output()), 'entity-encoded empty markup also falls back');
+seo_context('post', array('excerpt' => '<em>Use</em> &lt;picture&gt; for responsive images'));
+$output = seo_output();
+seo_check('Use <picture> for responsive images' === seo_meta($output) && seo_meta($output) === (seo_schema($output)['description'] ?? null), 'escaped code stays readable in both metadata formats');
 seo_context('post', array('excerpt' => '<script>alert(1)</script><p>Safe "text" &amp; value</p>'));
 $output = seo_output();
 seo_check('Safe "text" & value' === seo_meta($output), 'description removes scripts and preserves escaped text');

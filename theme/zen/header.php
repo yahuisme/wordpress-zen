@@ -43,26 +43,28 @@
             <span class="zen-site-title font-serif"><?php echo esc_html(get_bloginfo('name')); ?></span>
         </a>
 
-        <div class="zen-header-actions flex items-center">
+        <?php $zen_has_primary_menu = has_nav_menu('primary'); ?>
 
-            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center">
-                <?php
-                wp_nav_menu(array(
-                    'theme_location' => 'primary',
-                    'container'      => false,
-                    'menu_class'     => 'flex items-center gap-5 list-none m-0 p-0 zen-primary-menu',
-                    'items_wrap'     => '<ul id="%1$s" class="%2$s">%3$s</ul>',
-                    'fallback_cb'    => false,
-                    'depth'          => 1,
-                ));
-                ?>
-            </nav>
+        <?php if ($zen_has_primary_menu) : ?>
+        <nav id="mobile-menu" aria-label="主菜单" class="zen-header-nav zen-noscript-menu">
+            <?php
+            wp_nav_menu(array(
+                'theme_location' => 'primary',
+                'container'      => false,
+                'menu_class'     => 'zen-primary-menu flex list-none m-0 p-0',
+                'fallback_cb'    => false,
+                'depth'          => 1,
+            ));
+            ?>
+        </nav>
+        <?php endif; ?>
 
+        <div class="zen-header-actions">
             <div class="zen-header-tools">
                 <?php if (is_singular('post') && zen_get_option('zen_show_toc')) : ?>
                 <button id="header-toc-btn" type="button" class="zen-header-tool zen-header-toc zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden>目录</button>
                 <?php endif; ?>
-                <button id="theme-toggle" type="button"
+                <button id="theme-toggle" type="button" hidden
                         class="zen-theme-toggle zen-header-tool zen-icon-btn"
                         aria-label="切换主题"
                         title="跟随系统">
@@ -70,7 +72,7 @@
                     <span class="screen-reader-text" data-theme-toggle-label>跟随系统</span>
                 </button>
 
-                <button id="search-toggle" type="button"
+                <button id="search-toggle" type="button" hidden
                         class="zen-header-tool zen-icon-btn"
                         aria-label="搜索"
                         aria-expanded="false"
@@ -78,8 +80,8 @@
                     <i class="ph ph-magnifying-glass text-xl md:text-lg" aria-hidden="true"></i>
                 </button>
 
-                <?php if (has_nav_menu('primary')) : ?>
-                <button id="mobile-menu-btn" type="button"
+                <?php if ($zen_has_primary_menu) : ?>
+                <button id="mobile-menu-btn" type="button" hidden
                         class="zen-header-tool zen-icon-btn md:hidden"
                         aria-expanded="false"
                         aria-controls="mobile-menu">
@@ -91,47 +93,16 @@
         </div>
     </div>
 
-    <?php if (has_nav_menu('primary')) : ?>
-    <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute left-0 w-full px-4 animate-fade-in z-40" aria-hidden="true">
-        <nav aria-label="移动端菜单" class="max-w-zen mx-auto text-sm">
-            <?php
-            wp_nav_menu(array(
-                'theme_location' => 'primary',
-                'container'      => false,
-                'menu_class'     => 'zen-primary-menu flex flex-col list-none m-0 p-0',
-                'items_wrap'     => '<ul class="%2$s">%3$s</ul>',
-                'fallback_cb'    => false,
-                'depth'          => 1,
-            ));
-            ?>
-        </nav>
-    </div>
-    <noscript>
-        <nav class="zen-noscript-nav" aria-label="主菜单（无脚本）">
-            <?php wp_nav_menu(array('theme_location' => 'primary', 'container' => false, 'menu_class' => 'zen-noscript-menu', 'fallback_cb' => false, 'depth' => 1)); ?>
-        </nav>
-    </noscript>
-    <?php endif; ?>
 </header>
 
-<noscript>
-    <div class="zen-noscript-search zen-inline-search">
-        <?php get_search_form(); ?>
-    </div>
-</noscript>
-
-<div id="search-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-label="全站搜索"
-     class="zen-search-modal fixed inset-0 z-50 hidden opacity-0 p-4">
-    <div class="zen-search-backdrop absolute inset-0" data-search-dismiss="true" aria-hidden="true"></div>
+<div id="search-modal" class="zen-noscript-search">
+    <div class="zen-search-backdrop" data-search-dismiss="true" aria-hidden="true"></div>
 
     <div class="zen-search-shell relative mx-auto flex min-h-full w-full max-w-3xl items-center justify-center py-12">
         <div class="zen-search-panel w-full">
             <button id="search-close"
                     class="zen-search-close zen-icon-btn"
-                    type="button"
+                    type="button" hidden
                     aria-label="关闭搜索">
                 <i class="ph ph-x" aria-hidden="true"></i>
             </button>

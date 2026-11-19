@@ -13,7 +13,7 @@ function delete_transient($key){unset($GLOBALS['cache'][$key]);}
 function get_option($key,$default=false){return $key==='permalink_structure'?'/%postname%/':$default;}
 function get_post_type($id){return 'post';}
 function get_post_status($id){return 'publish';}
-function get_the_title($post){return $GLOBALS['language'].' '.$GLOBALS['locale'].' title';}
+function get_the_title($post=null){return $post ? $GLOBALS['language'].' '.$GLOBALS['locale'].' title' : 'Archives';}
 function get_permalink($post){return '/'.$GLOBALS['language'].'/post/'.$post->ID;}
 function get_the_date($format,$post){return $format==='Y'?'2026':'2026-10-19';}
 function wp_reset_postdata(){}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}

@@ -71,8 +71,17 @@ function content_native_assets($expected, $label) {
     content_native_check(wp_scripts()->registered['zen-main']->deps === array(), $label . ': basic controls never depend on optional highlighting');
     if ($expected) content_native_check(wp_scripts()->get_data('highlight-js', 'strategy') === 'async', $label . ': native optional highlighter is async');
 }
+function content_native_single() {
+    ob_start();
+    try {
+        include get_template_directory() . '/single.php';
+        return ob_get_contents();
+    } finally {
+        ob_end_clean();
+    }
+}
 try {
-    foreach (array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8, 'zen_show_highlight' => 1) as $key => $value) {
+    foreach (array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8, 'zen_show_highlight' => 1, 'zen_show_reading_count' => 1, 'zen_show_reading_time' => 1) as $key => $value) {
         $saved_options[$key] = get_option($key, null);
         update_option($key, $value);
         if (get_option($key) != $value) throw new RuntimeException('Option fixture failed: ' . $key);
@@ -111,15 +120,20 @@ try {
     content_native_check(post_password_required() && !str_contains(get_the_content(), 'SECRET_NATIVE_CODE'), 'locked content is hidden by native password protection');
     content_native_check(!zen_has_code_blocks(), 'locked article detector short circuits');
     content_native_assets(false, 'locked article');
+    $locked_html = content_native_single();
+    content_native_check(!str_contains($locked_html, '浏览次数') && !str_contains($locked_html, '阅读时间'), 'locked post hides both reading metrics');
     require_once ABSPATH . WPINC . '/class-phpass.php';
     $hasher = new PasswordHash(8, true);
     $_COOKIE['wp-postpass_' . COOKIEHASH] = $hasher->HashPassword('fixture-pass');
     content_native_check(!post_password_required() && str_contains(get_the_content(), 'SECRET_NATIVE_CODE'), 'actual WordPress password cookie unlocks content without deleting password');
     content_native_check(get_post($id)->post_password === 'fixture-pass' && zen_has_code_blocks(), 'unlocked password article still detects code');
+    content_native_query($id);
     content_native_assets(true, 'cookie-unlocked article');
+    $unlocked_html = content_native_single();
+    content_native_check(!str_contains($unlocked_html, '浏览次数') && str_contains($unlocked_html, '阅读时间'), 'unlock restores reading time but does not enable tracking');
     unset($_COOKIE['wp-postpass_' . COOKIEHASH]);
     $pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' => $code));
-    foreach (array('classic' => '<pre>public code</pre>', 'core block' => $code, 'synced block' => '<!-- wp:block {"ref":' . $pattern . '} /-->') as $label => $body) {
+    foreach (array('classic' => '<pre><code>public code</code></pre>', 'core block' => $code, 'synced block' => '<!-- wp:block {"ref":' . $pattern . '} /-->') as $label => $body) {
         $id = content_native_post(array('post_content' => $body));
         content_native_query($id);
         content_native_check(zen_has_code_blocks(), 'public ' . $label . ': native code detection');
@@ -127,6 +141,10 @@ try {
     }
     update_option('zen_show_highlight', 0);
     content_native_assets(false, 'disabled highlighting');
+    update_option('zen_show_highlight', 1);
+    content_native_query(content_native_post(array('post_content' => '<!-- wp:preformatted --><pre>Plain text</pre><!-- /wp:preformatted -->')));
+    content_native_check(!zen_has_code_blocks(), 'native Preformatted block is not a code block');
+    content_native_assets(false, 'preformatted text only');
 } finally {
     foreach (array_reverse($ids) as $id) wp_delete_post($id, true);
     foreach ($saved_options as $key => $value) {

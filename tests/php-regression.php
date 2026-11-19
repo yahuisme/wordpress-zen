@@ -131,7 +131,7 @@ function get_header() {}
 function get_footer() {}
 function have_posts() { return empty($GLOBALS['zen_test_loop_done']); }
 function the_post() { $GLOBALS['zen_test_loop_done'] = true; }
-function the_title() { echo 'Fixture title'; }
+function get_the_title($post = null) { return 'Fixture title'; }
 function the_content() { echo '<p>Fixture content</p>'; }
 function comments_open() { return $GLOBALS['zen_test_comments_open'] ?? false; }
 function get_comments_number() { return $GLOBALS['zen_test_comment_count'] ?? 0; }
@@ -255,7 +255,10 @@ function esc_textarea($text) { return esc_html($text); }
 function checked($checked, $current) {}
 function selected($selected, $current) {}
 // Admin rendering boundaries: no queries or remote update requests in this test.
-function get_posts($args) { return array(); }
+function get_posts($args) {
+    if (($args['lang'] ?? null) !== '') throw new RuntimeException('Uptime must query posts across languages');
+    return array();
+}
 function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
 function get_categories($args) { return array(); }
 function is_wp_error($value) { return false; }

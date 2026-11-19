@@ -12,8 +12,8 @@ function zen_trim_excerpt($text, $length, $more = '…') {
         return '';
     }
     if (preg_match('/[\x{4E00}-\x{9FFF}\x{3040}-\x{30FF}\x{AC00}-\x{D7AF}]/u', $text)) {
-        return mb_strlen($text, 'UTF-8') > $length
-            ? mb_substr($text, 0, $length, 'UTF-8') . $more
+        return zen_utf8_length($text) > $length
+            ? zen_utf8_substr($text, $length) . $more
             : $text;
     }
     // wp_trim_words() strips tags again; decoded literal <code> must stay text.
@@ -21,11 +21,28 @@ function zen_trim_excerpt($text, $length, $more = '…') {
     return implode(' ', array_slice($words, 0, $length)) . (count($words) > $length ? $more : '');
 }
 
+function zen_utf8_length($text) {
+    if (function_exists('mb_strlen')) {
+        return mb_strlen($text, 'UTF-8');
+    }
+    $count = preg_match_all('/./us', $text, $matches);
+    return false === $count ? strlen($text) : $count;
+}
+
+function zen_utf8_substr($text, $length) {
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, $length, 'UTF-8');
+    }
+    $count = preg_match_all('/./us', $text, $matches);
+    return false === $count ? substr($text, 0, $length) : implode('', array_slice($matches[0], 0, $length));
+}
+
 function zen_get_archives_url() {
     $pages = get_pages(array(
         'meta_key' => '_wp_page_template',
         'meta_value' => 'page-archives.php',
         'post_status' => 'publish',
+        'hierarchical' => false,
         'number' => 1,
     ));
     return !empty($pages) ? get_permalink($pages[0]->ID) : '';
@@ -63,6 +80,11 @@ function zen_category_navigation() {
 function zen_get_primary_category($post = null) {
     $categories = get_the_category($post ? $post->ID : false);
     return ! empty($categories) ? $categories[0] : null;
+}
+
+function zen_post_title($post = null) {
+    $title = get_the_title($post);
+    return trim($title) === '' ? __('无标题', 'zen') : $title;
 }
 
 /** Pick from the actual first page without requerying or changing sticky order. */
@@ -130,8 +152,10 @@ function zen_index_post_excerpt($post = null) {
     }
     $excerpt = zen_trim_excerpt(get_the_excerpt($post), (int) zen_get_option('zen_excerpt_length'));
     if ($excerpt !== '') {
-        // Preserve literal entity-looking text after decoding one source layer for counting.
-        printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', esc_html(str_replace('&', '&amp;', $excerpt)));
+        // The excerpt is plain text after one decode. Double-encode ampersands so literal
+        // entity-looking text never becomes markup or a character at the HTML boundary.
+        $display_excerpt = str_replace('&', '&amp;', $excerpt);
+        printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', esc_html($display_excerpt));
     }
 }
 
@@ -237,11 +261,11 @@ function zen_pagination() {
 
 function zen_clear_archives_cache() {
     delete_transient('zen_archives_public_posts_v3');
-    delete_transient('zen_site_uptime');
 }
 function zen_clear_archives_cache_on_public_save($post_id, $post) {
     if ($post instanceof WP_Post && 'publish' === $post->post_status) {
         zen_clear_archives_cache();
+        zen_clear_uptime_cache();
     }
 }
 add_action('save_post_post', 'zen_clear_archives_cache_on_public_save', 10, 2);
@@ -249,15 +273,19 @@ function zen_clear_archives_cache_on_status_change($new_status, $old_status, $po
     if ($post instanceof WP_Post && 'post' === $post->post_type && $new_status !== $old_status
         && ('publish' === $new_status || 'publish' === $old_status)) {
         zen_clear_archives_cache();
+        zen_clear_uptime_cache();
     }
 }
 add_action('transition_post_status', 'zen_clear_archives_cache_on_status_change', 10, 3);
-add_action('deleted_post', 'zen_clear_archives_cache');
-add_action('trashed_post', 'zen_clear_archives_cache');
-add_action('untrashed_post', 'zen_clear_archives_cache');
-add_action('add_option_zen_site_start_date', 'zen_clear_archives_cache');
-add_action('update_option_zen_site_start_date', 'zen_clear_archives_cache');
-add_action('delete_option_zen_site_start_date', 'zen_clear_archives_cache');
+function zen_clear_archives_cache_on_delete($post_id, $post) {
+    if ('post' === $post->post_type) {
+        zen_clear_archives_cache_on_public_save($post_id, $post);
+    }
+}
+add_action('deleted_post', 'zen_clear_archives_cache_on_delete', 10, 2);
+add_action('add_option_zen_site_start_date', 'zen_clear_uptime_cache');
+add_action('update_option_zen_site_start_date', 'zen_clear_uptime_cache');
+add_action('delete_option_zen_site_start_date', 'zen_clear_uptime_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
 function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
@@ -312,6 +340,7 @@ function zen_get_site_uptime() {
             $first_posts = get_posts(array(
                 'numberposts' => 1,
                 'post_status' => 'publish',
+                'lang'        => '', // Site-wide even when a translation plugin filters queries.
                 'orderby'     => 'date',
                 'order'       => 'ASC',
                 'fields'      => 'ids',

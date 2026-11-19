@@ -162,14 +162,15 @@ for (const cachedMessage of ['当前版本 v2.7.4 已是最新版本。', '连�
     });
 }
 
-test('update cache miss requests once with nonce and renders response as text', async () => {
+test('update cache miss requests once with nonce and links to the release', async () => {
     const requests = [];
+    const release = 'https://github.com/yahuisme/wordpress-zen/releases/tag/v3.0.0';
     const dom = boot(window => {
         window.document.getElementById('zen-update-status').dataset.updatePending = 'true';
         window.zenAdminSettings = { ajaxUrl: '/admin-ajax.php', nonce: 'test-nonce' };
         window.fetch = async (url, options) => {
             requests.push({ url, options });
-            return { ok: true, json: async () => ({ success: true, data: { message: '<b>new release</b>' } }) };
+            return { ok: true, json: async () => ({ success: true, data: { message: '<b>new release</b>', url: release } }) };
         };
     });
     await new Promise(resolve => setImmediate(resolve));
@@ -180,6 +181,7 @@ test('update cache miss requests once with nonce and renders response as text', 
     const status = dom.window.document.getElementById('zen-update-status');
     assert.equal(status.textContent, '<b>new release</b>');
     assert.equal(status.querySelector('b'), null);
+    assert.equal(dom.window.document.getElementById('zen-update-link').href, release);
     dom.window.close();
 });
 

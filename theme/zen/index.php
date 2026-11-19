@@ -25,7 +25,7 @@ $zen_latest = $zen_first_index && zen_get_option('zen_show_latest_card')
     <article id="post-<?php echo (int) $zen_latest->ID; ?>" <?php post_class('zen-latest-card', $zen_latest); ?> aria-labelledby="post-title-<?php echo (int) $zen_latest->ID; ?>">
         <p class="zen-latest-label"><?php esc_html_e('最新文章', 'zen'); ?></p>
         <h2 id="post-title-<?php echo (int) $zen_latest->ID; ?>" class="zen-post-title">
-            <a href="<?php the_permalink($zen_latest); ?>" class="zen-post-title-link"><?php echo esc_html(get_the_title($zen_latest)); ?></a>
+            <a href="<?php the_permalink($zen_latest); ?>" class="zen-post-title-link"><?php echo esc_html(zen_post_title($zen_latest)); ?></a>
         </h2>
         <?php zen_index_post_excerpt($zen_latest); ?>
         <?php zen_index_post_meta('full', $zen_latest); ?>

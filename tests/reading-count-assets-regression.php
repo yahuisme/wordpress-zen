@@ -3,15 +3,18 @@
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $hooks = $scripts = $localized = array();
 $singular = true; $preview = false; $enabled = 1;
-$post = (object) array('post_status' => 'publish', 'post_password' => '');
+$post = (object) array('post_type' => 'post', 'post_status' => 'publish', 'post_password' => '');
 function add_action(...$args) {}
 function add_filter($hook, $callback) { $GLOBALS['hooks'][$hook] = $callback; }
-function zen_get_option($key) { return $key === 'zen_show_reading_count' ? $GLOBALS['enabled'] : ($key === 'zen_font_family' ? 'system' : 0); }
+function get_option($key, $default = false) { return $key === 'zen_show_reading_count' ? $GLOBALS['enabled'] : ($key === 'zen_font_family' ? 'system' : $default); }
 function get_template_directory() { return ABSPATH; }
 function get_template_directory_uri() { return 'https://zen.test/themes/zen'; }
 function is_singular($type = '') { return $GLOBALS['singular']; }
 function is_preview() { return $GLOBALS['preview']; }
+function is_feed() { return false; }
 function get_queried_object() { return $GLOBALS['post']; }
+function get_post() { return null; }
+function post_password_required() { return false; }
 function wp_enqueue_style(...$args) {}
 function wp_enqueue_script($handle, ...$args) { $GLOBALS['scripts'][$handle] = $args; }
 function wp_script_is() { return false; }
@@ -19,6 +22,7 @@ function wp_localize_script($handle, $name, $data) { $GLOBALS['localized'][$hand
 function wp_add_inline_style(...$args) {}
 function admin_url($path) { return 'https://zen.test/wp-admin/' . $path; }
 function comments_open() { return false; }
+require ABSPATH . 'inc/options.php';
 require ABSPATH . 'inc/enqueue.php';
 function check($value, $label) { if (!$value) throw new RuntimeException($label); echo "PASS $label\n"; }
 check(isset($hooks['rocket_delay_js_exclusions']), 'counter compatibility filter registered');
@@ -36,7 +40,7 @@ foreach (array(
     'protected post' => array(true, false, 1, 'publish', 'fixture', false),
     'private post' => array(true, false, 1, 'private', '', false),
 ) as $name => [$singular, $preview, $enabled, $status, $password, $expected]) {
-    $post = (object) array('post_status' => $status, 'post_password' => $password);
+    $post = (object) array('post_type' => 'post', 'post_status' => $status, 'post_password' => $password);
     $scripts = $localized = array();
     zen_scripts();
     check(isset($scripts['zen-reading-count']) === $expected && isset($localized['zen-reading-count']) === $expected, "$name: only eligible articles enqueue the counter and its config");

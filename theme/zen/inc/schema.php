@@ -2,26 +2,40 @@
 if (!defined('ABSPATH')) exit;
 
 /** Basic metadata shared by the head description and article JSON-LD. */
+function zen_description_substr($text, $length) {
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, $length, 'UTF-8');
+    }
+    $count = preg_match_all('/./us', $text, $matches);
+    return false === $count ? substr($text, 0, $length) : implode('', array_slice($matches[0], 0, $length));
+}
+
 function zen_clean_description($text) {
     $text = strip_shortcodes($text);
     // Adjacent blocks need a separator even when the saved markup has no newline.
     $text = preg_replace('~</(?:p|div|li|h[1-6]|blockquote|pre|tr)>|<br\s*/?\s*>~i', '$0 ', $text);
-    $text = wp_strip_all_tags($text);
-    $text = wp_strip_all_tags(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim(preg_replace('/[\s\p{Z}]+/u', ' ', $text));
     // The string is already plain text. wp_html_excerpt can drop a literal trailing ampersand.
-    $excerpt = mb_substr($text, 0, 160);
+    $excerpt = zen_description_substr($text, 160);
     return $excerpt === $text ? $text : rtrim($excerpt) . '…';
 }
 
 function zen_meta_description() {
     if (is_singular()) {
+        static $last_post, $description;
         $post = get_queried_object();
         if (post_password_required($post)) {
             return '';
         }
-        $description = zen_clean_description($post->post_excerpt);
-        return '' !== $description ? $description : zen_clean_description($post->post_content);
+        if ($last_post !== $post) {
+            $description = zen_clean_description($post->post_excerpt);
+            if ('' === $description) {
+                $description = zen_clean_description($post->post_content);
+            }
+            $last_post = $post;
+        }
+        return $description;
     }
 
     if (is_category() || is_tag() || is_tax()) {
