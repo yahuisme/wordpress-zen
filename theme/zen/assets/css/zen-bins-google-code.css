@@ -199,7 +199,3 @@
   ascent-override: 96.6157%;
   descent-override: 28.6047%;
 }
-
-:root {
-  --zen-bins-google-code: "Google Sans Code", "Google Sans Code fallback: Courier New", monospace;
-}

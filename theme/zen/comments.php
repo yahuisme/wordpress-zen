@@ -3,7 +3,6 @@ if (post_password_required()) return;
 
 $zen_guestbook = !empty($args['guestbook']);
 $zen_render_comment_list = static function () {
-    if (!have_comments()) return;
     ?>
     <ol class="comment-list">
         <?php wp_list_comments(array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
@@ -38,7 +37,7 @@ $zen_render_comment_list = static function () {
             <?php endif; ?>
         </header>
 
-        <?php $zen_render_comment_list(); ?>
+        <?php if (have_comments()) $zen_render_comment_list(); ?>
         <?php endif; ?>
 
         <?php if (comments_open()) : ?>

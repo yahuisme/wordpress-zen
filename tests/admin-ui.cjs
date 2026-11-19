@@ -75,6 +75,24 @@ test('presets update the single submitted width while custom selection alone sta
     assert.equal(unloading(dom), false);
     dom.window.close();
 });
+test('a native preset selection snapshots the form only after applying the width', () => {
+    const snapshots = [];
+    const dom = boot(window => {
+        window.FormData = class extends window.FormData {
+            constructor(...args) {
+                super(...args);
+                snapshots.push(this.get('zen_reading_width'));
+            }
+        };
+    });
+    const preset = dom.window.document.getElementById('zen_reading_width_preset');
+    const next = Array.from(preset.options).find(option => option.value !== preset.value && option.value !== 'custom').value;
+    snapshots.length = 0;
+    edit(dom, preset.id, next, 'input');
+    edit(dom, preset.id, next, 'change');
+    assert.deepEqual(snapshots, [next]);
+    dom.window.close();
+});
 test('native validation opens collapsed invalid controls before submission', () => {
     const dom = boot();
     const doc = dom.window.document;

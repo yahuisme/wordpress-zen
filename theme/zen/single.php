@@ -80,10 +80,7 @@ get_header();
     <article id="post-content" class="focus:outline-none entry-content">
         <?php if ($zen_show_toc) echo $zen_content; else the_content(); ?>
     </article>
-    <?php wp_link_pages(array(
-        'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
-        'after' => '</nav>',
-    )); ?>
+    <?php zen_content_page_links(); ?>
 
     <?php
     $zen_author = get_the_author();

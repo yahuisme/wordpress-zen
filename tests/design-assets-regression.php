@@ -35,6 +35,20 @@ verify(isset($GLOBALS['styles']['zen-reading-style']), 'shared reading styleshee
 $css = implode('', array_merge(...array_values($GLOBALS['inline'])));
 verify(str_contains($css, '--zen-reading-width:720px'), 'reading width independent from site width');
 verify(str_contains($css, '--zen-content-width:900px'), 'legacy site width preserved');
+verify(!isset($GLOBALS['styles']['zen-directories-style']), 'ordinary pages do not enqueue the secondary-page stylesheet');
+$template_hook = $GLOBALS['hooks']['template_include'][0] ?? null;
+verify(is_callable($template_hook), 'secondary-page stylesheet follows the resolved template');
+if (is_callable($template_hook)) {
+    $default_hooks = $GLOBALS['hooks']['wp_enqueue_scripts'];
+    foreach (array('index.php', 'page.php', 'single.php', 'archive.php', 'search.php', '404.php', 'page-archives.php', 'page-tags.php', 'page-links.php', 'page-notes.php') as $i => $file) {
+        $GLOBALS['hooks']['wp_enqueue_scripts'] = $default_hooks;
+        unset($GLOBALS['styles']['zen-directories-style']);
+        $template = ABSPATH . $file;
+        verify($template_hook($template) === $template, "$file keeps the native template selection");
+        foreach ($GLOBALS['hooks']['wp_enqueue_scripts'] as $enqueue) $enqueue();
+        verify(($GLOBALS['styles']['zen-directories-style'][1] ?? null) === ($i < 3 ? null : array('zen-layout-style')), "$file loads secondary styles only where used");
+    }
+}
 verify(isset($GLOBALS['hooks']['block_editor_settings_all']), 'editor receives saved width settings');
 if (isset($GLOBALS['hooks']['block_editor_settings_all'])) {
     $settings = ($GLOBALS['hooks']['block_editor_settings_all'][0])(array('styles'=>array()));

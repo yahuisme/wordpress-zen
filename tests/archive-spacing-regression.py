@@ -37,13 +37,18 @@ finally:
 css = '\n'.join((root / 'assets/css' / name).read_text() for name in ('style.css','reading.css','layout.css','directories.css'))
 results = []
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox','--disable-dev-shm-usage'])
+    browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium',
+        args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'],
+        env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS':'unix:path=/nonexistent', 'DBUS_SYSTEM_BUS_ADDRESS':'unix:path=/nonexistent'})
+    group = Path('/proc/self/cgroup').read_text()
+    processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+    assert processes and all(Path(f'/proc/{proc["id"]}/cgroup').read_text() == group for proc in processes), 'Chromium escaped the test cgroup'
     page = browser.new_page()
     for width in (320,390,768,1440):
         page.set_viewport_size({'width':width,'height':900})
         gutter = 28 if width <= 640 else 32
         page.set_content(f'<style>{css}</style><main style="padding-inline:{gutter}px;margin:auto;max-width:992px">'+html+'<div class="zen-post-list"><article class="zen-post-item">第一篇</article><article id="home-sentinel" class="zen-post-item">首页列表</article></div></main>')
-        rows = page.locator('.zen-archive-row').evaluate_all('es=>es.map(e=>{let c=getComputedStyle(e),t=e.querySelector("a").getBoundingClientRect(),d=e.querySelector("time").getBoundingClientRect();return {top:parseFloat(c.paddingTop),bottom:parseFloat(c.paddingBottom),height:e.getBoundingClientRect().height,titleLeft:t.left,dateRight:d.right,dateWidth:d.width,dateScroll:e.querySelector("time").scrollWidth}})')
+        rows = page.locator('.zen-archive-row').evaluate_all('es=>es.map(e=>{let c=getComputedStyle(e),t=e.querySelector("a").getBoundingClientRect(),d=e.querySelector("time").getBoundingClientRect();return {align:c.alignItems,gap:parseFloat(c.columnGap),top:parseFloat(c.paddingTop),bottom:parseFloat(c.paddingBottom),height:e.getBoundingClientRect().height,titleLeft:t.left,dateRight:d.right,dateWidth:d.width,dateScroll:e.querySelector("time").scrollWidth}})')
         home = page.locator('#home-sentinel').evaluate('e=>parseFloat(getComputedStyle(e).paddingTop)')
         archive_width = page.locator('.zen-archives-directory').evaluate('e=>e.getBoundingClientRect().width')
         results.append({'width':width,'rows':rows,'homePadding':home,'archiveWidth':archive_width,'expectedWidth':min(width,992)-2*gutter})
@@ -54,4 +59,5 @@ assert all(r['archiveWidth']==r['expectedWidth'] for r in results), 'Archive ind
 assert all(r['homePadding']>12 for r in results), 'Archive adjustment leaked into neighboring list'
 assert all(x['top']==12 and x['bottom']==12 for r in results for x in r['rows']), 'Archive rows inherit spacious summary-list padding'
 assert all(x['dateRight']<=x['titleLeft'] and x['dateScroll']<=x['dateWidth']+1 for r in results for x in r['rows']), 'Long archive title/date collision'
+assert all(x['align']=='baseline' and x['gap']==(8 if r['width']<=640 else 12) for r in results for x in r['rows']), 'Archive grid alignment or column gap changed'
 print('PASS: four widths; compact archive rows and unchanged homepage spacing')

@@ -10,10 +10,7 @@ while (have_posts()) : the_post(); ?>
         <div class="zen-reading-shell">
             <div class="zen-directory-intro entry-content"><?php the_content(); ?></div>
         </div>
-        <?php wp_link_pages(array(
-            'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
-            'after' => '</nav>',
-        )); ?>
+        <?php zen_content_page_links(); ?>
     </header>
     <?php if (!post_password_required()) : ?>
         <div class="zen-reading-shell zen-notes-shell">

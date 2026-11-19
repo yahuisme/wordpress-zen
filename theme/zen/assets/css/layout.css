@@ -629,10 +629,6 @@ body .font-serif {
     font-weight: 500;
     font-variant-numeric: lining-nums tabular-nums;
 }
-.zen-archives-directory .zen-archive-row {
-    gap: 16px;
-    padding-block: 12px;
-}
 .zen-archive-link {
     min-width: 0;
     font-family: var(--zen-font-heading);
@@ -642,13 +638,6 @@ body .font-serif {
 .zen-archive-row .zen-meta-field {
     color: var(--zen-muted);
     font-size: 0.8125rem;
-}
-@media (max-width: 480px) {
-    .zen-archives-directory .zen-archive-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
 }
 .zen-page-links {
     display: flex;

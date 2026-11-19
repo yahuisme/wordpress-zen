@@ -340,6 +340,7 @@ const zenInit = () => {
     const tocContainer = document.getElementById('toc-container'); // PC Sidebar
     const tocNav = document.getElementById('toc-nav'); // PC Nav Content
     const drawerTocNav = document.getElementById('drawer-toc-nav'); // Drawer Nav Content
+    let closeDrawer;
     const floatingTocBtn = document.getElementById('floating-toc-btn'); // Article trigger
     const headerTocBtn = document.getElementById('header-toc-btn');
     const tocTriggers = [floatingTocBtn, headerTocBtn].filter(Boolean);
@@ -443,7 +444,8 @@ const zenInit = () => {
                     for (let ancestor = item.target.parentElement; ancestor; ancestor = ancestor.parentElement) {
                         if (ancestor.tagName === 'DETAILS') ancestor.open = true;
                     }
-                    if (!link.closest('#drawer-toc')) focusTocTarget(item.target);
+                    if (nav === drawerTocNav) closeDrawer?.(item.target);
+                    else focusTocTarget(item.target);
                     requestScrollUIUpdate();
                 });
                 return link;
@@ -558,7 +560,7 @@ const zenInit = () => {
             else lockModal(drawerToc, closeDrawer, drawerClose, tocOverlay);
         };
 
-        const closeDrawer = (navigationTarget = null) => {
+        closeDrawer = (navigationTarget = null) => {
             if (activeModal?.container !== drawerToc || drawerCloseTimer) return;
             ++drawerOpening;
             tocOverlay.classList.add('opacity-0');
@@ -580,15 +582,6 @@ const zenInit = () => {
         if (drawerClose) drawerClose.addEventListener('click', () => closeDrawer());
         tocOverlay.addEventListener('click', () => closeDrawer());
 
-        // 点击目录链接跳转后，自动关闭抽屉
-        if (drawerTocNav) {
-            drawerTocNav.addEventListener('click', (e) => {
-                const link = e.target.closest('a[data-target]');
-                if (link) {
-                    closeDrawer(document.getElementById(link.dataset.target));
-                }
-            });
-        }
     }
 
     // --- Audio Player ---

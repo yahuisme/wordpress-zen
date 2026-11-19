@@ -60,10 +60,7 @@ while (have_posts()) : the_post();
         <p class="zen-directory-kicker" lang="en" aria-hidden="true">Tags</p>
         <h1 class="zen-directory-title"><?php echo esc_html(zen_post_title()); ?></h1>
         <div class="zen-directory-intro entry-content"><?php the_content(); ?></div>
-        <?php wp_link_pages(array(
-            'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
-            'after' => '</nav>',
-        )); ?>
+        <?php zen_content_page_links(); ?>
         <?php if ($tag_directory) : ?>
             <p class="zen-directory-meta">
                 <?php echo esc_html(sprintf(__('共 %d 个主题', 'zen'), count($tag_directory))); ?>

@@ -205,7 +205,7 @@ function zen_directory_lifecycle() {
         zen_directory_render('page-archives.php', $page_id);
         zen_directory_check($archive_queries === 0, 'never-public saves leave next archive render warm without directory query');
     } finally { remove_action('pre_get_posts', $query_probe); }
-    foreach (array('publish', 'publish', 'draft', 'publish', 'private', 'publish', 'future', 'publish') as $index=>$status) {
+    foreach (array('publish', 'draft', 'publish', 'private', 'publish', 'future', 'publish') as $index=>$status) {
         zen_directory_warm($page_id);
         $data = array('ID'=>$post_id, 'post_status'=>$status, 'post_title'=>'Public boundary ' . $index);
         if ($status === 'future') { $data['post_date'] = $data['post_date_gmt'] = '2099-01-01 00:00:00'; }
@@ -214,6 +214,39 @@ function zen_directory_lifecycle() {
         zen_directory_check(get_post_status($post_id) === $status, "public boundary $index: native status $status");
         zen_directory_evicted("public boundary $index: $status save evicts both caches");
     }
+    $before = zen_directory_warm($page_id);
+    wp_update_post(array('ID'=>$post_id, 'post_content'=>'Body-only public edit'));
+    zen_directory_stable($before, 'published body-only edit preserves both public caches');
+    $archive_queries = 0;
+    add_action('pre_get_posts', $query_probe);
+    try {
+        zen_directory_render('page-archives.php', $page_id);
+        zen_directory_check($archive_queries === 0, 'body-only edit leaves next archive render warm without directory query');
+    } finally { remove_action('pre_get_posts', $query_probe); }
+
+    foreach (array('post_title'=>'Archive headline changed', 'post_name'=>'archive-slug-changed', 'post_password'=>'archive-test-lock') as $field=>$value) {
+        $before = zen_directory_warm($page_id);
+        wp_update_post(array('ID'=>$post_id, $field=>$value));
+        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], "$field edit evicts only the archive");
+        $html = zen_directory_render('page-archives.php', $page_id);
+        zen_directory_check(str_contains($html, esc_html(get_the_title($post_id))) && zen_directory_cached_url($post_id) === get_permalink($post_id), "$field edit refreshes cached title and permalink");
+    }
+    zen_directory_warm($page_id);
+    wp_update_post(array('ID'=>$post_id, 'post_date'=>'2019-02-03 12:00:00', 'post_date_gmt'=>get_gmt_from_date('2019-02-03 12:00:00')));
+    zen_directory_evicted('publication time edit evicts both caches');
+    zen_directory_check(str_contains(zen_directory_render('page-archives.php', $page_id), 'datetime="2019-02-03"'), 'reloaded archive shows the new publication date');
+    zen_directory_warm($page_id);
+    wp_update_post(array('ID'=>$post_id, 'post_type'=>'page'));
+    zen_directory_evicted('converting a published post to a page evicts both caches');
+    zen_directory_warm($page_id);
+    zen_directory_check(zen_directory_cached_url($post_id) === '', 'converted page is not part of the refreshed post archive');
+    wp_update_post(array('ID'=>$post_id, 'post_type'=>'post'));
+    zen_directory_evicted('converting a published page to a post evicts both caches');
+    zen_directory_warm($page_id);
+    zen_directory_check(zen_directory_cached_url($post_id) === get_permalink($post_id), 'converted post appears in the refreshed archive');
+    $scheduled = zen_directory_post(array('post_status'=>'future', 'post_date'=>'2099-01-01 00:00:00', 'post_date_gmt'=>'2099-01-01 00:00:00'));
+    wp_publish_post($scheduled);
+    zen_directory_evicted('native scheduled publication evicts both caches');
     zen_directory_warm($page_id);
     wp_trash_post($post_id);
     zen_directory_evicted('published trash evicts both caches');

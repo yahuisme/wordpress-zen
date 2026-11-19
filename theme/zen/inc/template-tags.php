@@ -1,6 +1,13 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+function zen_content_page_links() {
+    wp_link_pages(array(
+        'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
+        'after' => '</nav>',
+    ));
+}
+
 /** Trim visible characters, keeping combining marks and emoji together. */
 function zen_trim_excerpt($text, $length, $more = '…') {
     $text = html_entity_decode(wp_strip_all_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -264,24 +271,41 @@ function zen_pagination() {
 function zen_clear_archives_cache() {
     delete_transient('zen_archives_public_posts_v3');
 }
-function zen_clear_archives_cache_on_public_save($post_id, $post) {
-    if ($post instanceof WP_Post && 'publish' === $post->post_status) {
+function zen_clear_post_directory_caches() {
+    zen_clear_archives_cache();
+    zen_clear_uptime_cache();
+}
+
+function zen_clear_archives_cache_on_post_update($post_id, $after, $before) {
+    // Native status transitions (including scheduled publication) have their own hook.
+    if ($after->post_type !== $before->post_type) {
+        if (('post' === $before->post_type && 'publish' === $before->post_status)
+            || ('post' === $after->post_type && 'publish' === $after->post_status && $after->post_status === $before->post_status)) {
+            zen_clear_post_directory_caches();
+        }
+        return;
+    }
+    if ('post' !== $after->post_type || 'publish' !== $after->post_status || 'publish' !== $before->post_status) {
+        return;
+    }
+    if ($after->post_date !== $before->post_date || $after->post_date_gmt !== $before->post_date_gmt) {
+        zen_clear_post_directory_caches();
+    } elseif ($after->post_title !== $before->post_title || $after->post_name !== $before->post_name
+        || $after->post_password !== $before->post_password || $after->post_author !== $before->post_author) {
         zen_clear_archives_cache();
-        zen_clear_uptime_cache();
     }
 }
-add_action('save_post_post', 'zen_clear_archives_cache_on_public_save', 10, 2);
+add_action('post_updated', 'zen_clear_archives_cache_on_post_update', 10, 3);
 function zen_clear_archives_cache_on_status_change($new_status, $old_status, $post) {
     if ($post instanceof WP_Post && 'post' === $post->post_type && $new_status !== $old_status
         && ('publish' === $new_status || 'publish' === $old_status)) {
-        zen_clear_archives_cache();
-        zen_clear_uptime_cache();
+        zen_clear_post_directory_caches();
     }
 }
 add_action('transition_post_status', 'zen_clear_archives_cache_on_status_change', 10, 3);
 function zen_clear_archives_cache_on_delete($post_id, $post) {
-    if ('post' === $post->post_type) {
-        zen_clear_archives_cache_on_public_save($post_id, $post);
+    if ('post' === $post->post_type && 'publish' === $post->post_status) {
+        zen_clear_post_directory_caches();
     }
 }
 add_action('deleted_post', 'zen_clear_archives_cache_on_delete', 10, 2);
@@ -295,7 +319,7 @@ function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids
         && 'publish' === get_post_status($object_id)
         && ('language' === $taxonomy || ('category' === $taxonomy
             && str_contains((string) get_option('permalink_structure'), '%category%')))) {
-        delete_transient('zen_archives_public_posts_v3');
+        zen_clear_archives_cache();
     }
 }
 add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
@@ -307,14 +331,14 @@ function zen_clear_archives_cache_on_author_profile($user_id, $old_user_data) {
     $user = get_userdata($user_id);
     if ($user && $user->user_nicename !== $old_user_data->user_nicename
         && get_posts(array('author' => $user_id, 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => 1, 'fields' => 'ids'))) {
-        delete_transient('zen_archives_public_posts_v3');
+        zen_clear_archives_cache();
     }
 }
 add_action('profile_update', 'zen_clear_archives_cache_on_author_profile', 10, 2);
 function zen_clear_archives_cache_on_author_reassignment($user_id, $reassign) {
     // Core reassigns posts directly, without emitting individual post-save hooks.
     if ($reassign && str_contains((string) get_option('permalink_structure'), '%author%')) {
-        delete_transient('zen_archives_public_posts_v3');
+        zen_clear_archives_cache();
     }
 }
 add_action('deleted_user', 'zen_clear_archives_cache_on_author_reassignment', 10, 2);

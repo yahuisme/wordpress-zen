@@ -11,10 +11,13 @@ function zen_reference_font_styles() {
     return $styles;
 }
 
-function zen_design_variables() {
+function zen_reading_width() {
+    return max(600, min(960, (int) zen_get_option('zen_reading_width')));
+}
+
+function zen_design_variables($reading) {
     $site = max(600, min(1920, (int) zen_get_option('zen_content_width')));
-    $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
-    return ':root{--zen-content-width:' . $site . 'px;--zen-content-half:' . round($site / 2) . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px}';
+    return ':root{--zen-content-width:' . $site . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px}';
 }
 
 function zen_scripts() {
@@ -45,9 +48,8 @@ function zen_scripts() {
     }
     wp_enqueue_style('zen-reading-style', $uri . '/assets/css/reading.css', array_merge(array('zen-compiled-style'), array_keys($fonts)), filemtime($dir . '/assets/css/reading.css'));
     wp_enqueue_style('zen-layout-style', $uri . '/assets/css/layout.css', array('zen-reading-style'), filemtime($dir . '/assets/css/layout.css'));
-    wp_enqueue_style('zen-directories-style', $uri . '/assets/css/directories.css', array('zen-layout-style'), filemtime($dir . '/assets/css/directories.css'));
-    wp_add_inline_style('zen-reading-style', zen_design_variables());
-    $reading = max(600, min(960, (int) zen_get_option('zen_reading_width')));
+    $reading = zen_reading_width();
+    wp_add_inline_style('zen-reading-style', zen_design_variables($reading));
     $breakpoint = max(1200, $reading + 560);
     wp_add_inline_style('zen-layout-style', '@media(min-width:' . $breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready,#header-toc-btn.zen-toc-ready,#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}}');
     if (is_singular() && comments_open() && get_option('thread_comments') && !post_password_required()) {
@@ -55,6 +57,18 @@ function zen_scripts() {
     }
 }
 add_action('wp_enqueue_scripts', 'zen_scripts');
+
+function zen_enqueue_directory_styles($template) {
+    // Match the resolved template so slug-based pages work without a saved template option.
+    if (in_array(basename($template), array('archive.php', 'search.php', '404.php', 'page-archives.php', 'page-tags.php', 'page-links.php', 'page-notes.php'), true)) {
+        add_action('wp_enqueue_scripts', static function () {
+            $file = '/assets/css/directories.css';
+            wp_enqueue_style('zen-directories-style', get_template_directory_uri() . $file, array('zen-layout-style'), filemtime(get_template_directory() . $file));
+        }, 20);
+    }
+    return $template;
+}
+add_filter('template_include', 'zen_enqueue_directory_styles', 99);
 
 /** A page view must not wait for WP Rocket's first user interaction. */
 function zen_reading_count_delay_exclusions($excluded) {
@@ -65,7 +79,7 @@ function zen_reading_count_delay_exclusions($excluded) {
 add_filter('rocket_delay_js_exclusions', 'zen_reading_count_delay_exclusions');
 
 function zen_editor_settings($settings) {
-    $settings['styles'][] = array('css' => zen_design_variables());
+    $settings['styles'][] = array('css' => zen_design_variables(zen_reading_width()));
     return $settings;
 }
 add_filter('block_editor_settings_all', 'zen_editor_settings');

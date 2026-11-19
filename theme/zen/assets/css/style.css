@@ -2842,22 +2842,6 @@ select:focus-visible {
         display: none;
     }
 }
-@media (min-width: 1360px) {
-    .zen-desktop-toc {
-        display: block !important;
-    }
-    .zen-mobile-toc {
-        display: none !important;
-    }
-}
-@media (min-width: 1280px) and (max-width: 1359px) {
-    .zen-desktop-toc {
-        display: none !important;
-    }
-    .zen-mobile-toc {
-        display: block !important;
-    }
-}
 .zen-footer-links {
     text-align: center;
 }

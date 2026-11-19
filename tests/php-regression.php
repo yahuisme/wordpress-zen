@@ -167,7 +167,8 @@ function wp_link_pages($args) {
         echo $args['before'] . '<span aria-current="page">1</span><a href="/fixture/2/">2</a>' . $args['after'];
     }
 }
-foreach (array('page.php', 'single.php', 'page-links.php') as $template) {
+function get_tags($args) { return array(); }
+foreach (array('page.php', 'single.php', 'page-links.php', 'page-notes.php', 'page-tags.php') as $template) {
     zen_test("$template delegates split navigation to WordPress", function () use ($template) {
         $saved_options = $GLOBALS['zen_test_options'];
         foreach (array('toc', 'reading_count', 'reading_time', 'updated_date', 'tags', 'post_navigation') as $option) {
@@ -181,8 +182,7 @@ foreach (array('page.php', 'single.php', 'page-links.php') as $template) {
                 $html = zen_render_template($template);
                 zen_expect(count($GLOBALS['zen_test_link_pages_calls']) === 1, 'wp_link_pages must be called once');
                 $args = $GLOBALS['zen_test_link_pages_calls'][0];
-                zen_expect(str_contains($args['before'], '<nav ') && str_contains($args['before'], 'zen-page-links') && str_contains($args['before'], 'aria-label='), 'accessible navigation wrapper missing');
-                zen_expect($args['after'] === '</nav>', 'navigation wrapper not closed');
+                zen_expect($args === array('before' => '<nav class="zen-page-links" aria-label="正文分页">', 'after' => '</nav>'), 'native pagination wrapper changed');
                 zen_expect(str_contains($html, '/fixture/2/') === $multipage, 'split navigation visibility mismatch');
             }
         } finally {
@@ -271,10 +271,6 @@ function wp_get_theme($stylesheet = false) {
     };
 }
 zen_test('admin footer textarea has fluid width with a desktop cap', function () {
-    // Seed the existing update cache: rendering this test never contacts GitHub.
-    $GLOBALS['zen_test_transients']['zen_theme_update_info'] = array(
-        'latest_version' => '1.0.0', 'url' => 'https://example.test/releases', 'error' => '',
-    );
     $html = zen_capture('zen_options_page_html');
     preg_match('/<textarea\b[^>]*id="zen_footer_text"[^>]*class="([^"]*)"/', $html, $field);
     zen_expect(str_contains($field[1] ?? '', 'large-text'), 'footer textarea must retain native fluid control class');

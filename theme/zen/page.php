@@ -13,10 +13,7 @@
         <?php the_content(); ?>
     </article>
 
-    <?php wp_link_pages(array(
-        'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
-        'after' => '</nav>',
-    )); ?>
+    <?php zen_content_page_links(); ?>
 
     <?php
     if (comments_open() || get_comments_number()) :

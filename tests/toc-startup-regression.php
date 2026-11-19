@@ -16,7 +16,7 @@ function has_excerpt() { return false; }
 function zen_get_primary_category() { return null; }
 function zen_posted_on_link() {}
 function has_post_thumbnail() { return false; }
-function wp_link_pages($args) {}
+function zen_content_page_links() {}
 function get_the_author() { return ''; }
 function get_previous_post() { return null; }
 function get_next_post() { return null; }

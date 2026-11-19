@@ -19,7 +19,7 @@ function zen_posted_on_link() {}
 function has_post_thumbnail() { return $GLOBALS['has_thumbnail']; }
 function the_post_thumbnail($size, $attributes) { $GLOBALS['thumbnail_calls'][] = array($size, $attributes); }
 function the_content() { echo '<p>Article</p>'; }
-function wp_link_pages($args) {}
+function zen_content_page_links() {}
 function esc_attr__($value, $domain = '') { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
 function get_the_author() { return ''; }
 function comments_open() { return false; }

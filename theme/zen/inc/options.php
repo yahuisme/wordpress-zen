@@ -8,129 +8,71 @@ if (!defined('ABSPATH')) exit;
  * database tables). The reading count is stored per post in post meta.
  */
 
-/**
- * Return the complete option schema and conservative defaults.
- */
+/** Defaults and sanitizers for ordinary settings, in registration order. */
+function zen_option_schema() {
+    return array(
+        'zen_show_site_intro'       => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_latest_card'      => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_featured_image'   => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_reading_count'    => array(0, 'zen_sanitize_checkbox'),
+        'zen_show_tags'             => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_highlight'        => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_toc'              => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_updated_date'     => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_reading_time'     => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_post_navigation'  => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_reading_progress' => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_back_to_top'      => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_lightbox'         => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_search_shortcut'  => array(1, 'zen_sanitize_checkbox'),
+        'zen_show_footer_rss'       => array(1, 'zen_sanitize_checkbox'),
+        'zen_excerpt_length'       => array(60, 'zen_sanitize_excerpt_length'),
+        'zen_theme_mode_default'    => array('auto', 'zen_sanitize_theme_mode'),
+        'zen_content_width'        => array(992, 'zen_sanitize_content_width'),
+        'zen_reading_width'         => array(800, 'zen_sanitize_reading_width'),
+        'zen_list_style'            => array('standard', 'zen_sanitize_list_style'),
+        'zen_category_ids'          => array(array(), 'zen_sanitize_category_ids'),
+        'zen_footer_text'           => array('', 'wp_kses_post'),
+        'zen_copyright_license'     => array('none', 'zen_sanitize_copyright_license'),
+        'zen_site_start_date'       => array('', 'zen_sanitize_site_start_date'),
+    );
+}
+
+function zen_code_fields() {
+    return array(
+        'zen_code_head'   => array('wp_head', '头部代码', '输出到 </head> 前。'),
+        'zen_code_body'   => array('wp_body_open', '正文起始代码', '输出到 <body> 起始处。'),
+        'zen_code_footer' => array('wp_footer', '页脚代码', '输出到 </body> 前。'),
+    );
+}
+
+/** These are theme read fallbacks, not defaults registered with WordPress. */
 function zen_get_option_defaults() {
     static $defaults;
-
     if ($defaults === null) {
-        $defaults = array(
-            'zen_show_reading_count'   => 0,
-            'zen_excerpt_length'       => 60,
-            'zen_show_tags'            => 1,
-            'zen_show_highlight'       => 1,
-            'zen_show_toc'             => 1,
-            'zen_show_updated_date'    => 1,
-            'zen_show_reading_time'    => 1,
-            'zen_show_post_navigation' => 1,
-            'zen_show_reading_progress'=> 1,
-            'zen_theme_mode_default'   => 'auto',
-            'zen_content_width'        => 992,
-            'zen_reading_width'        => 800,
-            'zen_list_style'           => 'standard',
-            'zen_show_site_intro'      => 1,
-            'zen_show_latest_card'      => 1,
-            'zen_category_ids'         => array(),
-            'zen_show_featured_image'  => 1,
-            'zen_show_back_to_top'     => 1,
-            'zen_show_lightbox'        => 1,
-            'zen_show_search_shortcut' => 1,
-            'zen_footer_text'          => '',
-            'zen_show_footer_rss'      => 1,
-            'zen_copyright_license'    => 'none',
-            'zen_site_start_date'      => '',
-            'zen_code_head'            => '',
-            'zen_code_body'            => '',
-            'zen_code_footer'          => '',
-        );
+        $defaults = array_map(static function ($field) { return $field[0]; }, zen_option_schema())
+            + array_fill_keys(array_keys(zen_code_fields()), '');
     }
-
     return $defaults;
 }
 
-/**
- * Read a theme option with a default.
- */
 function zen_get_option($key) {
-    $defaults = zen_get_option_defaults();
-    return get_option($key, isset($defaults[$key]) ? $defaults[$key] : '');
+    return get_option($key, zen_get_option_defaults()[$key] ?? '');
 }
 
-/* -------------------------------------------------------------------------
- * Admin: settings page
- * ---------------------------------------------------------------------- */
-
 function zen_register_options() {
-    $checkbox_options = array(
-        'zen_show_site_intro',
-        'zen_show_latest_card',
-        'zen_show_featured_image',
-        'zen_show_reading_count',
-        'zen_show_tags',
-        'zen_show_highlight',
-        'zen_show_toc',
-        'zen_show_updated_date',
-        'zen_show_reading_time',
-        'zen_show_post_navigation',
-        'zen_show_reading_progress',
-        'zen_show_back_to_top',
-        'zen_show_lightbox',
-        'zen_show_search_shortcut',
-        'zen_show_footer_rss',
-    );
-
-    foreach ($checkbox_options as $key) {
+    foreach (zen_option_schema() as $key => list($default, $sanitize)) {
         register_setting('zen_options', $key, array(
-            'type'              => 'integer',
-            'sanitize_callback' => 'zen_sanitize_checkbox',
+            'type'              => gettype($default),
+            'sanitize_callback' => $sanitize,
         ));
     }
 
-    register_setting('zen_options', 'zen_excerpt_length', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_excerpt_length',
-    ));
-    register_setting('zen_options', 'zen_theme_mode_default', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_theme_mode',
-    ));
-    register_setting('zen_options', 'zen_content_width', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_content_width',
-    ));
-    register_setting('zen_options', 'zen_reading_width', array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'zen_sanitize_reading_width',
-    ));
-    register_setting('zen_options', 'zen_list_style', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_list_style',
-    ));
-    register_setting('zen_options', 'zen_category_ids', array(
-        'type'              => 'array',
-        'sanitize_callback' => 'zen_sanitize_category_ids',
-    ));
-    register_setting('zen_options', 'zen_footer_text', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'wp_kses_post',
-    ));
-    register_setting('zen_options', 'zen_copyright_license', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_copyright_license',
-    ));
-
-    register_setting('zen_options', 'zen_site_start_date', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'zen_sanitize_site_start_date',
-    ));
-
-    foreach (array('head', 'body', 'footer') as $position) {
-        $key = 'zen_code_' . $position;
+    foreach (array_keys(zen_code_fields()) as $key) {
         register_setting('zen_options', $key, array(
             'type'              => 'string',
             'show_in_rest'      => false,
-            'sanitize_callback' => function ($value) use ($key) {
+            'sanitize_callback' => static function ($value) use ($key) {
                 if (!current_user_can('unfiltered_html') || !is_string($value)) {
                     return get_option($key, '');
                 }
@@ -207,13 +149,13 @@ function zen_reset_options() {
     check_admin_referer('zen_reset_options', 'zen_reset_nonce');
 
     $can_reset_code = current_user_can('unfiltered_html');
+    $code_fields = zen_code_fields();
     $failed = false;
     $missing = new stdClass();
     foreach (array_keys(zen_get_option_defaults()) as $key) {
-        if (!$can_reset_code && in_array($key, array('zen_code_head', 'zen_code_body', 'zen_code_footer'), true)) continue;
+        if (!$can_reset_code && isset($code_fields[$key])) continue;
         if (get_option($key, $missing) !== $missing && !delete_option($key)) $failed = true;
     }
-    delete_transient('zen_theme_update_info');
     delete_transient('zen_site_uptime');
     delete_transient('zen_archives_public_posts_v3');
 
@@ -226,9 +168,9 @@ function zen_reset_options() {
 add_action('admin_post_zen_reset_options', 'zen_reset_options');
 
 // Raw markup is intentional: only unfiltered_html users may save these fields.
-foreach (array('wp_head' => 'head', 'wp_body_open' => 'body', 'wp_footer' => 'footer') as $zen_hook => $zen_position) {
-    add_action($zen_hook, function () use ($zen_position) {
-        $code = zen_get_option('zen_code_' . $zen_position);
+foreach (zen_code_fields() as $zen_key => list($zen_hook)) {
+    add_action($zen_hook, static function () use ($zen_key) {
+        $code = zen_get_option($zen_key);
         if (is_string($code) && '' !== trim($code)) {
             echo "\n" . $code . "\n";
         }
@@ -267,10 +209,10 @@ function zen_sanitize_category_ids($value) {
     $ids = array();
     foreach (is_array($value) ? $value : array() as $id) {
         if ((is_int($id) || is_string($id)) && preg_match('/^\d+$/', (string) $id) && (int) $id > 0) {
-            $ids[] = (int) $id;
+            $ids[(int) $id] = (int) $id;
         }
     }
-    return array_values(array_unique($ids));
+    return array_values($ids);
 }
 
 function zen_sanitize_theme_mode($value) {
@@ -400,6 +342,9 @@ function zen_options_page_html() {
         return;
     }
     $reading_width = zen_get_option('zen_reading_width');
+    $theme_mode = zen_get_option('zen_theme_mode_default');
+    $list_style = zen_get_option('zen_list_style');
+    $license = zen_get_option('zen_copyright_license');
     // The Settings API redirect preserves the previous request's query string.
     $reset = isset($_GET['settings-updated']) ? '' : ($_GET['zen_reset'] ?? '');
     ?>
@@ -428,7 +373,7 @@ function zen_options_page_html() {
                             <th scope="row"><label for="zen_theme_mode_default"><?php esc_html_e('默认外观', 'zen'); ?></label></th>
                             <td><select name="zen_theme_mode_default" id="zen_theme_mode_default">
                                 <?php foreach (array('auto' => '跟随系统', 'light' => '浅色', 'dark' => '深色') as $value => $label) : ?>
-                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_theme_mode_default')); ?>><?php echo esc_html($label); ?></option>
+                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $theme_mode); ?>><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
                             </select><p class="description"><?php esc_html_e('访客首次访问时的默认模式。', 'zen'); ?></p></td>
                         </tr>
@@ -468,8 +413,8 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开、无密码文章，不在下方重复显示。', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_list_style"><?php esc_html_e('列表样式', 'zen'); ?></label></th>
                         <td><select name="zen_list_style" id="zen_list_style" aria-describedby="zen-list-style-help">
-                            <option value="standard" <?php selected('standard', zen_get_option('zen_list_style')); ?>><?php esc_html_e('标准', 'zen'); ?></option>
-                            <option value="compact" <?php selected('compact', zen_get_option('zen_list_style')); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
+                            <option value="standard" <?php selected('standard', $list_style); ?>><?php esc_html_e('标准', 'zen'); ?></option>
+                            <option value="compact" <?php selected('compact', $list_style); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
                         </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式省略卡片及文章列表的摘要。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text" aria-describedby="zen-excerpt-length-help"> 字
@@ -478,10 +423,10 @@ function zen_options_page_html() {
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
                             <?php $categories = get_categories(array('hide_empty' => false, 'lang' => '')); ?>
-                            <?php $selected_category_ids = zen_sanitize_category_ids(zen_get_option('zen_category_ids')); ?>
-                            <?php if (!is_wp_error($categories)) : foreach ($categories as $category) : ?>
-                                <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, in_array((int) $category->term_id, $selected_category_ids, true)); ?>> <?php echo esc_html($category->name); ?></label>
-                            <?php endforeach; endif; ?>
+                            <?php $selected_category_ids = array_flip(zen_sanitize_category_ids(zen_get_option('zen_category_ids'))); ?>
+                            <?php foreach ($categories as $category) : ?>
+                                <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, isset($selected_category_ids[(int) $category->term_id])); ?>> <?php echo esc_html($category->name); ?></label>
+                            <?php endforeach; ?>
                             </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('仅在分类归档中显示。全部不勾选时显示所有非空分类。', 'zen'); ?></p>
                         </td></tr>
                 </table></div>
@@ -501,11 +446,11 @@ function zen_options_page_html() {
                     <tr><th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                         <td><select name="zen_copyright_license" id="zen_copyright_license">
                             <?php foreach (array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0') as $value => $label) : ?>
-                                <option value="<?php echo esc_attr($value); ?>" <?php selected($value, zen_get_option('zen_copyright_license')); ?>><?php echo esc_html($label); ?></option>
+                                <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $license); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
                         </select><p class="description"><?php esc_html_e('文章底部的协议声明。请仅选择你明确授予的许可。', 'zen'); ?></p>
                         <?php $legacy_copyright = get_option('zen_show_copyright', null); ?>
-                        <?php if (null !== $legacy_copyright && !$legacy_copyright && 'none' !== zen_get_option('zen_copyright_license')) : ?>
+                        <?php if (null !== $legacy_copyright && !$legacy_copyright && 'none' !== $license) : ?>
                             <p><?php esc_html_e('旧版曾关闭版权声明，但当前已选协议。如不打算公开声明，请改为「不显示」并保存。', 'zen'); ?></p>
                         <?php endif; ?></td></tr>
                 </table></div>
@@ -528,10 +473,10 @@ function zen_options_page_html() {
                     <p><?php esc_html_e('代码将直接输出到页面，可运行脚本并影响安全与加载速度。仅粘贴可信来源代码；更换主题后这些代码不再输出。长期统计或业务功能请使用插件。', 'zen'); ?></p>
                     <?php if (current_user_can('unfiltered_html')) : ?>
                         <table class="form-table" role="presentation">
-                            <?php foreach (array('head' => array('头部代码', '输出到 </head> 前。'), 'body' => array('正文起始代码', '输出到 <body> 起始处。'), 'footer' => array('页脚代码', '输出到 </body> 前。')) as $position => $field) : ?>
-                            <tr><th scope="row"><label for="zen_code_<?php echo esc_attr($position); ?>"><?php echo esc_html($field[0]); ?></label></th>
-                                <td><textarea name="zen_code_<?php echo esc_attr($position); ?>" id="zen_code_<?php echo esc_attr($position); ?>" rows="6" class="large-text code" spellcheck="false" placeholder="<?php echo esc_attr(__('完整 HTML 或 script 代码', 'zen')); ?>"><?php echo esc_textarea(zen_get_option('zen_code_' . $position)); ?></textarea>
-                                <p class="description"><?php echo esc_html($field[1]); ?></p></td></tr>
+                            <?php foreach (zen_code_fields() as $key => list(, $label, $description)) : ?>
+                            <tr><th scope="row"><label for="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></label></th>
+                                <td><textarea name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" rows="6" class="large-text code" spellcheck="false" placeholder="<?php echo esc_attr(__('完整 HTML 或 script 代码', 'zen')); ?>"><?php echo esc_textarea(zen_get_option($key)); ?></textarea>
+                                <p class="description"><?php echo esc_html($description); ?></p></td></tr>
                             <?php endforeach; ?>
                         </table>
                     <?php else : ?>

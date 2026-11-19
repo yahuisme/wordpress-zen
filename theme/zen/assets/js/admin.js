@@ -40,8 +40,11 @@
             width.addEventListener('input', syncPreset);
             width.addEventListener('change', syncPreset);
         }
-        form.addEventListener('input', refresh);
-        form.addEventListener('change', refresh);
+        function refreshSetting(event) {
+            if (event.target !== preset) refresh();
+        }
+        form.addEventListener('input', refreshSetting);
+        form.addEventListener('change', refreshSetting);
         form.addEventListener('reset', function () {
             window.setTimeout(function () { syncPreset(); refresh(); }, 0);
         });

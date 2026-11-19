@@ -23,7 +23,8 @@ function comment_form_check($ok, $label) {
     $checks++; $failures += !$ok;
     echo ($ok ? 'PASS ' : 'FAIL ') . $label . "\n";
 }
-function comment_form_render($core = false) {
+function comment_form_render($core = false, $guestbook = false) {
+    $args = array('guestbook' => $guestbook);
     ob_start();
     if ($core) comment_form(); else require get_template_directory() . '/comments.php';
     return ob_get_clean();
@@ -43,6 +44,8 @@ try {
     update_option('comment_registration', 0);
     update_option('require_name_email', 1);
     update_option('show_comments_cookies_opt_in', 1);
+    $empty_guestbook = comment_form_render(false, true);
+    comment_form_check(str_contains($empty_guestbook, '还没有留言。') && !str_contains($empty_guestbook, 'class="comment-list"'), 'empty guestbook shows its empty state without an empty list');
     $core = comment_form_dom(comment_form_render(true));
     $theme = comment_form_dom(comment_form_render());
     comment_form_check($core->query('//input[@name="wp-comment-cookies-consent"]')->length === 1, 'Core enabled option supplies native consent field');
@@ -92,6 +95,10 @@ try {
     if (!$comment_id) throw new RuntimeException('Fixture comment insert failed');
     $GLOBALS['wp_query']->comments = array(get_comment($comment_id));
     $GLOBALS['wp_query']->comment_count = 1;
+    $article = comment_form_render();
+    $guestbook = comment_form_render(false, true);
+    comment_form_check(strpos($article, 'class="comment-list"') !== false && strpos($article, 'class="comment-list"') < strpos($article, 'id="commentform"'), 'article comments are listed before the form');
+    comment_form_check(strpos($guestbook, 'id="commentform"') !== false && strpos($guestbook, 'id="commentform"') < strpos($guestbook, 'class="comment-list"') && str_contains($guestbook, 'Existing discussion.') && !str_contains($guestbook, '还没有留言。'), 'populated guestbook keeps the form before the visible comments');
     $theme = comment_form_dom(comment_form_render());
     $reply = $theme->query('//a[@data-commentid="' . $comment_id . '"]')->item(0);
     comment_form_check($reply && $reply->getAttribute('aria-label') === '回复给 Fixture reader' && $reply->getAttribute('data-replyto') === '回复给 Fixture reader', 'Core reply link and script data both identify the reader in the theme language');
