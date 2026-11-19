@@ -1,40 +1,14 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-/**
- * CJK-aware excerpt trim: wp_trim_words splits on spaces, so unspaced
- * CJK text is treated as a single word and never truncated.
- */
+/** Trim visible characters, keeping combining marks and emoji together. */
 function zen_trim_excerpt($text, $length, $more = '…') {
     $text = html_entity_decode(wp_strip_all_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = trim(preg_replace('/\s+/u', ' ', $text));
-    if ($text === '') {
-        return '';
-    }
-    if (preg_match('/[\x{4E00}-\x{9FFF}\x{3040}-\x{30FF}\x{AC00}-\x{D7AF}]/u', $text)) {
-        return zen_utf8_length($text) > $length
-            ? zen_utf8_substr($text, $length) . $more
-            : $text;
-    }
-    // wp_trim_words() strips tags again; decoded literal <code> must stay text.
-    $words = preg_split('/[\n\r\t ]+/', $text, $length + 1, PREG_SPLIT_NO_EMPTY);
-    return implode(' ', array_slice($words, 0, $length)) . (count($words) > $length ? $more : '');
-}
-
-function zen_utf8_length($text) {
-    if (function_exists('mb_strlen')) {
-        return mb_strlen($text, 'UTF-8');
-    }
-    $count = preg_match_all('/./us', $text, $matches);
-    return false === $count ? strlen($text) : $count;
-}
-
-function zen_utf8_substr($text, $length) {
-    if (function_exists('mb_substr')) {
-        return mb_substr($text, 0, $length, 'UTF-8');
-    }
-    $count = preg_match_all('/./us', $text, $matches);
-    return false === $count ? substr($text, 0, $length) : implode('', array_slice($matches[0], 0, $length));
+    $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+    $length = max(1, min(300, (int) $length));
+    return preg_match('/\A(\X{' . $length . '})\X/u', $text, $match)
+        ? rtrim($match[1]) . $more
+        : $text;
 }
 
 function zen_get_archives_url() {
@@ -169,7 +143,18 @@ function zen_display_excerpt($excerpt) {
 
 function zen_index_post_excerpt($post = null) {
     if (zen_get_option('zen_list_style') === 'compact') return;
-    $excerpt = zen_display_excerpt(get_the_excerpt($post));
+    // Let Core prepare this excerpt without cutting entities. Nested excerpts keep their native limit.
+    $excerpt_stack = array_merge($GLOBALS['wp_current_filter'] ?? array(), array('get_the_excerpt', 'excerpt_length'));
+    $defer_trimming = static function ($length) use ($excerpt_stack) {
+        return $GLOBALS['wp_current_filter'] === $excerpt_stack ? PHP_INT_MAX - 1 : $length;
+    };
+    add_filter('excerpt_length', $defer_trimming, PHP_INT_MAX);
+    try {
+        $excerpt = get_the_excerpt($post);
+    } finally {
+        remove_filter('excerpt_length', $defer_trimming, PHP_INT_MAX);
+    }
+    $excerpt = zen_display_excerpt($excerpt);
     if ($excerpt !== '') printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', $excerpt);
 }
 

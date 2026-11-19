@@ -88,7 +88,7 @@ try {
     }
     foreach (array(
         array('<strong>中文摘要</strong>，手工填写。', '中文摘要，手工填…'),
-        array('<strong>English excerpt</strong> manually entered.', 'English excerpt manually entered.'),
+        array('<strong>English excerpt</strong> manually entered.', 'English…'),
         array('&lt;img src=x onerror=alert(1)&gt; 中文', '&lt;img src…'),
     ) as $case) {
         $id = content_native_post(array('post_excerpt' => $case[0]));

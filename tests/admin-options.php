@@ -14,6 +14,7 @@ function esc_attr($text) { return esc_html($text); }
 function esc_url($text) { return esc_html($text); }
 function esc_textarea($text) { return esc_html($text); }
 function esc_html_e($text, $domain = '') { echo esc_html($text); }
+function esc_html__($text, $domain = '') { return esc_html($text); }
 function selected($a, $b) { if ((string) $a === (string) $b) echo ' selected="selected"'; }
 function checked($a, $b) { if ((string) $a === (string) $b) echo ' checked="checked"'; }
 function sanitize_text_field($text) { return strip_tags($text); }
@@ -62,10 +63,10 @@ test('retired design and attribution controls are neither saved nor reset', func
     $GLOBALS['options'] = array();
 });
 test('new installations use conservative defaults and explicit legacy values survive', function () {
-    foreach (array('zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 768, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_show_latest_card' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 992) as $key => $default) {
+    foreach (array('zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 800, 'zen_excerpt_length' => 60, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_show_latest_card' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 992) as $key => $default) {
         expect(zen_get_option($key) === $default, "$key default differs");
     }
-    foreach (array('zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_rss' => 0) as $key => $legacy) {
+    foreach (array('zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_rss' => 0, 'zen_reading_width' => '768', 'zen_excerpt_length' => '150') as $key => $legacy) {
         $GLOBALS['options'][$key] = $legacy;
         expect(zen_get_option($key) === $legacy, "$key legacy value overwritten");
     }
@@ -104,6 +105,8 @@ test('registered new options sanitize values and reject invalid numbers without 
 test('single settings form groups all old and new fields', function () {
     $html = render();
     preg_match_all('/\bid="([^"]+)"/', $html, $ids);
+    expect(str_contains($html, 'id="zen_reading_width" value="800"') && str_contains($html, '默认 800px'), 'rendered width default and help must say 800px');
+    expect(str_contains($html, 'id="zen_excerpt_length" value="60"') && str_contains($html, '默认 60 字'), 'rendered excerpt default and help must say 60 characters');
     expect(count($ids[1]) === count(array_unique($ids[1])), 'Settings API and reset forms must not duplicate element IDs');
     expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');

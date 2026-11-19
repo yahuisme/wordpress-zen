@@ -154,6 +154,7 @@
     inline-size: 40px;
     block-size: 40px;
     border-radius: 4px;
+    background: var(--zen-accent-soft);
     object-fit: cover;
 }
 .zen-link-card .zen-link-label h2 {
@@ -313,8 +314,12 @@
     font: 500 0.875rem/1.55 var(--zen-font-mono, monospace);
     letter-spacing: 0.08em;
 }
-.zen-error-page .zen-recovery-links a { min-height: 44px; color: inherit; }
-.zen-error-page .zen-recovery-links a:is(:hover, :focus-visible) { color: var(--zen-accent); }
+.zen-error-page .zen-recovery-links a {
+    min-height: 44px;
+    color: var(--zen-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
 
 @media (max-width: 640px) {
     .zen-directory-heading { padding-block-end: 32px; }
@@ -322,8 +327,8 @@
     .zen-archives-directory { margin-block-start: 40px; }
     .zen-archive-list { margin-inline-start: 0; }
     .zen-archives-directory .zen-archive-row { gap: 8px; }
-    .zen-links-directory .zen-link-card { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
-    .zen-link-host { display: none; }
+    .zen-archive-row .zen-post-date { font-size: 0.875rem; }
+    .zen-links-directory .zen-link-card { column-gap: 12px; }
     .zen-tags-directory { grid-template-columns: minmax(0, 1fr); margin-block-start: 28px; }
     .zen-search-heading--blank .zen-native-search .search-form input[type="search"] { min-height: 64px; }
     .zen-error-page { text-align: start; }

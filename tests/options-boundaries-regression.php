@@ -17,6 +17,7 @@ function esc_url($text) { return esc_html($text); }
 function esc_url_raw($text) { return $text; }
 function esc_textarea($text) { return esc_html($text); }
 function esc_html_e($text, $domain = '') { echo esc_html($text); }
+function esc_html__($text, $domain = '') { return esc_html($text); }
 function selected($a, $b) {}
 function checked($a, $b) { if ($a === $b) echo ' checked="checked"'; }
 function sanitize_text_field($text) { return strip_tags($text); }

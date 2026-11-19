@@ -318,6 +318,28 @@ function zen_directory_secondary() {
     zen_directory_check(str_contains($html, 'href="' . esc_url(get_tag_link($tag_ids[0])) . '"') && !str_contains($html, 'Zen Empty Topic'), 'tag directory includes native nonempty term links only');
     zen_directory_check(str_contains($html, 'ZEN_TOPICS_RECENT') && !str_contains($html, 'ZEN_TOPICS_OLDER') && !str_contains($html, 'ZEN_TOPICS_DRAFT') && str_contains($html, '2 篇'), 'tag directory shows native count and newest published article');
 
+    wp_set_post_tags(zen_directory_post(array('post_title'=>'ZEN_TOPICS_RARE', 'post_date'=>'2011-03-01 12:00:00')), array($tag_ids[1]));
+    // An old rare tag should not force a full scan through the popular tag's posts.
+    wp_defer_term_counting(true);
+    try {
+        for ($n = 0; $n < 101; $n++) {
+            $recent = zen_directory_post(array('post_title'=>'ZEN_TOPICS_POPULAR_' . $n, 'post_date'=>'2025-03-01 12:00:00'));
+            wp_set_post_tags($recent, array($tag_ids[0]));
+        }
+    } finally { wp_defer_term_counting(false); }
+    $batches = array();
+    $batch_probe = static function ($posts, $query) use (&$batches) {
+        if ((int) $query->get('posts_per_page') === 100 && ($query->get('tax_query')[0]['taxonomy'] ?? '') === 'post_tag') {
+            $batches[] = array_map('intval', $query->get('tax_query')[0]['terms']);
+        }
+        return $posts;
+    };
+    add_filter('the_posts', $batch_probe, 10, 2);
+    try { $html = zen_directory_render('page-tags.php', $page_id); }
+    finally { remove_filter('the_posts', $batch_probe, 10); }
+    zen_directory_check(str_contains($html, 'ZEN_TOPICS_RARE') && str_contains($html, 'ZEN_TOPICS_POPULAR_100'), 'rare and popular tags both link to their newest post across batches');
+    zen_directory_check(in_array($tag_ids[0], $batches[0] ?? array(), true) && in_array($tag_ids[1], $batches[1] ?? array(), true) && !in_array($tag_ids[0], $batches[1] ?? array(), true), 'later batches exclude the resolved popular tag');
+
     wp_update_post(array('ID'=>$page_id, 'post_password'=>'directory-secret'));
     $term_reads = 0;
     $term_probe = static function ($terms, $taxonomies) use (&$term_reads) {

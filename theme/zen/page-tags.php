@@ -21,9 +21,11 @@ while (have_posts()) : the_post();
 
         // Visit tagged posts newest first in batches, using Core's primed term cache.
         // Each topic needs just one preview; do not issue a post query per topic.
-        $remaining = count($tag_directory);
+        $pending = array_fill_keys(array_keys($tag_directory), true);
         $batch_size = 100;
-        for ($batch = 1; $remaining > 0; $batch++) {
+        $batch = 1;
+        while ($pending) {
+            $pending_count = count($pending);
             $tag_posts = new WP_Query(array(
                 'post_type' => 'post',
                 'post_status' => 'publish',
@@ -33,22 +35,24 @@ while (have_posts()) : the_post();
                 'orderby' => array('date' => 'DESC', 'ID' => 'DESC'),
                 'no_found_rows' => true,
                 'update_post_meta_cache' => false,
-                'tax_query' => array(array('taxonomy' => 'post_tag', 'terms' => array_keys($tag_directory))),
+                'tax_query' => array(array('taxonomy' => 'post_tag', 'terms' => array_keys($pending))),
             ));
             foreach ($tag_posts->posts as $tagged_post) {
                 $post_tags = get_the_terms($tagged_post, 'post_tag');
                 if (!$post_tags || is_wp_error($post_tags)) continue;
                 foreach ($post_tags as $tag) {
                     $tag_id = $tag->term_id;
-                    if (isset($tag_directory[$tag_id]) && !$tag_directory[$tag_id]['recent']) {
+                    if (isset($pending[$tag_id])) {
                         $tag_directory[$tag_id]['recent'] = $tagged_post;
                         $latest_tagged_post = $latest_tagged_post ?? $tagged_post;
-                        $remaining--;
+                        unset($pending[$tag_id]);
                     }
                 }
-                if ($remaining === 0) break;
+                if (!$pending) break;
             }
             if (count($tag_posts->posts) < $batch_size) break;
+            // The offset belongs to the original tag set, not the narrowed query.
+            $batch = count($pending) < $pending_count ? 1 : $batch + 1;
         }
     }
     ?>

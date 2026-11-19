@@ -26,7 +26,7 @@ require ABSPATH . 'inc/template-tags.php';
 require ABSPATH . 'inc/schema.php';
 function check($ok, $label) { if (!$ok) throw new RuntimeException($label); echo "PASS $label\n"; }
 check(!function_exists('mb_strlen') && !function_exists('mb_substr'), 'mbstring is absent in the fallback process');
-check(zen_utf8_length('中文摘要') === 4, 'fallback length counts UTF-8 characters');
-check(zen_utf8_substr('中文摘要', 2) === '中文', 'fallback substring preserves UTF-8 boundaries');
+check(zen_trim_excerpt('中文摘要', 4) === '中文摘要', 'exact UTF-8 length stays intact without mbstring');
 check(zen_trim_excerpt('中文摘要', 2) === '中文…', 'CJK excerpt trims without mbstring');
+check(zen_trim_excerpt("e\u{0301}x", 1) === "e\u{0301}…", 'grapheme boundaries do not require mbstring or intl');
 check(zen_clean_description(str_repeat('中文', 100)) === str_repeat('中文', 80) . '…', 'SEO description trims without mbstring');

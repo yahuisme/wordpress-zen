@@ -49,7 +49,7 @@ if ($section === 'all' || $section === 'image') {
     test('featured sizes follow saved reading width, site cap and responsive gutters', function () {
         // The main box has 28px mobile / 32px desktop gutters.
         foreach (array(
-            array(array(), 768, 768),
+            array(array(), 800, 800),
             array(array('zen_reading_width' => 600), 600, 600),
             array(array('zen_reading_width' => '731'), 731, 731),
             array(array('zen_reading_width' => 960, 'zen_content_width' => 1920), 960, 960),

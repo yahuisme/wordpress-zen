@@ -58,16 +58,20 @@ test('collapsed fields remain successful controls and native disclosure works', 
 test('presets update the single submitted width while custom selection alone stays clean', () => {
     const dom = boot();
     const doc = dom.window.document;
+    const width = doc.getElementById('zen_reading_width');
+    const preset = doc.getElementById('zen_reading_width_preset');
+    const initial = width.value;
+    const alternate = Array.from(preset.options).find(option => option.value !== initial && option.value !== 'custom').value;
     edit(dom, 'zen_reading_width_preset', 'custom', 'change');
     assert.equal(unloading(dom), false);
-    edit(dom, 'zen_reading_width_preset', '800', 'change');
-    assert.equal(doc.getElementById('zen_reading_width').value, '800');
-    assert.deepEqual(Array.from(new dom.window.FormData(doc.querySelector('form')).getAll('zen_reading_width')), ['800']);
+    edit(dom, 'zen_reading_width_preset', alternate, 'change');
+    assert.equal(width.value, alternate);
+    assert.deepEqual(new dom.window.FormData(doc.querySelector('form')).getAll('zen_reading_width'), [alternate]);
     assert.equal(unloading(dom), true);
     edit(dom, 'zen_reading_width', '731');
-    assert.equal(doc.getElementById('zen_reading_width_preset').value, 'custom');
-    edit(dom, 'zen_reading_width', '768');
-    assert.equal(doc.getElementById('zen_reading_width_preset').value, '768');
+    assert.equal(preset.value, 'custom');
+    edit(dom, 'zen_reading_width', initial);
+    assert.equal(preset.value, initial);
     assert.equal(unloading(dom), false);
     dom.window.close();
 });

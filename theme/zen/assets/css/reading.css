@@ -1,6 +1,6 @@
 /* Shared article typography: loaded by both reader and WordPress editor. */
 :root {
-    --zen-reading-width: 768px;
+    --zen-reading-width: 800px;
     --zen-font-body:
         "Zen Kami Kai", "TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC",
         "Source Han Serif CN", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;

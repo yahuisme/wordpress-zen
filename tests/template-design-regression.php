@@ -17,6 +17,8 @@ function test($name, $callback) {
 function capture($callback) { ob_start(); try { $callback(); return ob_get_contents(); } finally { ob_end_clean(); } }
 function render($file, $args = array()) { return capture(function () use ($file, $args) { include ABSPATH . $file; }); }
 function add_action(...$args) {}
+function add_filter(...$args) {}
+function remove_filter(...$args) {}
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function esc_attr($value) { return esc_html($value); }
 function esc_url($value) { return esc_html($value); }

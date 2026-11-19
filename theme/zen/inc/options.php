@@ -17,7 +17,7 @@ function zen_get_option_defaults() {
     if ($defaults === null) {
         $defaults = array(
             'zen_show_reading_count'   => 0,
-            'zen_excerpt_length'       => 150,
+            'zen_excerpt_length'       => 60,
             'zen_show_tags'            => 1,
             'zen_show_highlight'       => 1,
             'zen_show_toc'             => 1,
@@ -27,7 +27,7 @@ function zen_get_option_defaults() {
             'zen_show_reading_progress'=> 1,
             'zen_theme_mode_default'   => 'auto',
             'zen_content_width'        => 992,
-            'zen_reading_width'        => 768,
+            'zen_reading_width'        => 800,
             'zen_list_style'           => 'standard',
             'zen_show_site_intro'      => 1,
             'zen_show_latest_card'      => 1,
@@ -435,7 +435,7 @@ function zen_options_page_html() {
                         <tr>
                             <th scope="row"><label for="zen_reading_width"><?php esc_html_e('正文宽度', 'zen'); ?></label></th>
                             <td>
-                                <label class="screen-reader-text" for="zen_reading_width_preset"><?php esc_html_e('正文宽度预设', 'zen'); ?></label>
+                                <label for="zen_reading_width_preset"><?php esc_html_e('预设', 'zen'); ?></label>
                                 <select id="zen_reading_width_preset" aria-describedby="zen-reading-width-help">
                                     <?php $zen_reading_presets = array(600, 720, 768, 800, 960); ?>
                                     <?php foreach ($zen_reading_presets as $width) : ?>
@@ -444,7 +444,7 @@ function zen_options_page_html() {
                                     <option value="custom" <?php selected(false, in_array((int) $reading_width, $zen_reading_presets, true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
                                 </select>
                                 <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text" aria-describedby="zen-reading-width-help"> px
-                                <p class="description" id="zen-reading-width-help"><?php esc_html_e('正文最大宽度，默认 768px；自定义范围 600–960px。选择预设或直接输入。', 'zen'); ?></p>
+                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('正文最大宽度，默认 %dpx；自定义范围 600–960px。选择预设或直接输入。', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
                             </td>
                         </tr>
                         <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
@@ -472,8 +472,8 @@ function zen_options_page_html() {
                             <option value="compact" <?php selected('compact', zen_get_option('zen_list_style')); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
                         </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式省略卡片及文章列表的摘要。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
-                        <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text"> 字
-                        <p class="description"><?php esc_html_e('标准模式下卡片和列表的摘要长度（1–300 字）。', 'zen'); ?></p></td></tr>
+                        <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text" aria-describedby="zen-excerpt-length-help"> 字
+                        <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('标准模式下卡片和列表的摘要长度，默认 %d 字（1–300 字）。', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
                     <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类归档导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
