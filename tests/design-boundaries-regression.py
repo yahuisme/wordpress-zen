@@ -36,11 +36,14 @@ post = wp('post', 'create', '--post_title=Design boundary regression', '--post_s
 rows = []
 try:
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
-        context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
-        context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') or route.request.url.startswith('data:') else route.abort())
-        page = context.new_page()
+        def launch():
+            return playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+
         if mode in ('all', 'colors'):
+            browser = launch()
+            context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
+            context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') or route.request.url.startswith('data:') else route.abort())
+            page = context.new_page()
             page.goto(origin + '/?p=' + post, wait_until='domcontentloaded')
             for dark in (False, True):
                 page.evaluate('(dark)=>document.documentElement.classList.toggle("dark",dark)', dark)
@@ -53,8 +56,10 @@ try:
                 rows.append({'name': 'explicit-heading', 'dark': dark, 'passed': page.locator('#explicit-heading').evaluate('e=>getComputedStyle(e).color') == 'rgb(227, 91, 91)'})
                 rows.append({'name': 'ordinary-heading', 'dark': dark, 'passed': page.locator('#ordinary-heading').evaluate('e=>getComputedStyle(e).color===getComputedStyle(e.closest(".entry-content")).color')})
             page.locator('#cover-white').screenshot(path=str(root / 'evidence/cover-inherited.png'))
-        context.close()
+            browser.close()
+        # Use a fresh serial browser: single-process Chromium cannot mix contexts reliably.
         if mode in ('all', 'noscript'):
+            browser = launch()
             context = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 900})
             context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
             page = context.new_page()
@@ -68,7 +73,7 @@ try:
                     form.locator('[type=submit]').click()
                 rows.append({'name': 'noscript-search-submits', 'passed': 's=WordPress' in page.url and page.locator('.zen-post-item').count() > 0})
                 rows.append({'name': 'noscript-no-overflow', 'passed': page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')})
-        browser.close()
+            browser.close()
 finally:
     wp('post', 'delete', post, '--force')
 (root / ('evidence/design-boundaries-' + mode + '.json')).write_text(json.dumps(rows, indent=2))

@@ -60,23 +60,79 @@ function zen_category_navigation() {
     <?php
 }
 
-function zen_get_primary_category() {
-    $categories = get_the_category();
+function zen_get_primary_category($post = null) {
+    $categories = get_the_category($post ? $post->ID : false);
     return ! empty($categories) ? $categories[0] : null;
 }
 
-function zen_posted_on_link() {
-    $year = get_the_date('Y');
-    $month = get_the_date('n');
-    $label = sprintf(__('查看 %s 的所有文章', 'zen'), get_the_date('Y年n月'));
+/** Pick from the actual first page without requerying or changing sticky order. */
+function zen_get_latest_index_post($posts) {
+    $latest = null;
+    foreach ($posts as $candidate) {
+        if ($candidate->post_type !== 'post' || $candidate->post_status !== 'publish' || $candidate->post_password !== '') {
+            continue;
+        }
+        // Compare site-local publication times, not the sticky display order.
+        if (!$latest || array($candidate->post_date, $candidate->ID) > array($latest->post_date, $latest->ID)) {
+            $latest = $candidate;
+        }
+    }
+    return $latest;
+}
+
+function zen_post_date_format($context = 'full', $year = '') {
+    if (zen_get_option('zen_date_style') !== 'editorial') {
+        return 'Y年n月j日';
+    }
+    if ($context === 'directory' || ($context === 'list' && $year === wp_date('Y'))) {
+        return 'n月 j日';
+    }
+    return 'Y.m.d';
+}
+
+function zen_post_date_html($context = 'full', $post = null) {
+    $year = $context === 'list' ? get_the_date('Y', $post) : '';
+    return sprintf('<time class="zen-post-date" datetime="%s">%s</time>',
+        esc_attr(get_the_date('c', $post)),
+        esc_html(get_the_date(zen_post_date_format($context, $year), $post))
+    );
+}
+
+function zen_posted_on_link($context = 'full', $post = null) {
+    $year = get_the_date('Y', $post);
+    $month = get_the_date('n', $post);
+    $label = sprintf(__('发布于 %1$s，查看 %2$s 的所有文章', 'zen'), get_the_date('Y年n月j日', $post), get_the_date('Y年n月', $post));
 
     printf(
-        '<a href="%1$s" class="zen-meta-field zen-ui-link hover:text-gray-900 dark:hover:text-white" aria-label="%2$s"><time datetime="%3$s">%4$s</time></a>',
+        '<a href="%1$s" class="zen-meta-field zen-ui-link" aria-label="%2$s">%3$s</a>',
         esc_url(get_month_link($year, $month)),
         esc_attr($label),
-        esc_attr(get_the_date('c')),
-        esc_html(get_the_date('Y年n月j日'))
+        zen_post_date_html($context, $post)
     );
+}
+
+function zen_index_post_meta($context, $post = null) {
+    ?>
+    <div class="zen-post-meta">
+        <?php if (is_search()) : echo zen_post_date_html($context, $post);
+        else : zen_posted_on_link($context, $post); endif; ?>
+        <?php $category = zen_get_primary_category($post); ?>
+        <?php if ($category) : ?>
+            <a href="<?php echo esc_url(get_category_link($category->term_id)); ?>" class="zen-meta-field zen-meta-category zen-ui-link"><?php echo esc_html($category->name); ?></a>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+function zen_index_post_excerpt($post = null) {
+    if (zen_get_option('zen_list_style') === 'compact') {
+        return;
+    }
+    $excerpt = zen_trim_excerpt(get_the_excerpt($post), (int) zen_get_option('zen_excerpt_length'));
+    if ($excerpt !== '') {
+        // Preserve literal entity-looking text after decoding one source layer for counting.
+        printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', esc_html(str_replace('&', '&amp;', $excerpt)));
+    }
 }
 
 function zen_highlight_search_terms($text, $query = '') {
@@ -180,7 +236,7 @@ function zen_pagination() {
 }
 
 function zen_clear_archives_cache() {
-    delete_transient('zen_archives_public_posts_v2');
+    delete_transient('zen_archives_public_posts_v3');
     delete_transient('zen_site_uptime');
 }
 function zen_clear_archives_cache_on_public_save($post_id, $post) {
@@ -209,7 +265,7 @@ function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids
         && 'publish' === get_post_status($object_id)
         && ('language' === $taxonomy || ('category' === $taxonomy
             && str_contains((string) get_option('permalink_structure'), '%category%')))) {
-        delete_transient('zen_archives_public_posts_v2');
+        delete_transient('zen_archives_public_posts_v3');
     }
 }
 add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
@@ -221,14 +277,14 @@ function zen_clear_archives_cache_on_author_profile($user_id, $old_user_data) {
     $user = get_userdata($user_id);
     if ($user && $user->user_nicename !== $old_user_data->user_nicename
         && get_posts(array('author' => $user_id, 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => 1, 'fields' => 'ids'))) {
-        delete_transient('zen_archives_public_posts_v2');
+        delete_transient('zen_archives_public_posts_v3');
     }
 }
 add_action('profile_update', 'zen_clear_archives_cache_on_author_profile', 10, 2);
 function zen_clear_archives_cache_on_author_reassignment($user_id, $reassign) {
     // Core reassigns posts directly, without emitting individual post-save hooks.
     if ($reassign && str_contains((string) get_option('permalink_structure'), '%author%')) {
-        delete_transient('zen_archives_public_posts_v2');
+        delete_transient('zen_archives_public_posts_v3');
     }
 }
 add_action('deleted_user', 'zen_clear_archives_cache_on_author_reassignment', 10, 2);

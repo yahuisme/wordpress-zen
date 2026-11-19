@@ -13,7 +13,7 @@
     font-family: var(--zen-font-body);
     font-size: 18px;
     line-height: 32px;
-    color: var(--zen-text, #172033);
+    color: var(--zen-text, #25241f);
     overflow-wrap: anywhere;
 }
 
@@ -88,12 +88,11 @@
 }
 .entry-content blockquote,
 .editor-styles-wrapper blockquote {
-    border-inline-start: 2px solid var(--zen-border, #dce5ea);
-    padding-inline-start: 24px;
+    padding-inline-start: 20px;
     margin: 32px 0;
-    font-style: normal;
+    font-style: italic;
     font-weight: 400;
-    color: var(--zen-muted, #64748b);
+    color: var(--zen-muted, #625d52);
 }
 .entry-content blockquote p,
 .editor-styles-wrapper blockquote p {
@@ -181,7 +180,7 @@
 .editor-styles-wrapper :where(th, td) {
     text-align: start;
     padding: 10px 12px;
-    border-bottom: 1px solid var(--zen-border, #dce5ea);
+    border-bottom: 1px solid var(--zen-border, #cbc6b7);
     vertical-align: top;
 }
 .entry-content figcaption,
@@ -189,7 +188,7 @@
     margin-top: 12px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--zen-muted, #64748b);
+    color: var(--zen-muted, #625d52);
     text-align: center;
 }
 .entry-content > :first-child {

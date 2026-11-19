@@ -23,6 +23,8 @@ function __($value, $domain = '') { return $value; }
 function esc_attr__($value, $domain = '') { return esc_attr($value); }
 function zen_get_option($name) { return $GLOBALS['options'][$name] ?? array('zen_list_style' => 'standard', 'zen_excerpt_length' => 100)[$name] ?? 0; }
 function is_home() { return true; }
+function is_paged() { return $GLOBALS['paged'] ?? false; }
+function esc_html_e($value, $domain = '') { echo esc_html($value); }
 function is_search() { return $GLOBALS['is_search']; }
 function the_ID() { echo '7'; }
 function post_class($classes) { echo 'class="' . esc_attr($classes) . '"'; }
@@ -31,7 +33,7 @@ function get_the_date($format = '', $post = null) { return date($format ?: 'Y-m-
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
 function get_the_title($post = null) { return '清晰的文章标题'; }
-function get_the_ID() { return 42; }
+function get_the_ID() { return $GLOBALS['child_excerpt_post_id'] ?? 42; }
 function the_title() { echo esc_html(get_the_title()); }
 function the_title_attribute() { echo esc_attr(get_the_title()); }
 function get_the_excerpt() { $GLOBALS['excerpt_calls']++; return '标准列表摘要内容'; }
@@ -68,8 +70,20 @@ function get_locale() { return 'zh_CN'; }
 function get_header() {}
 function get_footer() {}
 function have_posts() { return !empty($GLOBALS['loop_left']); }
-function the_post() { $GLOBALS['loop_left']--; }
-function get_template_part($slug, $name = null, $args = array()) { echo render($slug . ($name ? '-' . $name : '') . '.php', $args); }
+function the_post() {
+    $GLOBALS['loop_left']--;
+    if (isset($GLOBALS['child_excerpt_ids'])) {
+        $GLOBALS['child_excerpt_post_id'] = array_shift($GLOBALS['child_excerpt_ids']);
+    }
+}
+function get_template_part($slug, $name = null, $args = array()) {
+    if (isset($GLOBALS['child_excerpt_ids']) && $slug === 'template-parts/content' && $name === 'excerpt') {
+        // A pre-existing child template only reads the current Loop post.
+        printf('<article id="post-%d" class="child-excerpt"></article>', get_the_ID());
+        return;
+    }
+    echo render($slug . ($name ? '-' . $name : '') . '.php', $args);
+}
 function get_bloginfo($key) { return array('name' => '站点名称', 'description' => '记录技术与日常')[$key] ?? ''; }
 function home_url($path = '') { return 'https://example.test' . $path; }
 function get_option($name, $default = false) { return $GLOBALS['native_options'][$name] ?? $default; }
@@ -92,12 +106,17 @@ test('home intro is optional and complete categories are directly visible', func
     $GLOBALS['loop_left'] = 0;
     $html = render('index.php');
     check(str_contains($html, '记录技术与日常'), 'native site description missing');
+    check(str_contains($html, '<h1>站点名称</h1>'), 'publication title missing');
+    check(!str_contains($html, '全部归档'), 'unconfigured annual archive should not have a shortcut');
     check(!str_contains($html, '<details') && !str_contains($html, '<summary') && str_contains($html, '分类8'), 'categories must be visible without expanding a control');
     preg_match('/<nav class="zen-category-nav"[^>]*>(.*?)<\/nav>/s', $html, $nav);
     check(substr_count($nav[1] ?? '', '<a ') === 9, 'all eight categories plus all-posts link must render');
     check(!str_contains($html, '面包屑'), 'category choices are not breadcrumbs');
     check(str_contains($html, 'zen-post-list'), 'shared list wrapper missing');
     check(($GLOBALS['category_args']['hide_empty'] ?? null) === true, 'only nonempty categories should be requested by default');
+    $GLOBALS['paged'] = true;
+    check(!str_contains(render('index.php'), '记录技术与日常'), 'later index pages repeat the masthead');
+    unset($GLOBALS['paged']);
     $GLOBALS['options']['zen_show_site_intro'] = 0;
     check(!str_contains(render('index.php'), '记录技术与日常'), 'disabled description still visible');
 });
@@ -108,10 +127,47 @@ test('selected category order is preserved and all uses native posts page', func
     check(strpos($html, '分类7') < strpos($html, '分类2') && strpos($html, '分类2') < strpos($html, '分类5'), 'selected order changed');
     check(!str_contains($html, '分类1') && str_contains($html, 'href="/post/42"'), 'selection or native posts URL lost');
 });
+function wp_date($format) { return $format === 'Y' ? '2026' : ''; }
 test('published date is compact Chinese and field cannot wrap internally', function () {
     $html = capture('zen_posted_on_link');
     check(str_contains($html, '2026年10月5日'), 'date format is inconsistent');
     check(str_contains($html, 'zen-meta-field'), 'nowrap meta field contract missing');
+});
+test('editorial dates retain older years; a later sticky position cannot pick an older card', function () {
+    $GLOBALS['options']['zen_date_style'] = 'editorial';
+    check(zen_post_date_format('list', '2025') === 'Y.m.d' && zen_post_date_format('list', '2026') === 'n月 j日', 'year context lost');
+    $GLOBALS['options']['zen_date_style'] = 'classic';
+    $older = (object) array('post_type' => 'post', 'post_status' => 'publish', 'post_password' => '', 'post_date' => '2026-10-01 12:00:00', 'ID' => 4);
+    $newer = clone $older;
+    $newer->ID = 7;
+    $newer->post_date = '2026-10-05 12:00:00';
+    $locked = clone $newer;
+    $locked->post_date = '2026-10-06 12:00:00';
+    $locked->post_password = 'test';
+    check(zen_get_latest_index_post(array($older, $locked, $newer)) === $newer, 'card selection follows sticky ordering or includes password-protected posts');
+    check(zen_get_latest_index_post(array($locked)) === null, 'no eligible post should render no card');
+});
+
+test('legacy child excerpt renders only ordinary Loop posts with an older sticky first', function () {
+    $older = (object) array('post_type' => 'post', 'post_status' => 'publish', 'post_password' => '', 'post_date' => '2026-10-01 12:00:00', 'ID' => 4);
+    $newer = clone $older;
+    $newer->ID = 7;
+    $newer->post_date = '2026-10-05 12:00:00';
+    $previous_query = $GLOBALS['wp_query'];
+    $GLOBALS['wp_query'] = (object) array('posts' => array($older, $newer), 'post_count' => 2, 'max_num_pages' => 1);
+    $GLOBALS['options']['zen_show_latest_card'] = 1;
+    $GLOBALS['loop_left'] = 2;
+    $GLOBALS['child_excerpt_post_id'] = 4;
+    $GLOBALS['child_excerpt_ids'] = array(4, 7);
+    try {
+        $html = render('index.php');
+        check(str_contains($html, '<article id="post-7" class="zen-latest-card"'), 'latest article was consumed by the child excerpt override');
+        check(substr_count($html, '<article id="post-4" class="child-excerpt"') === 1, 'the sticky post should appear once in the child list');
+        check(!str_contains($html, '<article id="post-7" class="child-excerpt"'), 'latest article repeats in the child list');
+    } finally {
+        $GLOBALS['wp_query'] = $previous_query;
+        unset($GLOBALS['child_excerpt_post_id'], $GLOBALS['child_excerpt_ids'], $GLOBALS['options']['zen_show_latest_card']);
+    }
 });
 
 function the_content() { echo '<p>正文内容</p>'; }
@@ -169,7 +225,7 @@ test('single consolidates notes hides absent author and tags and stacks adjacent
     $html = single_fixture();
     check(substr_count($html, 'class="zen-article-notes') === 1, 'notes are not consolidated');
     check(!str_contains($html, '本文作者') && !str_contains($html, '暂无标签') && !str_contains($html, 'zen-post-taxonomy'), 'absent content rendered');
-    check(str_contains($html, '最后更新：2026年10月5日'), 'updated date not consistent');
+    check(str_contains($html, '最后更新：<time class="zen-post-date"') && str_contains($html, '>2026年10月5日</time>'), 'updated date not consistent');
     check(str_contains($html, 'zen-post-nav-label') && str_contains($html, 'zen-post-nav-title'), 'adjacent posts need separate label/title lines');
     check(!str_contains($html, 'mt-12'), 'repeated giant section gaps remain');
     $GLOBALS['author'] = '实际作者';
@@ -310,11 +366,11 @@ test('friend links label new-window destinations and keep image-free initial fal
     $html = render('page-links.php');
     check(str_contains($html, 'aria-label="友站 (在新窗口打开)"'), 'new-window accessible name missing');
     check(str_contains($html, 'zen-link-avatar') && !str_contains($html, 'ph-arrow-up-right'), 'initial fallback or stable iconless layout missing');
-    check(str_contains($html, 'zen-reading-shell'), 'links introduction/shared comments width missing');
+    check((bool) preg_match('/<div class="zen-reading-shell">\s*<div class="zen-directory-intro entry-content">/', $html), 'links introduction must preserve its own reading shell');
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
 test('archive directory has shared list item rhythm and unified Chinese dates', function () {
-    $GLOBALS['transients']['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026年10月5日')));
+    $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026-10-05')));
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
     check(str_contains($html, '2026年10月5日'), 'cached archive dates are not unified');

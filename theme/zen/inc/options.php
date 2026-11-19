@@ -31,6 +31,8 @@ function zen_get_option_defaults() {
             'zen_reading_width'        => 720,
             'zen_list_style'           => 'standard',
             'zen_show_site_intro'      => 1,
+            'zen_show_latest_card'      => 1,
+            'zen_date_style'            => 'editorial',
             'zen_category_ids'         => array(),
             'zen_show_featured_image'  => 1,
             'zen_show_back_to_top'     => 1,
@@ -66,6 +68,7 @@ function zen_get_option($key) {
 function zen_register_options() {
     $checkbox_options = array(
         'zen_show_site_intro',
+        'zen_show_latest_card',
         'zen_show_featured_image',
         'zen_show_reading_count',
         'zen_show_tags',
@@ -113,6 +116,10 @@ function zen_register_options() {
     register_setting('zen_options', 'zen_list_style', array(
         'type'              => 'string',
         'sanitize_callback' => 'zen_sanitize_list_style',
+    ));
+    register_setting('zen_options', 'zen_date_style', array(
+        'type'              => 'string',
+        'sanitize_callback' => 'zen_sanitize_date_style',
     ));
     register_setting('zen_options', 'zen_category_ids', array(
         'type'              => 'array',
@@ -222,7 +229,7 @@ function zen_reset_options() {
     }
     delete_transient('zen_theme_update_info');
     delete_transient('zen_site_uptime');
-    delete_transient('zen_archives_public_posts_v2');
+    delete_transient('zen_archives_public_posts_v3');
 
     wp_safe_redirect(add_query_arg(array(
         'page'      => 'zen-options',
@@ -268,6 +275,14 @@ function zen_sanitize_number($value, $key, $min, $max) {
 
 function zen_sanitize_list_style($value) {
     return in_array($value, array('standard', 'compact'), true) ? $value : 'standard';
+}
+
+function zen_sanitize_date_style($value) {
+    if (in_array($value, array('editorial', 'classic'), true)) {
+        return $value;
+    }
+    add_settings_error('zen_date_style', 'zen_date_style_invalid', __('日期样式无效；已保留上次保存值。', 'zen'));
+    return zen_get_option('zen_date_style');
 }
 
 function zen_sanitize_category_ids($value) {
@@ -556,17 +571,23 @@ function zen_options_page_html() {
                 </div>
             </details>
             <details class="zen-options-group" id="zen-list" open>
-                <summary><?php esc_html_e('文章列表', 'zen'); ?></summary>
+                <summary><?php esc_html_e('首页与文章列表', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
                     <?php zen_checkbox_field('zen_show_site_intro', __('站点简介', 'zen'), __('显示 WordPress 站点副标题（在原生站点身份中编辑）', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开、无密码文章，不在下方重复显示。', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_list_style"><?php esc_html_e('列表样式', 'zen'); ?></label></th>
-                        <td><select name="zen_list_style" id="zen_list_style">
+                        <td><select name="zen_list_style" id="zen_list_style" aria-describedby="zen-list-style-help">
                             <option value="standard" <?php selected('standard', zen_get_option('zen_list_style')); ?>><?php esc_html_e('标准', 'zen'); ?></option>
                             <option value="compact" <?php selected('compact', zen_get_option('zen_list_style')); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
-                        </select></td></tr>
+                        </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式省略卡片及文章列表的摘要。', 'zen'); ?></p></td></tr>
+                    <tr><th scope="row"><label for="zen_date_style"><?php esc_html_e('文章日期样式', 'zen'); ?></label></th>
+                        <td><select name="zen_date_style" id="zen_date_style" aria-describedby="zen-date-style-help">
+                            <option value="editorial" <?php selected('editorial', zen_get_option('zen_date_style')); ?>><?php esc_html_e('简洁日期（2026.11.17）', 'zen'); ?></option>
+                            <option value="classic" <?php selected('classic', zen_get_option('zen_date_style')); ?>><?php esc_html_e('完整中文（2026年11月17日）', 'zen'); ?></option>
+                        </select><p class="description" id="zen-date-style-help"><?php esc_html_e('简洁样式在列表中把今年的日期缩写为「11月 17日」，年度归档只显示月日。仅改变 Zen 的文案格式，不影响日期链接或 WordPress 通用设置。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text"> 字
-                        <p class="description"><?php esc_html_e('标准列表的自动摘要字数（1–300 字）。', 'zen'); ?></p></td></tr>
+                        <p class="description"><?php esc_html_e('标准模式下卡片和列表的摘要长度（1–300 字）。', 'zen'); ?></p></td></tr>
                     <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">

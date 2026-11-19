@@ -17,7 +17,7 @@ function esc_attr($text) { return esc_html($text); }
 function esc_url($text) { return esc_html($text); }
 function __($text, $domain = '') { return $text; }
 function zen_get_option($key) { return array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8)[$key] ?? ''; }
-function the_ID() { echo '17'; }
+function get_the_ID() { return 17; }
 function post_class($class) { echo 'class="' . esc_attr($class) . '"'; }
 function the_permalink() { echo '/article/'; }
 function the_title() { echo 'Fixture'; }

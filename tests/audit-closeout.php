@@ -2,6 +2,9 @@
 /** Execute the shipped counter against explicit WordPress boundary doubles. */
 define('MINUTE_IN_SECONDS', 60);
 require __DIR__ . '/reading-count-storage-double.php';
+function add_action(...$args) {}
+define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
+require ABSPATH . 'inc/template-tags.php';
 $cache = array(); $counts = array(); $post_id = 42; $logged_in = false;
 function zen_get_option($key) { return $key === 'zen_show_reading_count' ? true : ''; }
 function is_singular($type) { return true; }
@@ -48,18 +51,18 @@ check(str_contains($footer, 'Since <?php') && str_contains($footer, 'Days'), 'En
 check(str_contains($footer, "esc_html($" . "zen_uptime['days'])"), 'dynamic escaped uptime');
 $archive = file_get_contents(dirname(__DIR__) . '/theme/zen/page-archives.php');
 check(!str_contains($archive, 'preg_match'), 'archive dead date branch');
-check(str_contains($archive, 'zen_archives_public_posts_v2'), 'archive ignores old date format cache');
+check(str_contains($archive, 'zen_archives_public_posts_v3'), 'archive ignores old date format cache');
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
 function esc_url($value) { return esc_html($value); }
 function date_i18n($format) { return '2026'; }
 function get_bloginfo($key) { return '<Fixture>'; }
-function zen_get_site_uptime() { return array('year' => '2022', 'days' => $GLOBALS['uptime_days'] ?? 123); }
+$cache['zen_site_uptime'] = array('year' => '2022', 'days' => 123);
 function has_nav_menu($location) { return false; }
 function wp_footer() {}
 ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $html = ob_get_clean();
 check(str_contains($html, 'Since 2022 · 123 Days'), 'rendered dynamic English footer');
 check(str_contains($html, '&lt;Fixture&gt;'), 'footer escaping retained');
-$GLOBALS['uptime_days'] = 1;
+$cache['zen_site_uptime']['days'] = 1;
 ob_start(); require dirname(__DIR__) . '/theme/zen/footer.php'; $singular = ob_get_clean();
 check(str_contains($singular, 'Since 2022 · 1 Day</div>'), 'singular English uptime');
 define('HOUR_IN_SECONDS', 3600);
@@ -71,16 +74,17 @@ function the_title() { echo 'Archive'; }
 function get_option($key) { return ''; }
 function get_the_title($post) { return 'Post'; }
 function get_permalink($post) { return '/post/7'; }
-function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026年10月5日'; }
+function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026-10-05'; }
+function esc_attr($value) { return esc_html($value); }
 function wp_reset_postdata() {}
 class WP_Query {
     public $posts; public $max_num_pages = 1;
     public function __construct($args) { $this->posts = array((object) array('ID' => 7)); $GLOBALS['archive_queries'] = ($GLOBALS['archive_queries'] ?? 0) + 1; }
 }
-$cache['zen_archives_public_posts'] = array(array('id' => 7, 'date' => '10-05'));
+$cache['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7, 'date' => '2025年4月1日')));
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; $html = ob_get_clean();
-check(str_contains($html, '2026年10月5日') && !str_contains($html, '>10-05<'), 'legacy cache safely rebuilt');
+check(str_contains($html, '2026年10月5日') && !str_contains($html, '2025年4月1日'), 'legacy cache safely rebuilt');
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; ob_end_clean();
-check($GLOBALS['archive_queries'] === 1, 'warm v2 cache avoids rebuild');
+check($GLOBALS['archive_queries'] === 1, 'warm v3 cache avoids rebuild');
 
 echo "PASS audit closeout: $checks checks\n";

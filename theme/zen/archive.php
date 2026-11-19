@@ -1,12 +1,12 @@
 <?php get_header(); ?>
 <header class="zen-list-header">
-    <p class="text-sm text-gray-600 dark:text-gray-400"><?php
+    <p class="zen-kicker"><?php
         if (is_category()) echo '分类';
         elseif (is_tag()) echo '标签';
         elseif (is_author()) echo '作者';
         else echo '归档';
     ?></p>
-    <h1 class="zen-list-title font-bold serif"><?php
+    <h1 class="zen-list-title"><?php
         if (is_category()) echo esc_html(single_cat_title('', false));
         elseif (is_tag()) echo esc_html(single_tag_title('', false));
         elseif (is_author()) echo esc_html(get_the_author());

@@ -12,7 +12,10 @@ function get_option($key,$default=false){return $default;}
 function get_post_type($id){return 'post';}
 function get_the_title($post){return 'Post '.$post->ID;}
 function get_permalink($post){return '/post/'.$post->ID;}
-function get_the_date($format,$post){return '2026';}
+function get_the_date($format,$post){return $format === 'Y' ? '2026' : '2026-10-19';}
+function esc_attr($value){return esc_html($value);}
+require ABSPATH.'inc/options.php';
+require ABSPATH.'inc/template-tags.php';
 function wp_reset_postdata(){}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}
 function esc_url($value){return esc_html($value);}
 class WP_Query {

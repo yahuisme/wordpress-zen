@@ -4,9 +4,8 @@ Template Name: Archives Template
 */
 get_header(); ?>
 
-<header class="zen-article-header zen-reading-shell">
-    <h1 class="text-3xl font-bold mb-2 serif"><?php the_title(); ?></h1>
-
+<header class="zen-article-header zen-archive-heading">
+    <h1 class="zen-article-title"><?php the_title(); ?></h1>
 </header>
 
 <?php if (post_password_required()) : ?>
@@ -17,7 +16,7 @@ get_header(); ?>
 <div class="zen-archives-directory zen-reading-shell">
     <?php
     $archive_context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-    $archives_cache = get_transient('zen_archives_public_posts_v2');
+    $archives_cache = get_transient('zen_archives_public_posts_v3');
     $archives_cache = is_array($archives_cache) ? $archives_cache : array();
     $archives_posts = $archives_cache[$archive_context] ?? false;
 
@@ -45,7 +44,7 @@ get_header(); ?>
                     'title' => get_the_title($archive_post),
                     'url' => get_permalink($archive_post),
                     'year' => get_the_date('Y', $archive_post),
-                    'date' => get_the_date('Y年n月j日', $archive_post),
+                    'date' => get_the_date('Y-m-d', $archive_post),
                 );
             }
 
@@ -58,10 +57,12 @@ get_header(); ?>
         // Keep language variants under one invalidation boundary; discard legacy flat rows.
         $archives_cache = array_filter($archives_cache, 'is_string', ARRAY_FILTER_USE_KEY);
         $archives_cache[$archive_context] = $archives_posts;
-        set_transient('zen_archives_public_posts_v2', $archives_cache, HOUR_IN_SECONDS);
+        set_transient('zen_archives_public_posts_v3', $archives_cache, HOUR_IN_SECONDS);
     }
 
     $year_prev = null;
+    // Cache the civil date, not its presentation, so switching styles takes effect immediately.
+    $date_format = zen_post_date_format('directory');
 
     if (!empty($archives_posts)) :
         foreach ($archives_posts as $archive_post) :
@@ -74,15 +75,18 @@ get_header(); ?>
                 <?php } ?>
 
                 <section>
-                    <h3 class="text-xl font-bold mb-4 text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-2"><?php echo esc_html($year_current); ?></h3>
+                    <h2 class="zen-archive-year"><?php echo esc_html($year_current); ?></h2>
                     <ul class="zen-post-list">
             <?php } ?>
 
             <li class="zen-archive-row zen-post-item flex items-baseline justify-between group">
-                <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link text-lg text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity">
+                <a href="<?php echo esc_url($archive_post['url']); ?>" class="zen-archive-link">
                     <?php echo esc_html($archive_post['title']); ?>
                 </a>
-                <span class="zen-meta-field text-sm text-gray-600 dark:text-gray-500"><?php echo esc_html($archive_post['date']); ?></span>
+                <?php $post_date = DateTimeImmutable::createFromFormat('!Y-m-d', $archive_post['date']); ?>
+                <?php if ($post_date) : ?>
+                    <time class="zen-post-date zen-meta-field" datetime="<?php echo esc_attr($archive_post['date']); ?>"><?php echo esc_html($post_date->format($date_format)); ?></time>
+                <?php endif; ?>
             </li>
 
             <?php $year_prev = $year_current; ?>

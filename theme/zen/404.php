@@ -1,7 +1,7 @@
 <?php get_header(); ?>
 <section class="zen-empty-state zen-reading-shell">
-    <p class="text-sm text-gray-600 dark:text-gray-400">404</p>
-    <h1 class="zen-list-title serif">页面未找到</h1>
+    <p class="zen-kicker">404</p>
+    <h1 class="zen-list-title">页面未找到</h1>
     <p>链接可能已失效，也可以搜索其他内容。</p>
     <div class="zen-inline-search"><?php get_search_form(); ?></div>
     <div class="zen-recovery-links">

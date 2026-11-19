@@ -6,8 +6,7 @@ if (post_password_required()) return;
     <div class="zen-comments-inner">
         <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p class="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">讨论</p>
-                <h2 class="serif text-3xl md:text-4xl font-bold leading-tight text-gray-900 dark:text-white">
+                <h2 class="zen-comments-title">
                     <?php
                     $comments_number = get_comments_number();
                     if (0 === (int) $comments_number) {
@@ -19,7 +18,7 @@ if (post_password_required()) return;
                 </h2>
             </div>
             <?php if (comments_open()) : ?>
-                <a href="#respond" class="zen-action-link text-sm dark:text-white">写评论 <i class="ph ph-arrow-down" aria-hidden="true"></i></a>
+                <a href="#respond" class="zen-action-link text-sm">写评论 <i class="ph ph-arrow-down" aria-hidden="true"></i></a>
             <?php endif; ?>
         </header>
 
@@ -65,7 +64,7 @@ if (post_password_required()) return;
                 'label_submit' => '发布评论',
                 'submit_button' => '<button name="%1$s" type="submit" id="%2$s" class="%3$s"><span>%4$s</span><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i></button>',
                 'title_reply' => '写下评论',
-                'title_reply_before' => '<h3 id="reply-title" class="comment-reply-title serif text-xl font-bold text-gray-900 dark:text-white">',
+                'title_reply_before' => '<h3 id="reply-title" class="comment-reply-title text-xl">',
                 'title_reply_after' => '</h3>',
                 'title_reply_to' => '回复给 %s',
                 'cancel_reply_link' => '取消回复',

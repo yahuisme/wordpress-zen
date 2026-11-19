@@ -34,7 +34,7 @@ with sync_playwright() as p:
             nav = page.locator('.zen-category-nav')
             links = nav.locator('.zen-category-track > a')
             track = nav.locator('.zen-category-track')
-            upper = page.locator('.zen-site-intro')
+            upper = page.locator('.zen-masthead')
             if not upper.count():
                 upper = page.locator('.zen-site-header')
             upper_box = upper.bounding_box()

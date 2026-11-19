@@ -7,8 +7,8 @@ get_header();
 
 <div class="zen-reading-shell">
     <header class="zen-article-header">
-        <h1 class="zen-article-title font-bold text-gray-900 dark:text-white leading-tight serif"><?php the_title(); ?></h1>
-        <div class="zen-post-meta text-sm text-gray-600 dark:text-gray-400">
+        <h1 class="zen-article-title"><?php the_title(); ?></h1>
+        <div class="zen-post-meta">
             <?php $cat = zen_get_primary_category(); ?>
             <?php if ($cat) : ?>
             <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="zen-meta-field zen-meta-category zen-ui-link"><?php echo esc_html($cat->name); ?></a>
@@ -31,8 +31,8 @@ get_header();
         <h2 class="zen-toc-title">目录</h2>
         <nav id="toc-nav" class="custom-scrollbar" aria-label="桌面端目录导航"></nav>
     </aside>
-    <div id="toc-overlay" class="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0" aria-hidden="true"></div>
-    <aside id="drawer-toc" class="zen-toc-drawer fixed top-0 right-0 w-80 h-screen max-w-full z-[70] transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawer-toc-title" inert>
+    <div id="toc-overlay" class="fixed inset-0 bg-black/20 dark:bg-black/50 z-[60] hidden transition-opacity opacity-0" aria-hidden="true"></div>
+    <aside id="drawer-toc" class="zen-toc-drawer fixed top-0 right-0 w-80 h-screen max-w-full z-[70] transform translate-x-full transition-transform duration-300 flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawer-toc-title" inert>
         <div class="zen-toc-drawer-header flex items-center justify-between p-6">
             <h2 id="drawer-toc-title" class="font-bold">目录</h2>
             <button id="drawer-toc-close" type="button" class="zen-icon-btn" aria-label="关闭目录"><i class="ph ph-x text-xl" aria-hidden="true"></i></button>
@@ -96,7 +96,7 @@ get_header();
     <?php if (zen_get_option('zen_show_updated_date') || $zen_author !== '' || $zen_license_info) : ?>
     <aside class="zen-article-notes text-sm text-gray-600 dark:text-gray-400" aria-label="文章说明">
         <?php if (zen_get_option('zen_show_updated_date')) : ?>
-        <div>最后更新：<?php echo esc_html(get_the_modified_date('Y年n月j日')); ?></div>
+        <div>最后更新：<time class="zen-post-date" datetime="<?php echo esc_attr(get_the_modified_date('c')); ?>"><?php echo esc_html(get_the_modified_date(zen_post_date_format())); ?></time></div>
         <?php endif; ?>
         <?php if ($zen_author !== '') : ?><div>本文作者：<?php echo esc_html($zen_author); ?></div><?php endif; ?>
         <?php if ($zen_license_info) : ?>

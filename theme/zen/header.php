@@ -24,28 +24,28 @@
     <?php wp_head(); ?>
     <noscript><style>#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}</style></noscript>
 </head>
-<body <?php body_class('transition-colors duration-300 min-h-screen flex flex-col'); ?>>
+<body <?php body_class('min-h-screen flex flex-col'); ?>>
 <?php wp_body_open(); ?>
 
 <a href="#main-content" class="skip-link">跳至主要内容</a>
 
 <?php if (zen_get_option('zen_show_reading_progress')) : ?>
-<div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 h-1 bg-gray-900 dark:bg-white z-50 transition-all duration-100 ease-out w-0"></div>
+<div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 z-50 w-0"></div>
 <?php endif; ?>
 
-<header role="banner" class="zen-site-header w-full transition-colors backdrop-blur-md sticky top-0 z-40">
-    <div class="max-w-zen mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+<header role="banner" class="zen-site-header w-full sticky top-0 z-40">
+    <div class="max-w-zen mx-auto px-4 sm:px-6 flex items-center justify-between">
 
         <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-site-brand zen-ui-link" aria-label="<?php echo esc_attr(get_bloginfo('name') . ' - 首页'); ?>">
             <?php if (has_custom_logo()) : ?>
                 <?php echo wp_get_attachment_image((int) get_theme_mod('custom_logo'), 'full', false, array('class' => 'zen-site-logo', 'alt' => get_bloginfo('name'))); ?>
             <?php endif; ?>
-            <span class="zen-site-title font-serif font-bold"><?php echo esc_html(get_bloginfo('name')); ?></span>
+            <span class="zen-site-title font-serif"><?php echo esc_html(get_bloginfo('name')); ?></span>
         </a>
 
         <div class="zen-header-actions flex items-center">
 
-            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center font-medium text-gray-600 dark:text-gray-400">
+            <nav role="navigation" aria-label="主菜单" class="hidden md:flex items-center">
                 <?php
                 wp_nav_menu(array(
                     'theme_location' => 'primary',
@@ -92,13 +92,13 @@
     </div>
 
     <?php if (has_nav_menu('primary')) : ?>
-    <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute top-20 left-0 w-full p-4 shadow-lg animate-fade-in z-40" aria-hidden="true">
-        <nav aria-label="移动端菜单" class="flex flex-col gap-4 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
+    <div id="mobile-menu" class="zen-mobile-menu hidden md:hidden absolute left-0 w-full px-4 animate-fade-in z-40" aria-hidden="true">
+        <nav aria-label="移动端菜单" class="max-w-zen mx-auto text-sm">
             <?php
             wp_nav_menu(array(
                 'theme_location' => 'primary',
                 'container'      => false,
-                'menu_class'     => 'flex flex-col gap-4 list-none m-0 p-0',
+                'menu_class'     => 'zen-primary-menu flex flex-col list-none m-0 p-0',
                 'items_wrap'     => '<ul class="%2$s">%3$s</ul>',
                 'fallback_cb'    => false,
                 'depth'          => 1,
@@ -136,7 +136,7 @@
                 <i class="ph ph-x" aria-hidden="true"></i>
             </button>
 
-            <div class="zen-search-eyebrow">全站搜索</div>
+            <h2 class="zen-search-eyebrow">全站搜索</h2>
 
             <form role="search" method="get" class="zen-search-form" action="<?php echo esc_url(home_url('/')); ?>">
                 <label for="search-input" class="screen-reader-text">输入关键词进行搜索</label>
@@ -157,4 +157,4 @@
     </div>
 </div>
 
-<main id="main-content" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 py-10 transition-colors relative">
+<main id="main-content" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 relative">

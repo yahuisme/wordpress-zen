@@ -4,7 +4,7 @@
 
 <div class="zen-reading-shell">
     <header class="zen-article-header">
-        <h1 class="zen-article-title font-bold text-gray-900 dark:text-white leading-tight serif">
+        <h1 class="zen-article-title">
             <?php the_title(); ?>
         </h1>
     </header>

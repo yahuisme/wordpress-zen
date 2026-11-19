@@ -1,6 +1,6 @@
 <?php get_header(); ?>
 <header class="zen-list-header">
-    <h1 class="zen-list-title serif">搜索结果</h1>
+    <h1 class="zen-list-title">搜索结果</h1>
     <div class="zen-inline-search"><?php get_search_form(); ?></div>
     <?php global $wp_query; ?>
     <p class="text-sm text-gray-600 dark:text-gray-400"><?php echo esc_html(sprintf('找到 %d 篇文章', $wp_query->found_posts)); ?></p>

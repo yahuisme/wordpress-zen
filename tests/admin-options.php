@@ -57,6 +57,9 @@ test('new installations use conservative defaults and explicit legacy values sur
 });
 test('registered new options sanitize values and reject invalid numbers without losing saved settings', function () {
     zen_register_options();
+    foreach (array('zen_show_latest_card', 'zen_date_style') as $key) {
+        expect(isset($GLOBALS['settings'][$key]), "$key not registered");
+    }
     foreach (array('zen_reading_width', 'zen_list_style', 'zen_category_ids', 'zen_show_site_intro', 'zen_show_featured_image') as $key) {
         expect(isset($GLOBALS['settings'][$key]), "$key not registered");
     }
@@ -76,6 +79,10 @@ test('registered new options sanitize values and reject invalid numbers without 
     expect(zen_sanitize_category_ids('') === array(), 'empty categories must mean all');
     expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
     expect(zen_sanitize_font_family('bogus') === 'system', 'font fallback mismatch');
+    expect(zen_get_option('zen_show_latest_card') === 1 && zen_get_option('zen_date_style') === 'editorial', 'editorial defaults missing');
+    expect(zen_sanitize_date_style('editorial') === 'editorial' && zen_sanitize_date_style('classic') === 'classic', 'date enum mismatch');
+    $GLOBALS['options']['zen_date_style'] = 'classic';
+    expect(zen_sanitize_date_style(array('invalid')) === 'classic' && end($GLOBALS['errors'])['code'] === 'zen_date_style_invalid', 'invalid date style must retain prior choice');
     expect(zen_sanitize_copyright_license('bogus') === 'none', 'invalid license should not impose a license');
     $GLOBALS['caps']['unfiltered_html'] = false;
     $GLOBALS['options']['zen_code_head'] = '<script>saved()</script>';

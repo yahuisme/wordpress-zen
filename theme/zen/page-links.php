@@ -6,20 +6,22 @@ get_header(); ?>
 
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
-    <header class="zen-article-header zen-reading-shell">
-        <h1 class="text-3xl font-bold mb-6 serif"><?php the_title(); ?></h1>
-        <div class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto entry-content">
+    <header class="zen-article-header">
+        <h1 class="zen-article-title"><?php the_title(); ?></h1>
+    </header>
+    <div class="zen-reading-shell">
+        <div class="zen-directory-intro entry-content">
             <?php the_content(); ?>
         </div>
         <?php wp_link_pages(array(
             'before' => '<nav class="zen-page-links" aria-label="' . esc_attr__('正文分页', 'zen') . '">',
             'after' => '</nav>',
         )); ?>
-    </header>
+    </div>
 
     <?php if (post_password_required()) continue; ?>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-zen mx-auto mb-20">
+    <div class="zen-links-directory zen-reading-shell">
         <?php
         $bookmarks = get_bookmarks(array(
             'orderby' => 'name',
@@ -58,17 +60,17 @@ get_header(); ?>
                 $link_rel = implode(' ', array_unique(array_merge($rel_tokens, array('noopener', 'noreferrer'))));
                 $fallback_initial = function_exists('mb_substr') ? mb_substr($bookmark->link_name, 0, 1) : substr($bookmark->link_name, 0, 1);
                 ?>
-                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="<?php echo esc_attr($link_rel); ?>" class="zen-link-card group flex items-center p-4 rounded-lg transition-all"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr($bookmark->link_name . ' (在新窗口打开)'); ?>"<?php endif; ?>>
+                <a href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($link_target); ?>" rel="<?php echo esc_attr($link_rel); ?>" class="zen-link-card"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr($bookmark->link_name . ' (在新窗口打开)'); ?>"<?php endif; ?>>
                     <?php if ($bookmark->link_image) : ?>
-                        <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="" width="56" height="56" loading="lazy" decoding="async" class="w-14 h-14 rounded-full object-cover mr-4 grayscale group-hover:grayscale-0 transition-all duration-300">
+                        <img src="<?php echo esc_url($bookmark->link_image); ?>" alt="" width="40" height="40" loading="lazy" decoding="async" class="zen-link-avatar">
                     <?php else : ?>
-                        <div class="zen-link-avatar w-14 h-14 rounded-full flex items-center justify-center text-xl font-serif mr-4" aria-hidden="true">
+                        <div class="zen-link-avatar font-serif" aria-hidden="true">
                             <?php echo esc_html($fallback_initial); ?>
                         </div>
                     <?php endif; ?>
 
-                    <div class="flex-grow min-w-0">
-                        <h2 class="font-bold text-gray-900 dark:text-white transition-colors">
+                    <div class="min-w-0">
+                        <h2>
                             <?php echo esc_html($bookmark->link_name); ?>
                         </h2>
                         <?php if ($bookmark->link_description !== '') : ?>
@@ -80,7 +82,7 @@ get_header(); ?>
                 <?php
             }
         } else {
-            echo '<p class="text-center w-full text-gray-600 dark:text-gray-400 col-span-2 py-8">暂未添加友情链接。</p>';
+            echo '<p class="zen-empty-state">' . esc_html__('暂未添加友情链接。', 'zen') . '</p>';
         }
         ?>
     </div>
