@@ -314,11 +314,13 @@ body .font-serif {
 .blog .zen-post-list .zen-post-title { grid-area: title; font-size: 1.35rem; }
 .blog .zen-post-list .zen-post-excerpt { grid-area: excerpt; }
 .blog .zen-post-list .zen-post-date { white-space: normal; overflow-wrap: anywhere; }
+.home.blog .zen-post-list .zen-post-date { white-space: nowrap; }
 .zen-index-date span { display: block; }
 .zen-index-date span:first-child { color: var(--zen-secondary); }
 .zen-index-date span:last-child { color: var(--zen-muted); font-size: 0.75rem; }
 @media (max-width: 767px) {
     .blog .zen-post-list > .zen-post-item { grid-template-columns: 56px minmax(0, 1fr); column-gap: 16px; }
+    .home.blog .zen-post-list > .zen-post-item { grid-template-columns: 84px minmax(0, 1fr); }
     .blog .zen-post-list .zen-post-title { font-size: 1rem; }
     .zen-post-list > article .zen-post-excerpt { -webkit-line-clamp: 2; }
 }

@@ -26,13 +26,14 @@ function __($value, $domain = '') { return $value; }
 function esc_attr__($value, $domain = '') { return esc_attr($value); }
 function zen_get_option($name) { return $GLOBALS['options'][$name] ?? array('zen_list_style' => 'standard', 'zen_excerpt_length' => 100)[$name] ?? 0; }
 function is_home() { return true; }
+function is_front_page() { return $GLOBALS['is_front_page'] ?? false; }
 function is_paged() { return $GLOBALS['paged'] ?? false; }
 function esc_html_e($value, $domain = '') { echo esc_html($value); }
 function is_search() { return $GLOBALS['is_search']; }
 function the_ID() { echo '7'; }
 function post_class($classes) { echo 'class="' . esc_attr($classes) . '"'; }
 function get_the_category() { return array(); }
-function get_the_date($format = '', $post = null) { return date($format ?: 'Y-m-d', strtotime('2026-10-05')); }
+function get_the_date($format = '', $post = null) { return gmdate($format ?: 'Y-m-d', strtotime($GLOBALS['fixture_date'] ?? '2026-10-05')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
 function get_the_title($post = null) { return $GLOBALS['fixture_title'] ?? '清晰的文章标题'; }
@@ -141,6 +142,23 @@ test('selected category order is preserved and all uses native posts page', func
     $GLOBALS['category_archive'] = false;
 });
 function wp_date($format) { return $format === 'Y' ? '2026' : ''; }
+test('only the homepage list uses the full dotted date for current-year posts', function () {
+    $conditions = array(
+        array(true, '2026-08-04', '2026.08.04'),
+        array(true, '2025-12-15', '2025.12.15'),
+        array(false, '2026-08-04', '<span>8月</span> <span>4日</span>'),
+    );
+    try {
+        foreach ($conditions as [$front, $date, $display]) {
+            $GLOBALS['is_front_page'] = $front;
+            $GLOBALS['fixture_date'] = $date . 'T12:00:00Z';
+            $html = render('template-parts/content-excerpt.php', array('editorial_index' => true));
+            check(str_contains($html, 'datetime="' . $date . 'T12:00:00+00:00">' . $display . '</time>'), ($front ? 'homepage' : 'separate posts page') . ' date mismatch: ' . $date);
+        }
+    } finally {
+        unset($GLOBALS['is_front_page'], $GLOBALS['fixture_date']);
+    }
+});
 test('published date is compact Chinese and field cannot wrap internally', function () {
     $html = capture('zen_posted_on_link');
     check(str_contains($html, '2026.10.05') && str_contains($html, '2026年10月5日'), 'visible date and accessible label must use their intended formats');

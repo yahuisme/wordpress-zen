@@ -53,16 +53,19 @@ with sync_playwright() as p:
                 assert card.get_attribute('id') not in items.evaluate_all('items => items.map(i => i.id)')
                 assert card.locator('time').get_attribute('datetime') > items.first.locator('time').get_attribute('datetime')
             for date in items.locator('.zen-post-date').all():
-                assert_date(date, 'list')
+                assert_date(date, 'home')
+            page.evaluate('document.fonts.ready.then(() => true)')
             geom = items.evaluate_all('''items => items.map(item => {
                 const bounds = s => item.querySelector(s).getBoundingClientRect();
-                const [title, text, date] = ['h2', '.zen-post-excerpt', 'time'].map(bounds);
+                const [title, text] = ['h2', '.zen-post-excerpt'].map(bounds);
+                const date = document.createRange();
+                date.selectNodeContents(item.querySelector('time'));
                 return {titleX:title.x, excerptX:text.x, titleWidth:title.width, excerptWidth:text.width,
-                        dateRight:date.right};
+                        dateRight:date.getBoundingClientRect().right, dateLines:date.getClientRects().length};
             })''')
             for row in geom:
                 assert abs(row['titleX']-row['excerptX']) < 1 and abs(row['titleWidth']-row['excerptWidth']) < 1, row
-                assert row['titleX'] >= row['dateRight'] + 12, row
+                assert row['dateLines'] == 1 and row['titleX'] >= row['dateRight'] + 12, row
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     if '--settings' in sys.argv:
         fixture_ids = json.loads((fixture / 'fixture.json').read_text())
@@ -90,7 +93,7 @@ with sync_playwright() as p:
             assert page.locator(f'.zen-post-list > #{latest}').count() == 1
             assert set(page.locator('main article[id^=post-]').evaluate_all('items => items.map(i => i.id)')) == set(post_ids)
             for path, date_selector, date_context in [
-                ('', '.zen-post-list .zen-post-date', 'list'),
+                ('', '.zen-post-list .zen-post-date', 'home'),
                 ('?s=WordPress', '.zen-post-list .zen-post-date', 'list'),
                 ('?page_id=' + str(fixture_ids['archives']), '.zen-archives-directory .zen-post-date', 'directory'),
                 ('?p=' + str(fixture_ids['normal']), '.zen-article-header .zen-post-date', 'full'),
