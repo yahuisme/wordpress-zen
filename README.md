@@ -2,7 +2,7 @@
 
 专注排版、留白与阅读的 WordPress 博客主题，使用原生文章、页面、评论和友链数据，无需配套插件或构建步骤。
 
-> **版本选择：** [1.6.5](https://github.com/yahuisme/wordpress-zen/releases/tag/v1.6.5) 与 [2.0.0](https://github.com/yahuisme/wordpress-zen/releases/tag/v2.0.0) 的所有 UI 设计完全不同；2.0.0 经过整体重构，可按需选择。
+> **版本选择：** V2 版本经过了整体重构，与 V1 版本的 UI 设计完全不同，v1.6.5 是 V1 版本的最终版，具体差异请自行安装测试，按需选择。
 
 ![Zen 首页截图](theme/zen/screenshot.jpg)
 
