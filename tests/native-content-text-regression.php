@@ -121,7 +121,7 @@ try {
     content_native_check(!zen_has_code_blocks(), 'locked article detector short circuits');
     content_native_assets(false, 'locked article');
     $locked_html = content_native_single();
-    content_native_check(!str_contains($locked_html, '浏览次数') && !str_contains($locked_html, '阅读时间'), 'locked post hides both reading metrics');
+    content_native_check(!str_contains($locked_html, '浏览次数') && !str_contains($locked_html, '预计阅读'), 'locked post hides both reading metrics');
     require_once ABSPATH . WPINC . '/class-phpass.php';
     $hasher = new PasswordHash(8, true);
     $_COOKIE['wp-postpass_' . COOKIEHASH] = $hasher->HashPassword('fixture-pass');
@@ -130,7 +130,7 @@ try {
     content_native_query($id);
     content_native_assets(true, 'cookie-unlocked article');
     $unlocked_html = content_native_single();
-    content_native_check(!str_contains($unlocked_html, '浏览次数') && str_contains($unlocked_html, '阅读时间'), 'unlock restores reading time but does not enable tracking');
+    content_native_check(!str_contains($unlocked_html, '浏览次数') && str_contains($unlocked_html, '预计阅读'), 'unlock restores reading time but does not enable tracking');
     unset($_COOKIE['wp-postpass_' . COOKIEHASH]);
     $pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' => $code));
     foreach (array('classic' => '<pre><code>public code</code></pre>', 'core block' => $code, 'synced block' => '<!-- wp:block {"ref":' . $pattern . '} /-->') as $label => $body) {

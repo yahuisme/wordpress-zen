@@ -169,6 +169,42 @@ async function page(t, html, prepare = () => {}) {
     return { window, document, observers, flush, press };
 }
 
+function archiveMarkup(count) {
+    return `<div id="zen-archive-years">${Array.from({ length: count }, (_, index) => `
+        <section class="zen-archive-group"><h2 class="zen-archive-year">${2026 - index}</h2>
+            <details class="zen-archive-month" open><summary>10 月</summary><a href="/post/${index}">文章</a></details>
+        </section>`).join('')}</div>
+        ${count > 2 ? '<button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years">查看更早年份</button>' : ''}`;
+}
+
+test('archive year disclosure reveals two at a time and keeps focus on newly revealed content', async t => {
+    const { document } = await page(t, archiveMarkup(11));
+    const years = [...document.querySelectorAll('.zen-archive-group')];
+    const more = document.querySelector('.zen-archive-more');
+    const visible = () => years.filter(year => !year.hidden).length;
+    assert.equal(visible(), 2);
+    assert.equal(more.hidden, false);
+    const monthStates = [...document.querySelectorAll('details')].map(month => month.open);
+    assert.ok(monthStates.every(Boolean), 'months in every year start expanded');
+    for (const [expected, first] of [[4, 2], [6, 4], [8, 6], [10, 8], [11, 10]]) {
+        more.focus();
+        more.click();
+        assert.equal(visible(), expected);
+        assert.equal(document.activeElement, years[first].querySelector('h2'));
+        assert.equal(more.hidden, expected === 11);
+    }
+    assert.deepEqual([...document.querySelectorAll('details')].map(month => month.open), monthStates, 'revealing years does not change month expansion');
+    assert.equal(document.querySelectorAll('#zen-archive-years a').length, 11, 'all article links stay in the DOM');
+});
+
+for (const count of [0, 1, 2]) {
+    test(`archive year disclosure leaves a short ${count}-year index fully available`, async t => {
+        const { document } = await page(t, archiveMarkup(count));
+        assert.equal(document.querySelectorAll('.zen-archive-group[hidden]').length, 0);
+        assert.equal(document.querySelector('.zen-archive-more'), null);
+    });
+}
+
 // jsdom has no layout/scroll engine: double only rail geometry and native scrolling.
 // Focus, focusin/out, shipped click handlers and hidden state remain real DOM behavior.
 async function categoryPage(t, direction) {

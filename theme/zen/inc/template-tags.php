@@ -33,7 +33,18 @@ function zen_get_directory_url($template) {
         'hierarchical' => false,
         'number' => 1,
     ));
-    return !empty($pages) ? get_permalink($pages[0]->ID) : '';
+    if (!empty($pages)) {
+        return get_permalink($pages[0]->ID);
+    }
+
+    // Core also selects page-{slug}.php for root pages using the default template.
+    $slug = substr(basename($template), 5, -4);
+    $page = get_page_by_path($slug, 'OBJECT', array('page'));
+    if (!$page || $page->post_status !== 'publish') {
+        return '';
+    }
+    $assigned = get_page_template_slug($page);
+    return ($assigned === '' || $assigned === false || $assigned === 'default') ? get_permalink($page) : '';
 }
 
 function zen_get_posts_url() {
@@ -248,19 +259,18 @@ function zen_kses_link($html) {
 }
 
 function zen_pagination() {
-    $pages = paginate_links(array(
-        'prev_text' => '<span aria-hidden="true">&larr;</span><span class="screen-reader-text">上一页</span>',
-        'next_text' => '<span class="screen-reader-text">下一页</span><span aria-hidden="true">&rarr;</span>',
-        'type' => 'array',
-    ));
+    global $wp_query;
+    if ($wp_query->max_num_pages < 2) return;
 
-    if (is_array($pages)) {
-        echo '<nav class="zen-pagination" aria-label="分页导航">';
-        foreach ($pages as $page) {
-            echo zen_kses_link($page);
-        }
-        echo '</nav>';
-    }
+    // Core owns the current query, page limits and canonical first-page URL.
+    $previous = get_previous_posts_link('<span aria-hidden="true">&larr;</span> ' . esc_html__('上一页', 'zen'));
+    $next = get_next_posts_link(esc_html__('下一页', 'zen') . ' <span aria-hidden="true">&rarr;</span>');
+    if (!$previous && !$next) return;
+
+    echo '<nav class="zen-pagination" aria-label="' . esc_attr__('分页导航', 'zen') . '">';
+    if ($previous) echo '<div class="zen-pagination-prev">' . zen_kses_link($previous) . '</div>';
+    if ($next) echo '<div class="zen-pagination-next">' . zen_kses_link($next) . '</div>';
+    echo '</nav>';
 }
 
 function zen_clear_archives_cache() {

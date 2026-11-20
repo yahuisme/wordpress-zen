@@ -12,5 +12,5 @@
 # 防止测试依赖误入仓库；维护环境使用仓库外共享依赖
 node_modules/
 
-# Authorized, local-only Kai webfonts are never shipped in the public theme.
+# Kai webfonts are bundled into authorized Release assets outside Git.
 /theme/zen/assets/zen-kai/

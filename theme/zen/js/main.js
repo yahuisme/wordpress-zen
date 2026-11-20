@@ -89,6 +89,29 @@ const zenInit = () => {
         if (document.fonts) document.fonts.ready.then(update);
     });
 
+    const archiveYears = document.getElementById('zen-archive-years');
+    const archiveMore = document.querySelector('.zen-archive-more');
+    if (archiveYears && archiveMore) {
+        const years = [...archiveYears.querySelectorAll('.zen-archive-group')];
+        let shown = 2;
+        if (years.length > shown) {
+            archiveMore.addEventListener('click', () => {
+                const first = years[shown];
+                const next = Math.min(shown + 2, years.length);
+                for (; shown < next; shown++) years[shown].hidden = false;
+                const heading = first?.querySelector('.zen-archive-year');
+                if (heading) {
+                    heading.tabIndex = -1;
+                    heading.focus({ preventScroll: true });
+                }
+                archiveMore.hidden = shown >= years.length;
+            });
+            // Hide content only after the enhancement is ready; without JS every year remains reachable.
+            years.slice(shown).forEach(year => { year.hidden = true; });
+            archiveMore.hidden = false;
+        }
+    }
+
     const getStoredThemeMode = () => {
         try {
             const storedMode = window.localStorage.getItem(themeStorageKey);

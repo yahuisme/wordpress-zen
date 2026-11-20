@@ -1,7 +1,7 @@
 <?php
 /**
  * Native directory/password and public-cache regressions; no server/browser.
- * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary]
+ * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery]
  * Use a disposable local loopback Zen installation with outbound HTTP/mail blocked.
  */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1])) exit(2);
@@ -21,7 +21,7 @@ foreach (array('page-archives.php', 'page-links.php', 'page-tags.php', 'search.p
     }
 }
 $zen_directory_slice = $argv[2] ?? 'all';
-if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary'), true)) throw new RuntimeException('Unknown slice');
+if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery'), true)) throw new RuntimeException('Unknown slice');
 require_once ABSPATH . 'wp-admin/includes/bookmark.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 add_filter('pre_http_request', static function () { return new WP_Error('isolated', 'Outbound HTTP blocked'); }, 1);
@@ -333,6 +333,41 @@ function zen_directory_nested_link() {
         foreach ($existing as $page) update_post_meta($page->ID, '_wp_page_template', 'page-archives.php');
     }
 }
+function zen_directory_discovery() {
+    $templates = array('page-archives.php'=>'archives', 'page-tags.php'=>'tags', 'page-links.php'=>'links', 'page-notes.php'=>'notes');
+    $saved = array();
+    foreach (get_pages(array('post_status'=>'publish', 'hierarchical'=>false)) as $existing) {
+        $saved[$existing->ID] = array('slug'=>$existing->post_name, 'template'=>get_post_meta($existing->ID, '_wp_page_template', true));
+        if (in_array($saved[$existing->ID]['template'], array_keys($templates), true)) delete_post_meta($existing->ID, '_wp_page_template');
+        if (in_array($existing->post_name, array_values($templates), true) && !$existing->post_parent) wp_update_post(array('ID'=>$existing->ID, 'post_name'=>'fixture-existing-' . $existing->ID));
+    }
+    try {
+        foreach ($templates as $template=>$slug) {
+            $page = zen_directory_post(array('post_type'=>'page', 'post_name'=>$slug));
+            zen_directory_check(zen_get_directory_url($template) === get_permalink($page), "$slug default-template page remains discoverable");
+            foreach (array('draft', 'private') as $status) {
+                wp_update_post(array('ID'=>$page, 'post_status'=>$status));
+                zen_directory_check(zen_get_directory_url($template) === '', "$slug $status page is not offered");
+            }
+            wp_update_post(array('ID'=>$page, 'post_status'=>'publish'));
+            $other = $template === 'page-links.php' ? 'page-tags.php' : 'page-links.php';
+            update_post_meta($page, '_wp_page_template', $other);
+            zen_directory_check(zen_get_directory_url($template) === '', "$slug assigned another template is not offered");
+            delete_post_meta($page, '_wp_page_template');
+            $explicit = zen_directory_post(array('post_type'=>'page', 'post_name'=>'explicit-' . $slug));
+            update_post_meta($explicit, '_wp_page_template', $template);
+            zen_directory_check(zen_get_directory_url($template) === get_permalink($explicit), "$slug explicitly assigned template has priority");
+            wp_delete_post($explicit, true);
+            wp_delete_post($page, true);
+        }
+    } finally {
+        foreach ($saved as $id=>$state) {
+            wp_update_post(array('ID'=>$id, 'post_name'=>$state['slug']));
+            if ($state['template'] !== '') update_post_meta($id, '_wp_page_template', $state['template']);
+            else delete_post_meta($id, '_wp_page_template');
+        }
+    }
+}
 function zen_directory_equal_dates() {
     $page = zen_directory_post(array('post_type'=>'page'));
     $ids = array();
@@ -415,6 +450,7 @@ function zen_directory_secondary() {
 }
 try {
     wp_set_current_user(0);
+    if (in_array($zen_directory_slice, array('all', 'discovery'), true)) zen_directory_discovery();
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
     if (in_array($zen_directory_slice, array('all', 'author'), true)) zen_directory_author();
     if (in_array($zen_directory_slice, array('all', 'lifecycle'), true)) {

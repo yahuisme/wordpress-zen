@@ -21,7 +21,7 @@ get_header();
             <span class="zen-meta-field">浏览次数 <span id="zen-reading-count" class="zen-reading-count" data-post-id="<?php echo esc_attr(get_the_ID()); ?>"><?php echo esc_html(number_format_i18n(zen_get_reading_count())); ?></span></span>
             <?php endif; ?>
             <?php if (zen_get_option('zen_show_reading_time') && !post_password_required()) : ?>
-            <span class="zen-meta-field">阅读时间 <?php echo esc_html(zen_get_reading_time()); ?> 分钟</span>
+            <span class="zen-meta-field">预计阅读 <?php echo esc_html(zen_get_reading_time()); ?> 分钟</span>
             <?php endif; ?>
         </div>
         <?php if ($zen_show_toc) : ?>

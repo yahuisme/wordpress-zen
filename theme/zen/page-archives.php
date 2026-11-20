@@ -78,8 +78,8 @@ if (!$archive_locked) {
         $archive_years[$archive_post['year']][substr($archive_post['date'], 5, 2)][] = $archive_post;
     }
     $date_format = zen_post_date_format('directory');
-    $open_month = true;
     ?>
+    <div id="zen-archive-years">
     <?php foreach ($archive_years as $year => $months) : ?>
         <section class="zen-archive-group">
             <header class="zen-archive-year-head">
@@ -87,7 +87,7 @@ if (!$archive_locked) {
                 <p class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), array_sum(array_map('count', $months)))); ?></p>
             </header>
             <?php foreach ($months as $month => $rows) : ?>
-                <details class="zen-archive-month"<?php if ($open_month) echo ' open'; ?>>
+                <details class="zen-archive-month" open>
                     <summary>
                         <span class="zen-archive-month-label"><?php echo esc_html(sprintf(__('%d 月', 'zen'), (int) $month)); ?></span>
                         <span class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), count($rows))); ?></span>
@@ -108,12 +108,18 @@ if (!$archive_locked) {
                         <?php endforeach; ?>
                     </ul>
                 </details>
-                <?php $open_month = false; ?>
             <?php endforeach; ?>
         </section>
     <?php endforeach; ?>
     <?php if (!$archive_years) : ?>
         <p class="zen-empty-state"><?php echo esc_html(__('暂无文章。', 'zen')); ?></p>
+    <?php endif; ?>
+    </div>
+    <?php if (count($archive_years) > 2) : ?>
+        <button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years">
+            <span><?php esc_html_e('查看更早年份', 'zen'); ?></span>
+            <span aria-hidden="true">↓</span>
+        </button>
     <?php endif; ?>
 </div>
 

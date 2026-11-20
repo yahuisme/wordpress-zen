@@ -1,6 +1,7 @@
 """Whole theme page geometry and task interactions, real loopback WordPress."""
 from pathlib import Path
 import json,sys,subprocess
+from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 r=Path(sys.argv[1]).resolve();f=json.loads((r/'fixture.json').read_text());o='http://127.0.0.1:18765';out=r/'evidence';rows=[];errors=[]
 tag_url=subprocess.check_output(['php','/opt/test-tools/wordpress/wp-cli.phar','--allow-root','--path='+str(r/'runtime'),'eval','echo get_tag_link('+str(int(f['tag']))+');'],text=True).strip()
@@ -37,9 +38,10 @@ with sync_playwright() as p:
      assert page.locator('.zen-footer-navigation li + li').evaluate_all("es=>es.every(e=>getComputedStyle(e,'::before').content==='none')"),'Wrapped footer rows must not start with orphan separators'
     if name in ('list-page-2','search-page-2'):
      nav=page.get_by_role('navigation',name='分页导航')
-     assert nav.locator('[aria-current="page"]').inner_text()=='2', name
+     assert nav.locator('.page-numbers, [aria-current="page"]').count()==0, name
+     assert 1<=nav.get_by_role('link').count()<=2, name
      previous=nav.get_by_role('link',name='上一页')
-     assert previous.get_attribute('href').startswith(o+'/'), name
+     assert urlsplit(previous.get_attribute('href')).netloc==urlsplit(o).netloc, name
      assert '/page/1/' not in previous.get_attribute('href') and 'paged=1' not in previous.get_attribute('href'), name
      if name=='search-page-2': assert 's=WordPress' in previous.get_attribute('href'), name
      assert all(a.bounding_box()['height']>=44 for a in nav.get_by_role('link').all()), name

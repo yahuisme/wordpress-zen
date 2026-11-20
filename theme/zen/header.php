@@ -38,7 +38,7 @@
 
         <a href="<?php echo esc_url(home_url('/')); ?>" class="zen-site-brand zen-ui-link" aria-label="<?php echo esc_attr(get_bloginfo('name') . ' - 首页'); ?>">
             <?php if (has_custom_logo()) : ?>
-                <?php echo wp_get_attachment_image((int) get_theme_mod('custom_logo'), 'full', false, array('class' => 'zen-site-logo', 'alt' => get_bloginfo('name'))); ?>
+                <?php echo wp_get_attachment_image((int) get_theme_mod('custom_logo'), 'full', false, array('class' => 'zen-site-logo', 'alt' => get_bloginfo('name'), 'sizes' => '(max-width: 639.98px) 56px, 120px')); ?>
             <?php endif; ?>
             <span class="zen-site-title"><?php echo esc_html(get_bloginfo('name')); ?></span>
         </a>

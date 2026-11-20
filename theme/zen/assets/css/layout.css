@@ -662,36 +662,38 @@ body .font-serif {
     margin: 0;
 }
 .zen-pagination {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
     margin-top: 32px;
 }
-.zen-pagination .page-numbers {
+.zen-pagination-prev {
+    grid-column: 1;
+    justify-self: start;
+}
+.zen-pagination-next {
+    grid-column: 2;
+    justify-self: end;
+}
+.zen-pagination a {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
     min-width: 44px;
     min-height: 44px;
-    padding-inline: 8px;
-    border: 1px solid var(--zen-border);
-    border-radius: 4px;
+    padding-block: 8px;
     color: var(--zen-muted);
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
+    font: 400 0.875rem/1.5 var(--zen-font-ui);
+    text-decoration: none;
 }
 .zen-pagination a:hover {
-    background-color: var(--zen-border-soft);
     color: var(--zen-text);
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
 }
-.zen-pagination .current {
-    border-color: transparent;
-    background-color: var(--zen-accent);
-    color: var(--zen-on-accent);
-}
-.zen-pagination .dots {
-    border-color: transparent;
+.zen-pagination a:focus-visible {
+    outline: 2px solid var(--zen-accent);
+    outline-offset: 4px;
 }
 .zen-page-links .post-page-numbers {
     display: flex;

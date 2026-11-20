@@ -63,7 +63,7 @@ while (have_posts()) : the_post();
         <?php zen_content_page_links(); ?>
         <?php if ($tag_directory) : ?>
             <p class="zen-directory-meta">
-                <?php echo esc_html(sprintf(__('共 %d 个主题', 'zen'), count($tag_directory))); ?>
+                <?php echo esc_html(sprintf(__('共 %d 个标签', 'zen'), count($tag_directory))); ?>
                 <?php if ($latest_tagged_post) : ?>
                     <span aria-hidden="true">·</span>
                     <?php esc_html_e('最近发布', 'zen'); ?>

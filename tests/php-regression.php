@@ -3,7 +3,7 @@
  * Run: php tests/php-regression.php
  * Executes theme PHP with small, explicit WordPress boundary doubles. No DB,
  * HTTP, core installation or downloaded dependencies. Browser/core acceptance
- * remains separate; pagination markup below models paginate_links() output.
+ * remains separate; list pagination links below are explicit Core boundary fixtures.
  */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['zen_test_hooks'] = array();
@@ -51,26 +51,67 @@ function get_option($key, $default = false) { return $GLOBALS['zen_test_options'
 function get_transient($key) { return $GLOBALS['zen_test_transients'][$key] ?? false; }
 function delete_transient($key) { unset($GLOBALS['zen_test_transients'][$key]); }
 function paginate_links($args) {
-    zen_expect(!array_intersect_key($args, array_flip(array('base', 'format', 'current', 'total'))), 'use Core pagination defaults');
-    return $GLOBALS['zen_test_pages'];
+    throw new RuntimeException('list pagination must not request numbered links');
+}
+// Trusted prebuilt links exercise theme rendering, not Core routing or URL generation.
+function get_previous_posts_link($label = null) {
+    $GLOBALS['zen_test_posts_link_calls'][] = array('previous', func_get_args());
+    $url = $GLOBALS['zen_test_previous_posts_url'] ?? null;
+    return $url === null ? null : '<a href="' . esc_url($url) . '">' . $label . '</a>';
+}
+function get_next_posts_link($label = null, $max_page = 0) {
+    $GLOBALS['zen_test_posts_link_calls'][] = array('next', func_get_args());
+    $url = $GLOBALS['zen_test_next_posts_url'] ?? null;
+    return $url === null ? null : '<a href="' . esc_url($url) . '">' . $label . '</a>';
 }
 
 require ABSPATH . 'inc/template-tags.php';
 require ABSPATH . 'inc/options.php';
 
-zen_test('search pagination preserves concurrent links and only marks the current node', function () {
-    $GLOBALS['wp_query'] = (object) array('max_num_pages' => 3);
-    $GLOBALS['zen_test_pages'] = array(
-        '<span aria-current="page" class="page-numbers current">1</span>',
-        '<a class="page-numbers" href="https://example.test/?s=concurrent&amp;paged=2">2</a>',
-        '<span class="page-numbers dots">&hellip;</span>',
-        '<a class="next page-numbers" href="https://example.test/?s=concurrent&amp;paged=3">Next</a>',
-    );
-    $html = zen_capture('zen_pagination');
-    zen_expect(substr_count($html, '<a ') === 2, 'search URLs were converted into non-clickable spans');
-    zen_expect(substr_count($html, 'aria-current=') === 1, 'exactly one current page expected');
-    zen_expect(str_contains($html, 'dots'), 'ellipsis must remain non-current');
-});
+foreach (array(
+    'first' => array(3, null, 'https://example.test/?s=concurrent+links&paged=2'),
+    'middle' => array(3, 'https://example.test/?s=concurrent+links', 'https://example.test/?s=concurrent+links&paged=3'),
+    'last' => array(3, 'https://example.test/?s=concurrent+links&paged=2', null),
+    'single' => array(1, null, null),
+    'empty' => array(0, null, null),
+) as $state => $fixture) {
+    zen_test("list pagination $state renders only available native text links", function () use ($fixture) {
+        [$total, $previous, $next] = $fixture;
+        $GLOBALS['wp_query'] = (object) array('max_num_pages' => $total);
+        $GLOBALS['zen_test_previous_posts_url'] = $previous;
+        $GLOBALS['zen_test_next_posts_url'] = $next;
+        $GLOBALS['zen_test_posts_link_calls'] = array();
+        $html = zen_capture('zen_pagination');
+        if ($total < 2) {
+            zen_expect(trim($html) === '', 'single or empty list must not render a navigation wrapper');
+            return;
+        }
+        zen_expect(substr_count($html, '<nav ') === 1 && str_contains($html, 'aria-label="分页导航"'), 'one named pagination landmark required');
+        zen_expect(substr_count($html, '<a ') === (int) ($previous !== null) + (int) ($next !== null), 'missing directions must be omitted, not replaced by disabled links');
+        zen_expect(!preg_match('/page-numbers|aria-current|aria-disabled|screen-reader-text|&hellip;/', $html), 'numbered, disabled or hidden-only pagination remains');
+        $calls = $GLOBALS['zen_test_posts_link_calls'];
+        zen_expect(array_column($calls, 0) === array('previous', 'next'), 'both directions must use native posts-link helpers');
+        zen_expect(count($calls[0][1]) === 1 && count($calls[1][1]) === 1, 'Core must retain current query and page-count ownership');
+        foreach (array('prev' => $previous, 'next' => $next) as $direction => $url) {
+            $class = 'zen-pagination-' . $direction;
+            if ($url === null) {
+                zen_expect(!str_contains($html, $class), 'missing direction must not reserve a disabled placeholder');
+                continue;
+            }
+            zen_expect((bool) preg_match('~<div class="' . $class . '">\s*(<a\b[^>]*>.*?</a>)\s*</div>~s', $html, $match), "$direction native link needs a stable alignment slot");
+            $link = $match[1];
+            $label = $direction === 'prev' ? '上一页' : '下一页';
+            $arrow = $direction === 'prev' ? '←' : '→';
+            zen_expect(str_contains($link, 'href="' . esc_url($url) . '"'), "$direction query or canonical URL changed");
+            zen_expect((bool) preg_match('~<span aria-hidden="true">(?:&[a-z]+;|' . $arrow . ')</span>~', $link), "$direction decorative arrow must be hidden from assistive technology");
+            $visible = preg_replace('~<span aria-hidden="true">.*?</span>~s', '', $link);
+            zen_expect(trim(strip_tags($visible)) === $label, "$direction must show an ordinary text label");
+        }
+        if ($previous !== null && $next !== null) {
+            zen_expect(strpos($html, 'zen-pagination-prev') < strpos($html, 'zen-pagination-next'), 'previous must precede next in keyboard order');
+        }
+    });
+}
 
 foreach (array('add', 'update', 'delete') as $operation) {
     zen_test("$operation start date invalidates populated uptime cache", function () use ($operation) {

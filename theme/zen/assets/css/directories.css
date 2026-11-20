@@ -68,6 +68,25 @@
 .zen-archive-heading.zen-directory-heading { width: auto; }
 .zen-archives-directory { margin-block-start: 48px; }
 .zen-archive-group + .zen-archive-group { margin-block-start: 40px; }
+.zen-archive-group[hidden],
+.zen-archive-more[hidden] { display: none; }
+.zen-archive-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 32px auto 0;
+    padding: 8px 16px;
+    border: 0;
+    background: transparent;
+    color: var(--zen-accent);
+    font: 400 1rem/1.5 var(--zen-font-body);
+    cursor: pointer;
+}
+.zen-archive-more:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+.zen-archive-more:focus-visible,
+.zen-archive-year:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
 .zen-archive-year-head {
     display: flex;
     align-items: baseline;
@@ -202,8 +221,8 @@
 }
 .zen-tag-head .zen-directory-meta { flex: none; }
 .zen-tag-recent {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
     align-items: baseline;
     gap: 4px 8px;
     margin-block-start: 10px;
@@ -213,6 +232,7 @@
 }
 .zen-tag-recent a { color: var(--zen-text); }
 .zen-tag-recent time {
+    grid-column: 2;
     font-family: var(--zen-font-mono, monospace);
     white-space: nowrap;
 }
