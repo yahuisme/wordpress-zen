@@ -218,7 +218,7 @@ pre.wp-block-code:not(.entry-content pre) .hljs .hljs-section { color: #58a6ff; 
     max-width: var(--zen-reading-width);
 }
 .editor-styles-wrapper .wp-block[data-align="wide"] {
-    max-width: var(--zen-content-width, 992px);
+    max-width: var(--zen-content-width, 1000px);
 }
 .editor-styles-wrapper .wp-block[data-align="full"] {
     max-width: none;

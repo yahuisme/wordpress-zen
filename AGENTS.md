@@ -226,7 +226,7 @@ GitHub Actions（`.github/workflows/release.yml`）仅通过 `workflow_dispatch`
 
 工作流不创建提交、tag 或 Release；推送不会触发打包或发布。
 
-最低环境要求为 WordPress 6.5、PHP 8.0；`theme/zen/style.css`、`theme/zen/README.md` 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。
+最低环境要求为 WordPress 6.5、PHP 8.0；`theme/zen/style.css`、仓库根 `README.md` 与发布包校验保持一致，不添加未经实测的 `Tested up to` 声明。安装与使用说明只维护在根 README，不放入主题 ZIP。
 
 正式发布前检查对应 tag，已有版本不重复创建。发布包仅包含工作流白名单中的主题运行文件；测试、`.github/` 和 `AGENTS.md` 不会进入 ZIP。JavaScript 回归测试使用仓库外共享 `jsdom`，命令见 `tests/README.md`；仓库不维护 npm 清单或锁文件，主题运行时无需任何构建步骤。
 

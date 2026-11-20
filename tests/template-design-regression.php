@@ -25,7 +25,10 @@ function esc_url($value) { return esc_html($value); }
 function __($value, $domain = '') { return $value; }
 function esc_attr__($value, $domain = '') { return esc_attr($value); }
 function esc_attr_e($value, $domain = '') { echo esc_attr__($value, $domain); }
-function zen_get_option($name) { return $GLOBALS['options'][$name] ?? array('zen_list_style' => 'standard', 'zen_excerpt_length' => 100)[$name] ?? 0; }
+function zen_get_option($name) {
+    if ($name === 'zen_category_ids') $GLOBALS['category_option_reads']++;
+    return $GLOBALS['options'][$name] ?? array('zen_list_style' => 'standard', 'zen_excerpt_length' => 100)[$name] ?? 0;
+}
 function is_home() { return true; }
 function is_front_page() { return $GLOBALS['is_front_page'] ?? false; }
 function is_paged() { return $GLOBALS['paged'] ?? false; }
@@ -110,10 +113,11 @@ function get_category_link($id) { return '/category/' . $id . '/'; }
 function get_categories($args) {
     $GLOBALS['category_args'] = $args;
     $all = array();
-    foreach (range(1, 8) as $id) $all[] = (object) array('term_id' => $id, 'name' => '分类' . $id);
+    foreach (range(1, 8) as $id) $all[] = (object) array('term_id' => $id, 'name' => $id === 8 ? '<分类8>' : '分类' . $id, 'count' => $id === 7 ? 0 : 1);
     if (!empty($args['include'])) {
         $all = array_map(function ($id) use ($all) { return $all[$id - 1]; }, $args['include']);
     }
+    if (!empty($args['hide_empty'])) $all = array_values(array_filter($all, static fn($category) => $category->count > 0));
     return isset($args['number']) ? array_slice($all, 0, $args['number']) : $all;
 }
 test('home intro is optional and the index has no category strip', function () {
@@ -132,14 +136,20 @@ test('home intro is optional and the index has no category strip', function () {
     $GLOBALS['options']['zen_show_site_intro'] = 0;
     check(!str_contains(render('index.php'), '记录技术与日常'), 'disabled description still visible');
 });
-test('selected category order is preserved and all uses native posts page', function () {
+test('category navigation ignores legacy selections and uses every nonempty category and native posts page', function () {
     $GLOBALS['options']['zen_category_ids'] = array(7, 2, 5);
+    $GLOBALS['category_option_reads'] = 0;
     $GLOBALS['native_options'] = array('show_on_front' => 'page', 'page_for_posts' => 42);
     $GLOBALS['category_archive'] = true;
     $GLOBALS['loop_left'] = 0;
     $html = render('archive.php');
-    check(strpos($html, '分类7') < strpos($html, '分类2') && strpos($html, '分类2') < strpos($html, '分类5'), 'selected order changed');
-    check(!str_contains($html, '分类1') && str_contains($html, 'href="/post/42"'), 'selection or native posts URL lost');
+    check($GLOBALS['category_option_reads'] === 0, 'frontend still reads the retired category option');
+    check($GLOBALS['category_args'] === array('hide_empty' => true), 'navigation must use native nonempty categories without legacy include ordering');
+    foreach (array(1, 2, 3, 4, 5, 6, 8) as $id) check(str_contains($html, 'href="/category/' . $id . '/"'), "nonempty category $id missing");
+    check(!str_contains($html, 'href="/category/7/"') && str_contains($html, '&lt;分类8&gt;'), 'empty categories must stay absent and category names must be escaped');
+    check(strpos($html, '分类1') < strpos($html, '分类2') && str_contains($html, 'href="/post/42"'), 'native category ordering or posts URL lost');
+    check($GLOBALS['options']['zen_category_ids'] === array(7, 2, 5), 'rendering rewrote the legacy category row');
+    check(str_contains($html, 'zen-category-track') && str_contains($html, 'zen-category-prev') && str_contains($html, 'zen-category-next'), 'frontend category rail controls were removed');
     $GLOBALS['category_archive'] = false;
 });
 function wp_date($format) { return $format === 'Y' ? '2026' : ''; }

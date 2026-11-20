@@ -39,13 +39,24 @@ const zenInit = () => {
         if (!track || !prev || !next) return;
         const direction = getComputedStyle(track).direction === 'rtl' ? -1 : 1;
         nav.classList.toggle('is-rtl', direction === -1);
+        let preservingEdgeFocus = false;
         const update = () => {
             const padding = nav.classList.contains('has-overflow') ? 32 : 0;
             const overflowing = track.scrollWidth - padding > track.clientWidth + 1;
             nav.classList.toggle('has-overflow', overflowing);
             const offset = direction * track.scrollLeft;
-            prev.hidden = !overflowing || offset <= 1;
-            next.hidden = !overflowing || offset + track.clientWidth >= track.scrollWidth - 1;
+            const hidePrev = !overflowing || offset <= 1;
+            const hideNext = !overflowing || offset + track.clientWidth >= track.scrollWidth - 1;
+            const active = document.activeElement;
+            if ((hidePrev && active === prev) || (hideNext && active === next)) {
+                const links = track.querySelectorAll('a');
+                // Continue at the reached category before its focused arrow disappears.
+                preservingEdgeFocus = true;
+                links[active === prev ? 0 : links.length - 1]?.focus({ preventScroll: true });
+                preservingEdgeFocus = false;
+            }
+            prev.hidden = hidePrev;
+            next.hidden = hideNext;
         };
         const reveal = (link) => {
             const target = link.getBoundingClientRect();
@@ -62,7 +73,7 @@ const zenInit = () => {
         track.addEventListener('focusin', (event) => {
             if (!event.target.matches('a')) return;
             nav.classList.add('has-link-focus');
-            reveal(event.target);
+            if (!preservingEdgeFocus) reveal(event.target);
         });
         track.addEventListener('focusout', (event) => {
             if (!event.relatedTarget?.matches('a') || !track.contains(event.relatedTarget)) {
@@ -734,6 +745,12 @@ const zenInit = () => {
         let playAttempt = 0;
         const useNativeAudio = () => {
             ++playAttempt;
+            audio.removeEventListener('play', syncAudioButton);
+            audio.removeEventListener('pause', onAudioPause);
+            audio.removeEventListener('error', useNativeAudio);
+            audio.removeEventListener('timeupdate', updateAudioUI);
+            audio.removeEventListener('loadedmetadata', updateAudioUI);
+            audio.removeEventListener('ended', onAudioEnded);
             const restoreFocus = player.contains(document.activeElement);
             audio.style.display = '';
             player.remove();
@@ -758,22 +775,28 @@ const zenInit = () => {
             setAudioButtonState(!audio.paused && !audio.ended);
         };
 
-        audio.addEventListener('play', syncAudioButton);
-        audio.addEventListener('pause', () => {
+        const onAudioPause = () => {
             if (audio.paused) ++playAttempt;
             syncAudioButton();
-        });
+        };
+        const onAudioEnded = () => {
+            setAudioButtonState(false);
+            updateAudioUI();
+        };
+
+        audio.addEventListener('play', syncAudioButton);
+        audio.addEventListener('pause', onAudioPause);
         audio.addEventListener('error', useNativeAudio);
         audio.addEventListener('timeupdate', updateAudioUI);
-
         audio.addEventListener('loadedmetadata', updateAudioUI);
+        audio.addEventListener('ended', onAudioEnded);
 
         progressContainer.addEventListener('click', (e) => {
             const rect = progressContainer.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
             const ratio = Math.min(1, Math.max(0, clickX / rect.width));
-            audio.currentTime = ratio * audio.duration;
+            audio.currentTime = (getComputedStyle(progressContainer).direction === 'rtl' ? 1 - ratio : ratio) * audio.duration;
         });
 
         progressContainer.addEventListener('keydown', (e) => {
@@ -793,11 +816,6 @@ const zenInit = () => {
                 e.preventDefault();
                 audio.currentTime = audio.duration;
             }
-        });
-
-        audio.addEventListener('ended', () => {
-            setAudioButtonState(false);
-            updateAudioUI();
         });
 
         updateAudioUI();
@@ -901,7 +919,7 @@ const zenInit = () => {
             }
             const rect = block.getBoundingClientRect();
             if (typeof IntersectionObserver === 'undefined' ||
-                (rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
+                (block.getClientRects().length && rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
                 hljs.highlightElement(code);
             } else {
                 if (!highlightObserver) {

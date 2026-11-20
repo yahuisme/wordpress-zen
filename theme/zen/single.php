@@ -50,7 +50,7 @@ get_header();
     <div class="zen-featured-media">
         <?php
         $zen_reading_width = max(600, min(960, (int) zen_get_option('zen_reading_width')));
-        $zen_site_width = max(600, min(1920, (int) zen_get_option('zen_content_width')));
+        $zen_site_width = 1000;
         $zen_featured_sizes = '(max-width: 639.98px) min(calc(100vw - 56px), ' . min($zen_reading_width, $zen_site_width - 56) . 'px), min(calc(100vw - 64px), ' . min($zen_reading_width, $zen_site_width - 64) . 'px)';
         the_post_thumbnail('large', array('class' => 'zen-featured-image', 'sizes' => $zen_featured_sizes));
         ?>

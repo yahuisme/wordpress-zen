@@ -5,7 +5,12 @@ $GLOBALS['hooks'] = $GLOBALS['supports'] = $GLOBALS['styles'] = $GLOBALS['inline
 function add_action($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $callback; }
 function add_filter($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $callback; }
 function remove_action(...$args) {}
-function zen_get_option($key) { return array('zen_content_width'=>900,'zen_reading_width'=>720)[$key] ?? 1; }
+$GLOBALS['options'] = array('zen_content_width' => 900, 'zen_reading_width' => 720);
+$GLOBALS['content_width_reads'] = 0;
+function zen_get_option($key) {
+    if ($key === 'zen_content_width') $GLOBALS['content_width_reads']++;
+    return $GLOBALS['options'][$key] ?? 1;
+}
 function add_theme_support($feature, ...$args) { $GLOBALS['supports'][$feature] = $args; }
 function register_nav_menus(...$args) {}
 function add_editor_style($styles) { $GLOBALS['editor_styles'] = (array) $styles; }
@@ -34,7 +39,11 @@ zen_scripts();
 verify(isset($GLOBALS['styles']['zen-reading-style']), 'shared reading stylesheet enqueued');
 $css = implode('', array_merge(...array_values($GLOBALS['inline'])));
 verify(str_contains($css, '--zen-reading-width:720px'), 'reading width independent from site width');
-verify(str_contains($css, '--zen-content-width:900px'), 'legacy site width preserved');
+verify(str_contains($css, '--zen-content-width:1000px'), 'site width is fixed at 1000px independently of the legacy row');
+foreach (array(600, 900, 1920, 0, '') as $legacy) {
+    $GLOBALS['options']['zen_content_width'] = $legacy;
+    verify(str_contains(zen_design_variables(zen_reading_width()), '--zen-content-width:1000px'), 'legacy site width cannot override the fixed layout: ' . var_export($legacy, true));
+}
 verify(!isset($GLOBALS['styles']['zen-directories-style']), 'ordinary pages do not enqueue the secondary-page stylesheet');
 $template_hook = $GLOBALS['hooks']['template_include'][0] ?? null;
 verify(is_callable($template_hook), 'secondary-page stylesheet follows the resolved template');
@@ -54,7 +63,9 @@ if (isset($GLOBALS['hooks']['block_editor_settings_all'])) {
     $settings = ($GLOBALS['hooks']['block_editor_settings_all'][0])(array('styles'=>array()));
     $editor = implode('', array_column($settings['styles'], 'css'));
     verify(str_contains($editor, '--zen-reading-width:720px'), 'editor receives same reading width');
+    verify(str_contains($editor, '--zen-content-width:1000px'), 'editor wide blocks receive the same fixed site width');
 }
+verify($GLOBALS['content_width_reads'] === 0, 'frontend and editor never read the retired content width option');
 $reading_css = file_get_contents(ABSPATH . 'assets/css/reading.css');
 verify(preg_match('/--zen-font-body:\s*"Zen Kami Kai", "TsangerJinKai02"/', $reading_css) && str_contains($reading_css, '--zen-font-heading: var(--zen-font-body)'), 'reader and editor body/title use the same Kai stack');
 verify(preg_match('/--zen-font-mono:\s*"TsangerJinKai02 Code CJK", "Google Sans Code"/', $reading_css), 'mixed code uses separate CJK and Latin families');

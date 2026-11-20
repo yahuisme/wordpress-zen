@@ -43,7 +43,7 @@ function zen_reset_check($condition, $label) {
 function zen_reset_fixture($unfiltered = true) {
     $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => $unfiltered);
     $GLOBALS['nonce_valid'] = true;
-    $GLOBALS['options'] = array_merge(zen_get_option_defaults(), array('unrelated_option' => 'untouched'));
+    $GLOBALS['options'] = array_merge(zen_get_option_defaults(), array('unrelated_option' => 'untouched', 'zen_category_ids' => array(9, 2), 'zen_content_width' => 1080));
     foreach (array('head', 'body', 'footer') as $position) $GLOBALS['options']['zen_code_' . $position] = '<script>' . $position . '()</script>';
     $GLOBALS['deleted'] = $GLOBALS['transients'] = $GLOBALS['refused'] = array();
 }
@@ -71,6 +71,8 @@ foreach (array('head', 'body', 'footer') as $position) {
 }
 zen_reset_check(!array_key_exists('zen_reading_width', $GLOBALS['options']), 'restricted reset still resets ordinary setting');
 zen_reset_check(get_option('unrelated_option') === 'untouched', 'reset leaves unrelated options alone');
+zen_reset_check(get_option('zen_category_ids') === array(9, 2) && !in_array('zen_category_ids', $GLOBALS['deleted'], true), 'restricted reset preserves the retired category row without deleting it');
+zen_reset_check(get_option('zen_content_width') === 1080 && !in_array('zen_content_width', $GLOBALS['deleted'], true), 'restricted reset preserves the retired content width row without deleting it');
 zen_reset_check($status === 'partial', 'restricted reset reports partial status');
 $html = zen_reset_notice($status);
 zen_reset_check(str_contains($html, '自定义代码已保留') && str_contains($html, 'notice-warning') && !str_contains($html, 'Zen 设置已恢复默认值。'), 'restricted notice explains preserved code without full-success claim');
@@ -102,6 +104,8 @@ foreach (array_keys(zen_get_option_defaults()) as $key) {
     zen_reset_check(!array_key_exists($key, $GLOBALS['options']), 'authorized reset removes ' . $key);
 }
 zen_reset_check(get_option('unrelated_option') === 'untouched', 'authorized reset leaves unrelated options alone');
+zen_reset_check(get_option('zen_category_ids') === array(9, 2) && !in_array('zen_category_ids', $GLOBALS['deleted'], true), 'authorized reset preserves the retired category row without deleting it');
+zen_reset_check(get_option('zen_content_width') === 1080 && !in_array('zen_content_width', $GLOBALS['deleted'], true), 'authorized reset preserves the retired content width row without deleting it');
 $html = zen_reset_notice($status);
 zen_reset_check(str_contains($html, 'notice-success') && str_contains($html, 'Zen 设置已恢复默认值。'), 'complete reset shows success notice');
 $_GET['settings-updated'] = 'true';

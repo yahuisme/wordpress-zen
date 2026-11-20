@@ -28,10 +28,8 @@ function zen_option_schema() {
         'zen_show_footer_rss'       => array(1, 'zen_sanitize_checkbox'),
         'zen_excerpt_length'       => array(60, 'zen_sanitize_excerpt_length'),
         'zen_theme_mode_default'    => array('auto', 'zen_sanitize_theme_mode'),
-        'zen_content_width'        => array(992, 'zen_sanitize_content_width'),
         'zen_reading_width'         => array(800, 'zen_sanitize_reading_width'),
         'zen_list_style'            => array('standard', 'zen_sanitize_list_style'),
-        'zen_category_ids'          => array(array(), 'zen_sanitize_category_ids'),
         'zen_footer_text'           => array('', 'wp_kses_post'),
         'zen_copyright_license'     => array('none', 'zen_sanitize_copyright_license'),
         'zen_site_start_date'       => array('', 'zen_sanitize_site_start_date'),
@@ -40,7 +38,7 @@ function zen_option_schema() {
 
 function zen_code_fields() {
     return array(
-        'zen_code_head'   => array('wp_head', '头部代码', 'Google Analytics 请粘贴完整 Google tag（含 <script>）'),
+        'zen_code_head'   => array('wp_head', '头部代码', '在 </head> 前输出'),
         'zen_code_body'   => array('wp_body_open', '正文起始代码', '紧接 <body> 输出'),
         'zen_code_footer' => array('wp_footer', '页脚代码', '在 </body> 前输出'),
     );
@@ -168,12 +166,9 @@ function zen_reset_options() {
 add_action('admin_post_zen_reset_options', 'zen_reset_options');
 
 // Raw markup is intentional: only unfiltered_html users may save these fields.
-function zen_print_custom_code($key, $early = false) {
+function zen_print_custom_code($key) {
     $code = zen_get_option($key);
     if (!is_string($code) || '' === trim($code)) {
-        return;
-    }
-    if ('zen_code_head' === $key && $early !== str_starts_with($code, '<!-- zen:early -->')) {
         return;
     }
     echo "\n" . $code . "\n";
@@ -182,8 +177,6 @@ function zen_print_custom_code($key, $early = false) {
 foreach (zen_code_fields() as $zen_key => list($zen_hook)) {
     add_action($zen_hook, static fn() => zen_print_custom_code($zen_key), 20);
 }
-// Opt-in standalone snippets can run before Core prints its styles at priority 8.
-add_action('wp_head', static fn() => zen_print_custom_code('zen_code_head', true), 7);
 
 function zen_sanitize_checkbox($value) {
     return empty($value) ? 0 : 1;
@@ -191,10 +184,6 @@ function zen_sanitize_checkbox($value) {
 
 function zen_sanitize_excerpt_length($value) {
     return zen_sanitize_number($value, 'zen_excerpt_length', 1, 300);
-}
-
-function zen_sanitize_content_width($value) {
-    return zen_sanitize_number($value, 'zen_content_width', 600, 1920);
 }
 
 function zen_sanitize_reading_width($value) {
@@ -211,16 +200,6 @@ function zen_sanitize_number($value, $key, $min, $max) {
 
 function zen_sanitize_list_style($value) {
     return in_array($value, array('standard', 'compact'), true) ? $value : 'standard';
-}
-
-function zen_sanitize_category_ids($value) {
-    $ids = array();
-    foreach (is_array($value) ? $value : array() as $id) {
-        if ((is_int($id) || is_string($id)) && preg_match('/^\d+$/', (string) $id) && (int) $id > 0) {
-            $ids[(int) $id] = (int) $id;
-        }
-    }
-    return array_values($ids);
 }
 
 function zen_sanitize_theme_mode($value) {
@@ -404,21 +383,13 @@ function zen_options_page_html() {
                         <?php zen_checkbox_field('zen_show_back_to_top', __('返回顶部', 'zen'), __('显示返回顶部按钮', 'zen')); ?>
                         <?php zen_checkbox_field('zen_show_search_shortcut', __('搜索快捷键', 'zen'), __('启用 Ctrl/⌘ + K 搜索', 'zen')); ?>
                     </table>
-                    <details class="zen-options-subgroup" id="zen-layout">
-                        <summary><?php esc_html_e('高级版面宽度', 'zen'); ?></summary>
-                        <table class="form-table" role="presentation"><tr>
-                            <th scope="row"><label for="zen_content_width"><?php esc_html_e('整体内容宽度', 'zen'); ?></label></th>
-                            <td><input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="1" required class="small-text"> px
-                            <p class="description"><?php esc_html_e('整体版面最大宽度，默认 992px（600–1920px）', 'zen'); ?></p></td>
-                        </tr></table>
-                    </details>
                 </div>
             </details>
             <details class="zen-options-group" id="zen-list" open>
                 <summary><?php esc_html_e('首页与文章列表', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
                     <?php zen_checkbox_field('zen_show_site_intro', __('站点简介', 'zen'), __('首页显示 WordPress 站点副标题', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开、无密码文章', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开文章', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_list_style"><?php esc_html_e('列表样式', 'zen'); ?></label></th>
                         <td><select name="zen_list_style" id="zen_list_style" aria-describedby="zen-list-style-help">
                             <option value="standard" <?php selected('standard', $list_style); ?>><?php esc_html_e('标准', 'zen'); ?></option>
@@ -427,16 +398,6 @@ function zen_options_page_html() {
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text" aria-describedby="zen-excerpt-length-help"> 字
                         <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('标准模式摘要长度，默认 %d 字（1–300 字）', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
-                    <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类归档导航', 'zen'); ?></th>
-                        <td><input type="hidden" name="zen_category_ids[]" value="">
-                            <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
-                            <?php $categories = get_categories(array('hide_empty' => false, 'lang' => '')); ?>
-                            <?php $selected_category_ids = array_flip(zen_sanitize_category_ids(zen_get_option('zen_category_ids'))); ?>
-                            <?php foreach ($categories as $category) : ?>
-                                <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, isset($selected_category_ids[(int) $category->term_id])); ?>> <?php echo esc_html($category->name); ?></label>
-                            <?php endforeach; ?>
-                            </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('仅在分类归档显示，不勾选则显示所有非空分类', 'zen'); ?></p>
-                        </td></tr>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-post" open>
@@ -448,7 +409,7 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_updated_date', __('最后更新时间', 'zen'), __('显示最后更新时间', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_tags', __('标签', 'zen'), __('显示文章底部标签', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇', 'zen'), __('显示相邻文章导航', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('点击正文图片放大查看', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('点击图片开启灯箱效果', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_reading_count', __('浏览次数', 'zen'), __('显示文章浏览次数', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>

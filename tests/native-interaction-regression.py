@@ -1,6 +1,7 @@
 """Native audio cancellation, TOC keyboard focus and nonblocking highlight loading."""
 from pathlib import Path
 import json
+import re
 import subprocess
 import sys
 import wave
@@ -8,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 root = Path(sys.argv[1]).resolve()
 selection = sys.argv[2] if len(sys.argv) > 2 else 'all'
-assert selection in ('all', 'audio', 'toc', 'highlight', 'highlight-failure')
+assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'toc', 'highlight', 'highlight-failure')
 assert (root / 'runtime/wp-load.php').is_file() and (root / 'db/zen.sqlite').is_file()
 origin = 'http://127.0.0.1:18765'
 cli = ['php', '/opt/test-tools/wordpress/wp-cli.phar', '--allow-root', '--path=' + str(root / 'runtime')]
@@ -30,13 +31,35 @@ def record(name, passed, detail=None):
     rows.append({'name': name, 'passed': bool(passed), 'detail': detail})
 try:
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
-        for case in (('audio', 'toc', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
+        group = Path('/proc/self/cgroup').read_text()
+        control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
+        ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
+        assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+        for case in (('audio', 'audio-ltr', 'audio-rtl', 'toc', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
+            browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+            processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+            assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
             context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
             held = []
             def route_request(route):
                 url = route.request.url
-                if case == 'highlight-failure' and '/highlight.min.js' in url:
+                if case == 'audio-rtl' and route.request.is_navigation_request():
+                    response = route.fetch()
+                    document = re.sub(r'<html\b([^>]*)>', lambda m: '<html dir="rtl"' + re.sub(r'\sdir="[^"]*"', '', m[1]) + '>', response.text(), count=1)
+                    route.fulfill(response=response, body=document)
+                elif case in ('audio-ltr', 'audio-rtl') and '/native-interaction.wav' in url:
+                    payload = media.read_bytes()
+                    start, end = 0, len(payload) - 1
+                    requested_range = route.request.headers.get('range')
+                    if requested_range:
+                        first, last = requested_range.removeprefix('bytes=').split('-', 1)
+                        start = int(first or 0)
+                        end = min(int(last) if last else end, end)
+                    headers = {'Accept-Ranges': 'bytes', 'Content-Type': 'audio/wav'}
+                    if requested_range:
+                        headers['Content-Range'] = f'bytes {start}-{end}/{len(payload)}'
+                    route.fulfill(status=206 if requested_range else 200, headers=headers, body=payload[start:end+1])
+                elif case == 'highlight-failure' and '/highlight.min.js' in url:
                     route.abort()
                 elif (case == 'highlight' and '/highlight.min.js' in url) or '/native-interaction.wav' in url:
                     held.append(route)
@@ -50,7 +73,20 @@ try:
             page.goto(origin + '/?p=' + post, wait_until='commit' if case == 'highlight' else 'domcontentloaded')
             page.wait_for_selector('#search-toggle')
             page.wait_for_timeout(200)
-            if case == 'highlight':
+            if case in ('audio-ltr', 'audio-rtl'):
+                player = page.locator('#native-audio + .zen-audio-player')
+                player.locator('button').click()
+                page.wait_for_function('document.querySelector("#native-audio").readyState>=1')
+                page.locator('#native-audio').evaluate('e=>e.pause()')
+                slider = player.locator('.zen-audio-progress-container')
+                assert slider.evaluate('e=>getComputedStyle(e).direction') == case.removeprefix('audio-')
+                for x, expected in ((0.25, 0.25), (0.75, 0.75)):
+                    box = slider.bounding_box()
+                    slider.click(position={'x': box['width']*x, 'y':box['height']/2})
+                    ratio = page.locator('#native-audio').evaluate('e=>e.currentTime/e.duration')
+                    expected = 1-expected if case == 'audio-rtl' else expected
+                    record(case + f' click {x} follows visible fill', abs(ratio-expected)<0.04, ratio)
+            elif case == 'highlight':
                 page.locator('#search-toggle').click()
                 page.wait_for_timeout(220)
                 record('search usable while highlighter response pending', page.locator('#search-toggle').get_attribute('aria-expanded') == 'true')
@@ -101,8 +137,7 @@ try:
                 # The native error event itself may already remove the custom owner.
                 page.wait_for_function('getComputedStyle(document.querySelector("#native-audio")).display!=="none"')
                 record('real media failure has one native fallback', page.locator('#native-audio').evaluate('e=>getComputedStyle(e).display!=="none"&&(!e.nextElementSibling||!e.nextElementSibling.classList.contains("zen-audio-player")||e.nextElementSibling.getBoundingClientRect().height===0)'))
-            context.close()
-        browser.close()
+            browser.close()
 finally:
     wp('post', 'delete', post, '--force')
 record('no unexpected script errors', not errors, errors)

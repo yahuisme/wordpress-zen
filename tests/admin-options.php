@@ -31,10 +31,7 @@ function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
 function get_posts($args) { $GLOBALS['post_query'] = $args; return $GLOBALS['public_posts'] ?? array(42); }
 function get_permalink($post) { return 'https://example.test/post-' . $post . '/'; }
-function get_categories($args) {
-    if (($args['lang'] ?? null) !== '') throw new RuntimeException('Global settings must show categories from all languages');
-    return array((object) array('term_id' => 2, 'name' => '设计'), (object) array('term_id' => 9, 'name' => '<研究>'));
-}
+function get_categories($args) { $GLOBALS['category_queries'][] = $args; return array(); }
 function is_wp_error($value) { return false; }
 function get_transient($key) { return array_key_exists('update_info', $GLOBALS) ? $GLOBALS['update_info'] : false; }
 function wp_create_nonce($action) { return 'fixture-nonce'; }
@@ -54,19 +51,19 @@ function render() { ob_start(); zen_options_page_html(); return ob_get_clean(); 
 if (in_array('--html', $argv, true)) { echo render(); exit; }
 test('retired design and attribution controls are neither saved nor reset', function () {
     zen_register_options();
-    $legacy = array('zen_font_family' => 'inter', 'zen_date_style' => 'classic', 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1);
+    $legacy = array('zen_font_family' => 'inter', 'zen_date_style' => 'classic', 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1, 'zen_category_ids' => array(9, 2), 'zen_content_width' => 1080);
     $GLOBALS['options'] = $legacy;
     $html = render();
     foreach ($legacy as $key => $value) {
         expect(!array_key_exists($key, zen_get_option_defaults()), "$key still in reset schema");
         expect(!array_key_exists($key, $GLOBALS['settings']), "$key still accepted by Settings API");
-        expect(!str_contains($html, 'name="' . $key . '"'), "$key still appears in the form");
+        expect(!str_contains($html, 'name="' . $key . '"') && !str_contains($html, 'name="' . $key . '[]"'), "$key still appears in the form");
         expect(get_option($key) === $value, "$key was rewritten or deleted");
     }
     $GLOBALS['options'] = array();
 });
 test('new installations use conservative defaults and explicit legacy values survive', function () {
-    foreach (array('zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 800, 'zen_excerpt_length' => 60, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_show_latest_card' => 1, 'zen_category_ids' => array(), 'zen_show_featured_image' => 1, 'zen_content_width' => 992) as $key => $default) {
+    foreach (array('zen_copyright_license' => 'none', 'zen_show_reading_count' => 0, 'zen_show_footer_rss' => 1, 'zen_reading_width' => 800, 'zen_excerpt_length' => 60, 'zen_list_style' => 'standard', 'zen_show_site_intro' => 1, 'zen_show_latest_card' => 1, 'zen_show_featured_image' => 1) as $key => $default) {
         expect(zen_get_option($key) === $default, "$key default differs");
     }
     foreach (array('zen_copyright_license' => 'cc-by-nc-sa-4.0', 'zen_show_reading_count' => 1, 'zen_show_footer_rss' => 0, 'zen_reading_width' => '768', 'zen_excerpt_length' => '150') as $key => $legacy) {
@@ -84,18 +81,14 @@ test('registered new options sanitize values and reject invalid numbers without 
     expect($schema === $registered, 'registered fields and reset schema must match');
     expect(zen_sanitize_reading_width('800') === 800, 'valid reading width rejected');
     $GLOBALS['options']['zen_reading_width'] = 760;
-    $GLOBALS['options']['zen_content_width'] = 1080;
     $GLOBALS['options']['zen_site_start_date'] = '2020-01-01';
     $GLOBALS['options']['zen_excerpt_length'] = 180;
     foreach (array('-600', '599', '961', '720.5', array(720), '') as $invalid) expect(zen_sanitize_reading_width($invalid) === 760, 'invalid reading width lost saved value');
-    expect(zen_sanitize_content_width('3000') === 1080, 'layout width must preserve prior value');
     expect(zen_sanitize_excerpt_length('0') === 180, 'invalid excerpt length must preserve prior value');
     expect(zen_sanitize_site_start_date('2024-02-30') === '2020-01-01', 'bad date lost saved value');
     expect(zen_sanitize_site_start_date(array()) === '2020-01-01', 'non-string date lost saved value');
     expect(zen_sanitize_site_start_date('') === '', 'explicit empty date cannot clear value');
-    expect(count($GLOBALS['errors']) === 10, 'invalid fields need native settings errors');
-    expect(zen_sanitize_category_ids(array('2', '9', '2', '-2', '0', '2.5', array(5))) === array(2, 9), 'category IDs must be positive unique integers');
-    expect(zen_sanitize_category_ids('') === array(), 'empty categories must mean all');
+    expect(count($GLOBALS['errors']) === 9, 'invalid fields need native settings errors');
     expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
     expect(zen_sanitize_copyright_license('bogus') === 'none', 'invalid license should not impose a license');
     $GLOBALS['caps']['unfiltered_html'] = false;
@@ -114,12 +107,12 @@ test('single settings form groups all old and new fields', function () {
     expect(substr_count($html, '<form ') === 2 && str_contains($html, 'id="zen-options-form"') && str_contains($html, 'id="zen-reset-form"'), 'settings and reset forms required');
     expect(str_contains($html, 'name="_wpnonce"'), 'settings nonce missing');
     foreach (array('reading', 'list', 'post', 'footer', 'code') as $group) expect(str_contains($html, 'id="zen-' . $group . '"'), "$group group missing");
-    foreach (array_keys($GLOBALS['settings']) as $key) expect(str_contains($html, 'name="' . $key . ($key === 'zen_category_ids' ? '[]' : '') . '"'), "$key input omitted");
+    foreach (array_keys($GLOBALS['settings']) as $key) expect(str_contains($html, 'name="' . $key . '"'), "$key input omitted");
     expect(substr_count($html, 'name="zen_reading_width"') === 1, 'preset and number must not submit conflicting names');
     expect((bool) preg_match('/<details[^>]*id="zen-code"[^>]*>/', $html, $code) && !str_contains($code[0], ' open'), 'risky code must start collapsed');
-    expect((bool) preg_match('/<details[^>]*id="zen-layout"[^>]*>/', $html, $width) && !str_contains($width[0], ' open'), 'advanced width must start collapsed');
+    expect(!str_contains($html, 'zen-layout') && !str_contains($html, 'zen_content_width'), 'retired advanced layout settings remain');
+    expect(!function_exists('zen_sanitize_content_width'), 'unused content width sanitizer remains');
     expect(!str_contains($html, 'id="zen-update-status"') && !str_contains($html, '关于更新'), 'theme update interface still present');
-    expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
     expect(str_contains($html, '仅粘贴可信代码') && str_contains($html, '切换主题后不再输出'), 'code risk explanation missing');
     expect(!str_contains($html, '整页缓存命中不计数'), 'cache-safe AJAX counter must not claim page cache hits never count');
     expect(str_contains($html, '恢复默认设置') && str_contains($html, 'zen_reset_options'), 'reset settings action missing');
@@ -153,10 +146,15 @@ test('impossible calendar dates retain the prior value, including year zero', fu
     expect(zen_sanitize_site_start_date('2024-02-29') === '2024-02-29', 'valid leap date rejected');
     $GLOBALS['options'] = array();
 });
-test('category choices are touch-friendly successful checkbox controls', function () {
+test('retired category settings leave no controls queries sanitizer or CSS', function () {
+    $GLOBALS['category_queries'] = array();
     $html = render();
-    expect(!str_contains($html, 'id="zen_category_ids" multiple'), 'keyboard-only multi-select remains');
-    expect(str_contains($html, 'type="checkbox" name="zen_category_ids[]"'), 'touch category choices missing');
+    foreach (array('zen_category_ids', 'zen-category-choices', 'zen-categories-help', '分类归档导航') as $retired) {
+        expect(!str_contains($html, $retired), "retired category UI remains: $retired");
+    }
+    expect($GLOBALS['category_queries'] === array(), 'settings render still fetches retired category choices');
+    expect(!function_exists('zen_sanitize_category_ids'), 'unused category sanitizer remains');
+    expect(!str_contains(file_get_contents(ABSPATH . 'assets/css/admin.css'), 'zen-category-choices'), 'unused category CSS remains');
 });
 
 test('option descriptions use short copy without terminal punctuation', function () {
@@ -165,8 +163,9 @@ test('option descriptions use short copy without terminal punctuation', function
     $xpath = new DOMXPath($doc);
     foreach (array(
         'zen_show_site_intro' => '首页显示 WordPress 站点副标题',
-        'zen_show_latest_card' => '从文章索引首页选出最新的公开、无密码文章',
+        'zen_show_latest_card' => '从文章索引首页选出最新的公开文章',
         'zen_show_featured_image' => '在文章页展示原生特色图',
+        'zen_show_lightbox' => '点击图片开启灯箱效果',
         'zen_show_reading_count' => '显示文章浏览次数',
     ) as $key => $description) {
         expect(trim($xpath->evaluate('string(//label[@for="' . $key . '"])')) === $description, "$key copy differs");
@@ -177,26 +176,35 @@ test('option descriptions use short copy without terminal punctuation', function
         $text = trim($element->textContent);
         expect($text !== '' && !str_contains($text, '。') && !preg_match('/[.!?！？；;，,：:]$/u', $text), "inconsistent option copy: $text");
     }
-    expect(str_contains($xpath->evaluate('string(//*[@id="zen_code_head"]/following-sibling::p)'), 'Google tag'), 'head code needs a Google tag placement hint');
+    $help = $xpath->query('//*[@id="zen_code_head"]/following-sibling::p')->item(0);
+    expect($help !== null && trim($help->textContent) === '在 </head> 前输出', 'head code needs the generic placement hint');
+    expect($help->childNodes->length === 1 && $help->firstChild->nodeType === XML_TEXT_NODE, 'head placement hint must be escaped text');
 });
 
-test('only a leading marker in stored head code opts into early output', function () {
-    $render_hook = static function ($priority) {
+test('custom code uses standard hooks once and preserves marker and whitespace bytes', function () {
+    $render_hook = static function ($hook, $priority) {
         ob_start();
-        foreach ($GLOBALS['hook_callbacks']['wp_head'][$priority] ?? array() as $callback) $callback();
+        foreach ($GLOBALS['hook_callbacks'][$hook][$priority] ?? array() as $callback) $callback();
         return ob_get_clean();
     };
     $marked = "<!-- zen:early -->\r\n<script>window.fixture = true;</script>";
     try {
-        foreach (array('', "\n", " \t\r\n", '<!-- WordPress dependency -->' . "\n") as $prefix) {
-            $code = $prefix . $marked;
-            $GLOBALS['options']['zen_code_head'] = $code;
-            $early = '' === $prefix;
-            expect($render_hook(7) === ($early ? "\n$code\n" : ''), 'early output requires a marker at the start of the stored value');
-            expect($render_hook(20) === ($early ? '' : "\n$code\n"), 'head code must be output once, preserving its exact bytes');
+        foreach (zen_code_fields() as $key => list($hook)) {
+            expect(array_keys($GLOBALS['hook_callbacks'][$hook] ?? array()) === array(20), "$key must only use its standard priority 20 hook");
+            $sanitize = $GLOBALS['settings'][$key]['sanitize_callback'];
+            foreach (array('<script>window.fixture = true;</script>', $marked, "\n" . $marked, "\r\n" . $marked, " \t\r\n" . $marked) as $code) {
+                $GLOBALS['options'][$key] = $code;
+                expect($sanitize($code) === $code, 'authorized save must preserve literal code bytes');
+                expect($render_hook($hook, 7) === '', 'code must not use an early output channel');
+                expect($render_hook($hook, 20) === "\n$code\n", 'standard output must preserve the exact stored bytes once');
+            }
+            foreach (array('', " \t\r\n") as $empty) {
+                $GLOBALS['options'][$key] = $empty;
+                expect($render_hook($hook, 20) === '', 'empty code must not be output');
+            }
         }
     } finally {
-        unset($GLOBALS['options']['zen_code_head']);
+        foreach (array_keys(zen_code_fields()) as $key) unset($GLOBALS['options'][$key]);
     }
 });
 

@@ -16,7 +16,7 @@ function zen_reading_width() {
 }
 
 function zen_design_variables($reading) {
-    $site = max(600, min(1920, (int) zen_get_option('zen_content_width')));
+    $site = 1000;
     return ':root{--zen-content-width:' . $site . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px}';
 }
 

@@ -8,9 +8,16 @@ from playwright.sync_api import sync_playwright
 origin, manifest = sys.argv[1:3]
 assert urlparse(origin).hostname == '127.0.0.1'
 f = json.loads(Path(manifest).read_text())
+selected = sys.argv[3] if len(sys.argv) > 3 else 'all'
 results = []
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+    browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+    group = Path('/proc/self/cgroup').read_text()
+    control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
+    ancestors = [q for q in (control, *control.parents) if (q / 'memory.max').is_file()]
+    assert any((q / 'memory.max').read_text().strip() == '4294967296' and (q / 'memory.swap.max').read_text().strip() == '0' for q in ancestors)
+    processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+    assert processes and all(Path(f'/proc/{q["id"]}/cgroup').read_text() == group for q in processes)
     context = browser.new_context(viewport={'width': 1440, 'height': 900}, color_scheme='light')
     context.route('**/*', lambda r: r.continue_() if r.request.url.startswith(origin + '/') else r.abort())
     page = context.new_page()
@@ -19,6 +26,8 @@ with sync_playwright() as p:
     page.on('request', lambda r: requests.append(r.url))
 
     def check(name, fn):
+        if selected not in ('all', name):
+            return
         try:
             fn()
             results.append({'name': name, 'passed': True})
@@ -145,9 +154,10 @@ with sync_playwright() as p:
         visit()
         player = page.locator('.zen-audio-player')
         player.scroll_into_view_if_needed()
+        # preload=none must not fetch media before the visitor chooses to play.
+        player.locator('button').click()
         page.wait_for_function("document.querySelector('audio').readyState >= 1")
         assert '0:03' in player.locator('.zen-audio-time').inner_text()
-        player.locator('button').click()
         page.wait_for_timeout(150)
         assert player.locator('button').get_attribute('aria-label') == '暂停音频'
         player.locator('button').click()
@@ -175,14 +185,7 @@ with sync_playwright() as p:
                 assert response.status == (404 if '2147483647' in route else 200), route
                 assert page.locator('main').is_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), route
-        nojs = browser.new_context(java_script_enabled=False)
-        nojs.route('**/*', lambda r: r.continue_() if r.request.url.startswith(origin + '/') else r.abort())
-        fallback = nojs.new_page()
-        fallback.goto(origin + '/?p=' + str(f['normal']),wait_until='networkidle')
-        assert fallback.locator('#post-content').is_visible()
-        assert fallback.locator('audio').is_visible()
-        assert fallback.locator('audio').get_attribute('controls') is not None
-        nojs.close()
+
 
     def responsive():
         for width in (320, 375, 768, 1440):
@@ -192,5 +195,17 @@ with sync_playwright() as p:
     for name, fn in [('native_lazy_media',lazy_media),('smooth_scroll_and_reduced_motion',smooth_scroll),('search_focus',search_focus),('theme_modes',dark_modes),('lightbox_keyboard',lightbox),('mobile_toc_anchor',mobile_toc),('synced_highlight',synced_highlight),('audio_controls',audio),('reading_progress_and_copy',reading_and_copy),('page_family_and_nojs',page_family),('responsive_media',responsive)]:
         check(name,fn)
     browser.close()
+    if selected in ('all', 'native_nojs_fallback'):
+        browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+        processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+        assert processes and all(Path(f'/proc/{q["id"]}/cgroup').read_text() == group for q in processes)
+        nojs = browser.new_context(java_script_enabled=False)
+        nojs.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
+        fallback = nojs.new_page()
+        fallback.goto(origin + '/?p=' + str(f['normal']), wait_until='networkidle')
+        assert fallback.locator('#post-content').is_visible()
+        assert fallback.locator('audio').is_visible() and fallback.locator('audio').get_attribute('controls') is not None
+        results.append({'name': 'native_nojs_fallback', 'passed': True})
+        browser.close()
 print(json.dumps({'results': results, 'pageerrors': errors}, ensure_ascii=False))
-assert all(x['passed'] for x in results) and not errors
+assert results and all(x['passed'] for x in results) and not errors

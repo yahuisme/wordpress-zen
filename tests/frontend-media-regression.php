@@ -5,7 +5,10 @@ set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
 function add_action(...$args) {}
-function get_option($key, $default = false) { return $GLOBALS['saved_options'][$key] ?? $default; }
+function get_option($key, $default = false) {
+    if ($key === 'zen_content_width') $GLOBALS['content_width_reads']++;
+    return $GLOBALS['saved_options'][$key] ?? $default;
+}
 require ABSPATH . 'inc/options.php';
 function get_header() {}
 function get_footer() {}
@@ -33,6 +36,7 @@ function render_single($options, $has_thumbnail = true) {
     $GLOBALS['loop_left'] = 1;
     $GLOBALS['has_thumbnail'] = $has_thumbnail;
     $GLOBALS['thumbnail_calls'] = array();
+    $GLOBALS['content_width_reads'] = 0;
     ob_start();
     try { include ABSPATH . 'single.php'; } finally { ob_end_clean(); }
     return $GLOBALS['thumbnail_calls'];
@@ -46,17 +50,17 @@ function test($name, $callback) {
 }
 $section = $argv[1] ?? 'all';
 if ($section === 'all' || $section === 'image') {
-    test('featured sizes follow saved reading width, site cap and responsive gutters', function () {
+    test('featured sizes follow reading width and the fixed 1000px site cap, ignoring legacy values', function () {
         // The main box has 28px mobile / 32px desktop gutters.
         foreach (array(
             array(array(), 800, 800),
             array(array('zen_reading_width' => 600), 600, 600),
             array(array('zen_reading_width' => '731'), 731, 731),
-            array(array('zen_reading_width' => 960, 'zen_content_width' => 1920), 960, 960),
-            array(array('zen_reading_width' => 960, 'zen_content_width' => 900), 844, 836),
-            array(array('zen_reading_width' => 960, 'zen_content_width' => 600), 544, 536),
+            array(array('zen_reading_width' => 960, 'zen_content_width' => 1920), 944, 936),
+            array(array('zen_reading_width' => 960, 'zen_content_width' => 900), 944, 936),
+            array(array('zen_reading_width' => 960, 'zen_content_width' => 600), 944, 936),
             array(array('zen_reading_width' => 10, 'zen_content_width' => 5000), 600, 600),
-            array(array('zen_reading_width' => 5000, 'zen_content_width' => 5000), 960, 960),
+            array(array('zen_reading_width' => 5000, 'zen_content_width' => 5000), 944, 936),
         ) as $case) {
             list($options, $mobile_cap, $desktop_cap) = $case;
             $calls = render_single($options);
@@ -65,6 +69,7 @@ if ($section === 'all' || $section === 'image') {
             $expected = '(max-width: 639.98px) min(calc(100vw - 56px), ' . $mobile_cap . 'px), min(calc(100vw - 64px), ' . $desktop_cap . 'px)';
             $actual = $calls[0][1]['sizes'] ?? '';
             check($actual === $expected, 'options ' . json_encode($options) . ': expected ' . $expected . '; got ' . $actual);
+            check($GLOBALS['content_width_reads'] === 0, 'featured sizes still read the retired site width');
         }
         check(render_single(array('zen_show_featured_image' => 0)) === array(), 'disabled featured image requested');
         check(render_single(array(), false) === array(), 'absent featured image requested');

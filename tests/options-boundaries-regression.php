@@ -3,6 +3,7 @@
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['options'] = array('zen_category_ids' => array('9'));
 $GLOBALS['category_reads'] = 0;
+$GLOBALS['category_queries'] = 0;
 $GLOBALS['http_count'] = 0;
 function add_action(...$args) {}
 function get_option($key, $default = false) {
@@ -31,7 +32,7 @@ function admin_url($path) { return 'https://example.test/' . $path; }
 function home_url($path = '') { return 'https://example.test/' . ltrim($path, '/'); }
 function get_posts($args) { return array(); }
 function get_permalink($post) { return ''; }
-function get_categories($args) { return array((object) array('term_id' => 2, 'name' => 'Two'), (object) array('term_id' => 9, 'name' => 'Nine')); }
+function get_categories($args) { $GLOBALS['category_queries']++; return array(); }
 function is_wp_error($value) { return false; }
 function get_transient($key) { return array('latest_version' => '9.9.9', 'url' => 'https://example.test/release', 'error' => ''); }
 function wp_remote_get($url, $args) { $GLOBALS['http_count']++; return null; }
@@ -51,7 +52,10 @@ function expect($condition, $message) {
 ob_start();
 zen_options_page_html();
 $html = ob_get_clean();
-expect($GLOBALS['category_reads'] === 1, 'selected category option is read once per settings render');
+expect($GLOBALS['category_reads'] === 0, 'settings render never reads the retired category selection');
+expect($GLOBALS['category_queries'] === 0, 'settings render never queries retired category choices');
+expect(!str_contains($html, 'zen_category_ids'), 'settings form omits the retired category field');
+expect($GLOBALS['options']['zen_category_ids'] === array('9'), 'rendering leaves the legacy category row untouched');
 expect(!str_contains($html, '9.9.9') && !str_contains($html, 'https://example.test/release'), 'stale update transient cannot affect settings rendering');
 expect($GLOBALS['http_count'] === 0, 'rendering settings does not check GitHub');
 exit($failed ? 1 : 0);

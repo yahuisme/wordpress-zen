@@ -34,11 +34,11 @@ with sync_playwright() as p:
   assert page.locator('.notice-success,.updated').count()>0,page.locator('body').inner_text()[:1500]
   assert not dialogs,('Unexpected save/navigation dialog',dialogs)
  def preserve():
-  legacy={'zen_font_family':'inter','zen_date_style':'classic','zen_content_width':1080,'zen_copyright_license':'cc-by-sa-4.0','zen_code_head':'<script>window.zenSaved = "\\\\n";</script>','zen_footer_text':'<a href="https://example.test">Saved footer</a>','zen_show_footer_theme_by':1,'zen_show_footer_wordpress':1}
+  legacy={'zen_font_family':'inter','zen_date_style':'classic','zen_content_width':1080,'zen_category_ids':[f['categories'][0]],'zen_copyright_license':'cc-by-sa-4.0','zen_code_head':'<script>window.zenSaved = "\\\\n";</script>','zen_footer_text':'<a href="https://example.test">Saved footer</a>','zen_show_footer_theme_by':1,'zen_show_footer_wordpress':1}
   for key,val in legacy.items():setoption(key,val)
   settings()
-  for key in ('zen_font_family','zen_date_style','zen_show_footer_theme_by','zen_show_footer_wordpress'):
-   assert page.locator(f'[name="{key}"]').count() == 0
+  for key in ('zen_font_family','zen_date_style','zen_show_footer_theme_by','zen_show_footer_wordpress','zen_content_width','zen_category_ids'):
+   assert page.locator(f'[name="{key}"],[name="{key}[]"]').count() == 0
   page.locator('#zen_footer_text').fill('Edited footer');save()
   assert page.locator('#zen-save-state').inner_text()=='没有未保存的修改'
   page.goto(o+'/',wait_until='networkidle')
@@ -50,22 +50,25 @@ with sync_playwright() as p:
   b.close()
   sys.exit(0 if results[0]['passed'] else 1)
  def edited():
-  settings();page.locator('#zen_reading_width_preset').select_option('800');page.locator('#zen_list_style').select_option('compact');page.locator('#zen_category_ids input[type=checkbox]').evaluate_all('(es,ids)=>es.forEach(e=>{e.checked=ids.includes(e.value);e.dispatchEvent(new Event("change",{bubbles:true}))})',[str(f['categories'][2]),str(f['categories'][0])]);page.locator('#zen_show_site_intro').uncheck();page.locator('#zen_copyright_license').select_option('none');page.locator('#zen_show_reading_count').uncheck();save()
+  settings();page.locator('#zen_reading_width_preset').select_option('800');page.locator('#zen_list_style').select_option('compact');page.locator('#zen_show_site_intro').uncheck();page.locator('#zen_copyright_license').select_option('none');page.locator('#zen_show_reading_count').uncheck();save()
   assert int(option('zen_reading_width'))==800 and option('zen_list_style')=='compact'
-  assert set(option('zen_category_ids'))=={f['categories'][0],f['categories'][2]},option('zen_category_ids')
+  assert option('zen_category_ids')==[f['categories'][0]],option('zen_category_ids')
   assert option('zen_show_site_intro')=='0' or option('zen_show_site_intro')==0
   page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-excerpt').count()==0
   assert page.locator('.zen-category-nav').count()==0
   page.goto(o+'/?cat='+str(f['categories'][0]),wait_until='networkidle')
-  links=page.locator('.zen-category-track > a');assert links.count()==3
-  assert all(link.is_visible() for link in links.all())
+  expected=json.loads(cli('eval','echo wp_json_encode(array_map(static fn($category) => get_category_link($category->term_id), get_categories(["hide_empty" => true])));'))
+  links=page.locator('.zen-category-track > a');assert links.count()==len(expected)+1
+  assert links.all()[0].is_visible() and links.all()[1].is_visible()
+  assert links.evaluate_all('es=>es.slice(1).map(e=>e.href)')==expected
+  assert page.evaluate('getComputedStyle(document.documentElement).getPropertyValue("--zen-content-width").trim()')=='1000px'
   page.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');assert page.locator('#post-content').evaluate('e=>Math.round(e.getBoundingClientRect().width)')==800,page.locator('#post-content').evaluate('e=>({width:e.getBoundingClientRect().width,var:getComputedStyle(e).getPropertyValue("--zen-reading-width")})')
   assert '版权声明' not in page.locator('main').inner_text() and '浏览次数' not in page.locator('.zen-post-meta').inner_text()
  check('saved reading width list intro categories and license drive frontend',edited)
  def clear():
-  settings();page.locator('#zen_footer_text').fill('');[control.uncheck() for control in page.locator('#zen_category_ids input[type=checkbox]').all()];page.locator('#zen-code > summary').click();page.locator('#zen_code_head').fill('');save()
-  assert option('zen_footer_text')=='' and option('zen_category_ids')==[] and option('zen_code_head')==''
- check('explicit empty footer categories and authorized code clear',clear)
+  settings();page.locator('#zen_footer_text').fill('');page.locator('#zen-code > summary').click();page.locator('#zen_code_head').fill('');save()
+  assert option('zen_footer_text')=='' and option('zen_category_ids')==[f['categories'][0]] and option('zen_code_head')==''
+ check('explicit empty footer and authorized code clear without changing retired categories',clear)
  def invalid():
   setoption('zen_site_start_date','2020-01-01');settings();data=page.locator('#zen-options-form').evaluate('e=>Object.fromEntries(new FormData(e))');data['zen_reading_width']='599';data['zen_site_start_date']='2024-02-30';data['action']='update';response=c.request.post(o+'/wp-admin/options.php',form=data);assert response.status==200
   assert int(option('zen_reading_width'))==800 and option('zen_site_start_date')=='2020-01-01'

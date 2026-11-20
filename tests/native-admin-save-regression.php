@@ -34,6 +34,7 @@ require_once ABSPATH . 'wp-admin/includes/admin.php';
 
 $old_values = array();
 foreach (array_keys(zen_get_option_defaults()) as $key) $old_values[$key] = get_option($key, null);
+foreach (array('zen_category_ids', 'zen_content_width') as $key) $old_values[$key] = get_option($key, null);
 $extension_key = 'zen_test_extension_option';
 $old_values[$extension_key] = get_option($extension_key, null);
 $old_errors = get_transient('settings_errors');
@@ -71,12 +72,15 @@ try {
     } elseif ($case === 'full') {
         update_option('zen_footer_text', 'Saved footer');
         update_option('zen_category_ids', array(2));
+        update_option('zen_content_width', 1080);
+        $retired_values = array('zen_category_ids' => get_option('zen_category_ids'), 'zen_content_width' => get_option('zen_content_width'));
         add_action('admin_init', static function () use ($extension_key) {
             register_setting('zen_options', $extension_key, array('sanitize_callback' => 'sanitize_text_field'));
         });
         $input += array(
             'zen_footer_text' => '',
-            'zen_category_ids' => array(''),
+            'zen_category_ids' => array('9'),
+            'zen_content_width' => '1200',
             'zen_code_head' => '<meta name="fixture" content="C:\fixture">',
             $extension_key => 'Plugin settings fixture',
         );
@@ -101,7 +105,7 @@ try {
     $check((string) get_option('zen_show_toc') === '1', 'existing checked value retained');
     if ($case === 'full') {
         $check(get_option('zen_footer_text', null) === '', 'an explicit empty footer clears the saved text');
-        $check(get_option('zen_category_ids', null) === array(), 'an explicit empty selection clears the saved categories');
+        foreach ($retired_values as $key => $value) $check(get_option($key, null) === $value, 'native save ignores stale retired input without changing ' . $key);
         $check(get_option('zen_code_head', null) === $input['zen_code_head'], 'authorized native save preserves literal backslashes');
         $check(get_option($extension_key, null) === $input[$extension_key], 'native save preserves the Settings API group extension');
     } elseif ($case !== 'refused') {

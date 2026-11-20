@@ -15,6 +15,7 @@ results = []
 rtl = '--rtl' in sys.argv[3:]
 without_dir_selector = '--without-dir-selector' in sys.argv[3:]
 sign = -1 if rtl else 1
+focus_only = '--focus-only' in sys.argv[3:]
 
 
 def route_local(route):
@@ -59,6 +60,38 @@ with sync_playwright() as p:
         assert archive_url.startswith(origin + '/')
     page = context.new_page()
     page.route('**/*', route_local)
+    page.set_viewport_size({'width': 320, 'height': 900})
+    page.goto(archive_url, wait_until='networkidle')
+    track = page.locator('.zen-category-track')
+    track.evaluate('e => {e.scrollLeft=0;e.dispatchEvent(new Event("scroll"));}')
+    assert track.evaluate('e=>e.scrollWidth>e.clientWidth+1')
+    for arrow in ('next', 'prev'):
+        button = page.locator('.zen-category-' + arrow)
+        button.focus()
+        steps = track.evaluate('e=>Math.ceil(e.scrollWidth/Math.max(64,e.clientWidth-96))+2')
+        for _ in range(steps):
+            if button.is_hidden():
+                break
+            before_scroll = track.evaluate('e=>e.scrollLeft')
+            page.keyboard.press('Enter')
+            page.wait_for_function('''([start, arrow, sign]) => {
+                const track = document.querySelector('.zen-category-track');
+                const atEdge = arrow === 'next'
+                    ? sign * track.scrollLeft + track.clientWidth >= track.scrollWidth - 1
+                    : Math.abs(track.scrollLeft) <= 1;
+                // Wait for the scroll handler too, not just the changed offset.
+                return (arrow === 'next' ? sign : -sign) * (track.scrollLeft - start) > 0
+                    && track.parentElement.querySelector('.zen-category-' + arrow).hidden === atEdge;
+            }''', arg=[before_scroll, arrow, sign], timeout=1500)
+        assert button.is_hidden(), arrow
+        assert track.evaluate('(e, arrow)=>e.contains(document.activeElement)&&document.activeElement===(arrow==="next"?e.querySelector("a:last-child"):e.querySelector("a:first-child"))', arrow), 'Hiding an activated edge arrow must focus the reached category link'
+        assert track.evaluate('(e, args)=>args[0]==="next" ? args[1]*e.scrollLeft+e.clientWidth>=e.scrollWidth-1 : Math.abs(e.scrollLeft)<=1',[arrow,sign]), 'Focus transfer must not scroll away from the reached edge'
+    results.append({'keyboard_edge_focus': True, 'rtl': rtl, 'passed': True})
+    if focus_only:
+        browser.close()
+        (out/'category-focus.json').write_text(json.dumps(results,indent=2))
+        print(json.dumps(results))
+        sys.exit(0)
     for width in (320, 390, 768, 1440):
         page.set_viewport_size({'width': width, 'height': 900})
         for dark in (False, True):

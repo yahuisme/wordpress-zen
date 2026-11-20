@@ -31,7 +31,7 @@ try:
     post = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Native layout checks', '--comment_status=open', '--post_content=' + content, '--porcelain'); posts.append(post)
     plain = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Plain startup', '--post_content=<p>No headings.</p>', '--porcelain'); posts.append(plain)
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+        browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
         group_path = Path('/proc/self/cgroup').read_text().strip().split('::', 1)[1]
         scope = Path('/sys/fs/cgroup' + group_path).parent
         assert int((scope / 'memory.max').read_text()) <= 4 * 1024**3
@@ -45,7 +45,15 @@ try:
                 assert ('::/' + common_group + '/') in group, (process['id'], group)
                 membership.append({'pid': process['id'], 'cgroup': group})
         (root / 'evidence/layout-cgroup.json').write_text(json.dumps(membership, indent=2))
+        def fresh_context(**kwargs):
+            nonlocal_browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+            processes = nonlocal_browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+            assert processes and all(Path(f'/proc/{item["id"]}/cgroup').read_text().strip().endswith('::'+group_path) for item in processes)
+            context = nonlocal_browser.new_context(**kwargs)
+            context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') or route.request.url.startswith('data:') else route.abort())
+            return nonlocal_browser, context
         context = browser.new_context(reduced_motion='reduce')
+        context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') or route.request.url.startswith('data:') else route.abort())
         page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
         for width in (320, 390, 768, 1440):
             page.set_viewport_size({'width': width, 'height': 900})
@@ -65,16 +73,16 @@ try:
         page.goto(origin, wait_until='networkidle')
         targets = page.locator('nav[aria-label="分页导航"] .page-numbers').evaluate_all('es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height}))')
         check('pagination touch targets', len(targets) >= 2 and all(t['w'] >= 44 and t['h'] >= 44 for t in targets), targets)
-        context.close()
-        context = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 900})
+        browser.close()
+        browser, context = fresh_context(java_script_enabled=False, viewport={'width': 390, 'height': 900})
         page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin + '/?p=' + post, wait_until='networkidle')
         check('no script removes unusable directory reservation', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0 and page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
         check('no script preserves content and native search', page.locator('#post-content h2').count() > 0 and page.locator('#search-fallback').is_visible())
-        context.close()
+        browser.close()
         for width in (390, 768, 1440):
             for name, identifier in (('headings', post), ('plain', plain)):
-                context = browser.new_context(viewport={'width': width, 'height': 900}, reduced_motion='reduce')
+                browser, context = fresh_context(viewport={'width': width, 'height': 900}, reduced_motion='reduce')
                 held = []; context.route('**/js/main.js?*', lambda route: held.append(route))
                 page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(origin + '/?p=' + identifier, wait_until='commit'); page.wait_for_timeout(800)
@@ -105,9 +113,9 @@ try:
                         check('forward Tab wraps to drawer close', close.evaluate('e=>e===document.activeElement'))
                 if name == 'plain':
                     check(f'{width}/plain no unused directory slot', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0)
-                context.close()
+                browser.close()
         for width in (320, 390):
-            context = browser.new_context(viewport={'width': width, 'height': 900})
+            browser, context = fresh_context(viewport={'width': width, 'height': 900})
             blocked = []
             def block_main(route):
                 blocked.append(route.request.url)
@@ -126,8 +134,7 @@ try:
             with page.expect_navigation(wait_until='domcontentloaded'):
                 search.press('Enter')
             check(f'{width} blocked main submits native search', 's=WordPress' in page.url and page.locator('main .zen-post-item').count() > 0)
-            context.close()
-        browser.close()
+            browser.close()
 finally:
     for post_id in posts: wp('post', 'delete', post_id, '--force')
 check('no uncaught browser errors', not errors, errors)

@@ -17,7 +17,8 @@ function scriptQueue() {
         function add_action(...$args) {}
         function add_filter(...$args) {}
         function zen_get_option($key) {
-            return ['zen_show_highlight' => 1, 'zen_content_width' => 900, 'zen_reading_width' => 720][$key] ?? 0;
+            if ($key === 'zen_content_width') throw new RuntimeException('Retired content width must not be read');
+            return ['zen_show_highlight' => 1, 'zen_reading_width' => 720][$key] ?? 0;
         }
         function get_template_directory() { return ABSPATH; }
         function get_template_directory_uri() { return 'https://zen.test/theme'; }

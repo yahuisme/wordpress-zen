@@ -37,7 +37,14 @@ rows = []
 try:
     with sync_playwright() as playwright:
         def launch():
-            return playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+            browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+            group = Path('/proc/self/cgroup').read_text()
+            control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
+            ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
+            assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+            processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+            assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
+            return browser
 
         if mode in ('all', 'colors'):
             browser = launch()

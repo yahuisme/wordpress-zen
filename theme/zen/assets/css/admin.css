@@ -85,27 +85,6 @@
     width: 200px;
     max-width: 100%;
 }
-
-.zen-options .zen-category-choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px 20px;
-    /* Override the fieldset's min-content floor so long category names can wrap. */
-    box-sizing: border-box;
-    min-inline-size: 0;
-    max-width: 100%;
-    padding: 8px 0 0;
-}
-.zen-options .zen-category-choices label {
-    /* Core adds an !important bottom margin to fieldset labels. */
-    margin-block-end: 0 !important;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    min-height: 28px;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-}
 .zen-options input.small-text {
     width: 80px;
     max-width: 100%;
@@ -120,14 +99,7 @@
     max-width: 800px;
     resize: vertical;
 }
-.zen-options .zen-options-subgroup {
-    margin-top: 8px;
-    border-top: 1px solid #dcdcde;
-}
-.zen-options .zen-options-subgroup summary {
-    padding: 16px 0;
-    font-size: 13px;
-}
+
 @media screen and (max-width: 782px) {
     .admin-bar .zen-options {
         --zen-adminbar-offset: 46px;

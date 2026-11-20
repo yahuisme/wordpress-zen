@@ -169,6 +169,105 @@ async function page(t, html, prepare = () => {}) {
     return { window, document, observers, flush, press };
 }
 
+// jsdom has no layout/scroll engine: double only rail geometry and native scrolling.
+// Focus, focusin/out, shipped click handlers and hidden state remain real DOM behavior.
+async function categoryPage(t, direction) {
+    const sign = direction === 'rtl' ? -1 : 1;
+    const scrolls = [];
+    const writes = [];
+    const focusOptions = [];
+    const context = await page(t, `
+        <button id="outside">Outside</button>
+        <nav class="zen-category-nav">
+            <button class="zen-category-prev" hidden>Previous</button>
+            <div class="zen-category-track" style="direction: ${direction}">
+                ${Array.from({ length: 6 }, (_, index) => `<a href="/category/${index}">Category ${index}</a>`).join('')}
+            </div>
+            <button class="zen-category-next" hidden>Next</button>
+        </nav>`, window => {
+        const { document } = window;
+        const track = document.querySelector('.zen-category-track');
+        let offset = 0;
+        Object.defineProperties(track, {
+            clientWidth: { value: 200 },
+            scrollWidth: { get: () => 580 + (track.parentElement.classList.contains('has-overflow') ? 32 : 0) },
+            scrollLeft: {
+                get: () => sign * offset,
+                set: value => {
+                    offset = Math.min(track.scrollWidth - track.clientWidth, Math.max(0, sign * value));
+                    writes.push(sign * offset);
+                },
+            },
+        });
+        track.getBoundingClientRect = () => new window.DOMRect(100, 0, 200, 44);
+        track.scrollBy = options => {
+            scrolls.push(options);
+            track.scrollLeft += options.left;
+            track.dispatchEvent(new window.Event('scroll'));
+        };
+        [...track.querySelectorAll('a')].forEach((link, index) => {
+            link.getBoundingClientRect = () => new window.DOMRect(
+                sign === 1 ? 100 + index * 100 - offset : 220 - index * 100 + offset, 0, 80, 44);
+            const focus = link.focus.bind(link);
+            link.focus = options => { focusOptions.push(options?.preventScroll); focus(options); };
+        });
+    });
+    const { document } = context;
+    return {
+        ...context, sign, scrolls, writes, focusOptions,
+        track: document.querySelector('.zen-category-track'),
+        prev: document.querySelector('.zen-category-prev'),
+        next: document.querySelector('.zen-category-next'),
+        links: [...document.querySelectorAll('.zen-category-track a')],
+    };
+}
+
+for (const direction of ['ltr', 'rtl']) {
+    for (const edge of ['next', 'prev']) {
+        test(`category rail ${direction} transfers focus before hiding the active ${edge} edge button`, async t => {
+            const { window, document, track, prev, next, links, sign, writes, scrolls, focusOptions } = await categoryPage(t, direction);
+            const button = edge === 'next' ? next : prev;
+            if (edge === 'prev') {
+                track.scrollLeft = sign * (track.scrollWidth - track.clientWidth);
+                track.dispatchEvent(new window.Event('scroll'));
+                writes.length = 0;
+            }
+            assert.equal(button.hidden, false, 'the active arrow is initially available');
+            button.focus();
+            for (let steps = 0; !button.hidden && steps < 10; ++steps) {
+                assert.equal(document.activeElement, button, 'focus stays on the arrow before reaching its edge');
+                button.click(); // Native button activation uses this click handler for Enter/Space too.
+            }
+            const reached = edge === 'next' ? links.at(-1) : links[0];
+            assert.equal(button.hidden, true, 'edge arrows still disappear');
+            assert.equal(document.activeElement, reached, 'focus must continue from the reached category, not a hidden arrow');
+            assert.deepEqual(focusOptions, [true], 'edge focus must not request native scrolling');
+            assert.equal(writes.length, scrolls.length, 'focusin must not recenter the reached link');
+            assert.equal(sign * track.scrollLeft, edge === 'next' ? track.scrollWidth - track.clientWidth : 0);
+            const bounds = track.getBoundingClientRect();
+            const rect = reached.getBoundingClientRect();
+            assert.ok(rect.left >= bounds.left && rect.right <= bounds.right, 'the new focus target is visible');
+            assert.equal(track.parentElement.classList.contains('has-link-focus'), true);
+        });
+    }
+
+    test(`category rail ${direction} preserves unfocused edge hiding and ordinary link reveal`, async t => {
+        const { window, document, track, prev, next, links, sign } = await categoryPage(t, direction);
+        const outside = document.getElementById('outside');
+        outside.focus();
+        for (const button of [next, prev]) {
+            for (let steps = 0; !button.hidden && steps < 10; ++steps) {
+                button.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }));
+            }
+            assert.equal(button.hidden, true);
+            assert.equal(document.activeElement, outside, 'scrolling must not steal unrelated focus');
+        }
+        links.at(-1).focus();
+        assert.equal(document.activeElement, links.at(-1));
+        assert.ok(sign * track.scrollLeft > 0, 'normal focusin still reveals an offscreen link');
+    });
+}
+
 test('global keyboard handling registers one document listener', async t => {
     let listeners = 0;
     const { document, press, flush } = await page(t, searchMarkup, window => {
@@ -858,7 +957,7 @@ test('TOC ignores folded targets and refreshes on non-bubbling details toggles',
 });
 
 // jsdom does not implement media playback: keep only that browser boundary doubled.
-async function pendingAudioPage(t) {
+async function pendingAudioPage(t, prepare = () => {}) {
     const attempts = [];
     // Explicit tabindex models native controls focusability, which jsdom omits.
     const context = await page(t, '<audio controls tabindex="0"></audio>', window => {
@@ -876,6 +975,7 @@ async function pendingAudioPage(t) {
             audio.paused = true;
             audio.dispatchEvent(new window.Event('pause'));
         };
+        prepare(window, audio);
     });
     const { document } = context;
     return {
@@ -961,6 +1061,103 @@ for (const failure of ['rejected play', 'media error']) {
         await settle();
         assert.equal(document.querySelectorAll('.zen-audio-player').length, 0);
     });
+}
+
+for (const failure of ['rejected play', 'media error']) {
+    test(`audio ${failure} relinquishes media subscriptions and detached UI writes`, async t => {
+        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'ended'];
+        const listeners = new Map(types.map(type => [type, new Set()]));
+        const external = [];
+        const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t, (window, audio) => {
+            Object.defineProperty(audio, 'duration', { value: 120 });
+            // Forward to real EventTarget methods; bookkeeping never substitutes event delivery.
+            const add = audio.addEventListener.bind(audio);
+            const remove = audio.removeEventListener.bind(audio);
+            audio.addEventListener = (type, callback, options) => {
+                listeners.get(type)?.add(callback);
+                add(type, callback, options);
+            };
+            audio.removeEventListener = (type, callback, options) => {
+                listeners.get(type)?.delete(callback);
+                remove(type, callback, options);
+            };
+            for (const type of types) audio.addEventListener(type, () => external.push(type));
+        });
+        const player = button.closest('.zen-audio-player');
+        const slider = player.querySelector('[role="slider"]');
+        const time = player.querySelector('.zen-audio-time');
+        const mutations = new window.MutationObserver(() => {});
+        mutations.observe(player, { attributes: true, childList: true, characterData: true, subtree: true });
+        button.focus(); button.click();
+        audio.currentTime = 30;
+        audio.dispatchEvent(new window.Event('timeupdate'));
+        assert.equal(slider.getAttribute('aria-valuenow'), '25', 'positive control reaches the real custom UI');
+        assert.ok(mutations.takeRecords().length, 'real media events mutate the mounted player');
+        for (const type of types) assert.equal(listeners.get(type).size, 2, `${type} has one Zen and one external callback`);
+        if (failure === 'rejected play') attempts[0].reject(new Error('unsupported media'));
+        else audio.dispatchEvent(new window.Event('error'));
+        await settle();
+        assert.equal(document.querySelector('.zen-audio-player'), null);
+        assert.equal(document.activeElement, audio);
+        assert.equal(audio.controls, true);
+        assert.equal(audio.style.display, '');
+        const oldMarkup = player.outerHTML;
+        const oldTime = time.innerText; // jsdom innerText writes are not MutationObserver records.
+        external.length = 0;
+        for (const type of types) {
+            audio.paused = type !== 'play';
+            audio.currentTime = 90;
+            audio.ended = type === 'ended';
+            audio.dispatchEvent(new window.Event(type));
+        }
+        assert.deepEqual(external, types, 'native/plugin listeners continue receiving every media event');
+        assert.equal(player.outerHTML, oldMarkup, 'native media events must not mutate the detached player');
+        assert.equal(time.innerText, oldTime, 'native timeupdate must not write to detached text');
+        assert.equal(mutations.takeRecords().length, 0, 'not even same-value writes remain on detached controls');
+        for (const type of types) assert.equal(listeners.get(type).size, 1, `${type} releases only the Zen callback`);
+        attempts[0].resolve();
+        await settle();
+        assert.equal(player.outerHTML, oldMarkup, 'a late completion cannot update the abandoned UI');
+    });
+}
+
+for (const direction of ['ltr', 'rtl']) {
+    for (const block of [false, true]) {
+        test(`audio ${block ? 'block' : 'plain'} ${direction} pointer seek follows the visible inline-start fill`, async t => {
+            const audioMarkup = '<audio controls></audio>';
+            const { window, document } = await page(t,
+                block ? `<figure class="wp-block-audio">${audioMarkup}</figure>` : audioMarkup, window => {
+                    const style = window.document.createElement('style');
+                    // jsdom does not inherit direction; supply its computed value at the layout boundary.
+                    style.textContent = readFileSync(join(__dirname, '..', 'theme/zen/assets/css/layout.css'), 'utf8') +
+                        `\n.zen-audio-progress-container { direction: ${direction}; }`;
+                    window.document.head.append(style);
+                    Object.defineProperties(window.document.querySelector('audio'), {
+                        duration: { value: 100, writable: true },
+                        currentTime: { value: 0, writable: true },
+                    });
+                });
+            const audio = document.querySelector('audio');
+            const slider = document.querySelector('[role="slider"]');
+            const fill = slider.firstElementChild;
+            assert.equal(window.getComputedStyle(slider).display, 'flex', 'shipped CSS places the fill on the inline-start side');
+            assert.equal(window.getComputedStyle(slider).direction, direction);
+            slider.getBoundingClientRect = () => new window.DOMRect(100, 0, 200, 32);
+            for (const [clientX, ltrTime] of [[120, 10], [200, 50], [280, 90], [80, 0], [320, 100]]) {
+                const expected = direction === 'rtl' ? 100 - ltrTime : ltrTime;
+                slider.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX }));
+                assert.ok(Math.abs(audio.currentTime - expected) < 1e-10,
+                    `click ${clientX} must seek ${expected}% from the ${direction === 'rtl' ? 'right' : 'left'}`);
+                audio.dispatchEvent(new window.Event('timeupdate'));
+                assert.equal(slider.getAttribute('aria-valuenow'), String(expected));
+                assert.ok(Math.abs(Number.parseFloat(fill.style.width) - expected) < 1e-10, 'visible fill follows the seek');
+            }
+            audio.duration = NaN;
+            audio.currentTime = 25;
+            slider.dispatchEvent(new window.MouseEvent('click', { clientX: 200 }));
+            assert.equal(audio.currentTime, 25, 'unavailable metadata is still ignored');
+        });
+    }
 }
 
 test('audio tolerates unavailable metadata and keeps later media events synchronized', async t => {

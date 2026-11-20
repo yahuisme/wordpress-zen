@@ -6,6 +6,8 @@ r=Path(sys.argv[1]).resolve();f=json.loads((r/'fixture.json').read_text());o='ht
 tag_url=subprocess.check_output(['php','/opt/test-tools/wordpress/wp-cli.phar','--allow-root','--path='+str(r/'runtime'),'eval','echo get_tag_link('+str(int(f['tag']))+');'],text=True).strip()
 assert tag_url.startswith(o+'/'), 'Tag route must belong to the isolated site'
 routes={'home':'/','article':'/?p='+str(f['normal']),'page':'/?p='+str(f['page']),'category':'/?cat='+str(f['categories'][0]),'tag':tag_url.removeprefix(o),'archives':'/?p='+str(f['archives']),'links':'/?p='+str(f['links']),'search':'/?s=WordPress','empty-search':'/?s=notfound','404':'/?p=2147483647','author':'/?author=1','date':'/?m=202610','empty-category':'/?cat='+str(f['emptycat']),'protected':'/?p='+str(f['protected']),'multipage':'/?p='+str(f['multipage'])}
+for optional in ('tags', 'notes'):
+ if optional in f:routes[optional]='/?p='+str(f[optional])
 if f.get('pagination'):
  routes['list-page-2']='/?paged=2'
  routes['search-page-2']='/?s=WordPress&paged=2'
@@ -14,15 +16,25 @@ if selected:
  assert all(name in routes for name in selected), 'Unknown route selection'
  routes={name:routes[name] for name in selected}
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage']);c=b.new_context(reduced_motion='reduce');page=c.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
+ b=p.chromium.launch(executable_path='/usr/lib/chromium/chromium',args=['--no-sandbox','--disable-dev-shm-usage','--single-process','--no-zygote'])
+ group=Path('/proc/self/cgroup').read_text()
+ control=Path('/sys/fs/cgroup')/group.strip().split('::/',1)[1]
+ limits=[parent for parent in (control,*control.parents) if (parent/'memory.max').is_file()]
+ assert any((parent/'memory.max').read_text().strip()=='4294967296' and (parent/'memory.swap.max').read_text().strip()=='0' for parent in limits)
+ processes=b.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+ assert processes and all(Path(f'/proc/{item["id"]}/cgroup').read_text()==group for item in processes)
+ c=b.new_context(reduced_motion='reduce');c.route('**/*',lambda route:route.continue_() if route.request.url.startswith(o+'/') or route.request.url.startswith('data:') else route.abort())
+ page=c.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
  for name,route in routes.items():
   for width in (320,390,768,1440):
    for dark in (False,True):
     page.set_viewport_size({'width':width,'height':900});res=page.goto(o+route,wait_until='networkidle');assert res.status==(404 if name=='404' else 200),(name,res.status)
     if name=='tag':assert page.locator('body').evaluate('(e,id)=>e.classList.contains("tag-"+id)',f['tag']) and page.locator('main h1').count()==1, 'Expected the native tag archive, not the homepage'
     page.evaluate('(v)=>{document.documentElement.classList.toggle("dark",v);document.documentElement.style.scrollBehavior="auto"}',dark)
-    d=page.evaluate('''()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,items:[...document.querySelectorAll('.zen-post-item--standard')].map(e=>({title:e.querySelector('h2').getBoundingClientRect().width,excerpt:e.querySelector('.zen-post-excerpt').getBoundingClientRect().width})),reading:[...document.querySelectorAll('article.entry-content')].map(e=>({width:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize,line:getComputedStyle(e).lineHeight})),header:{bottom:document.querySelector('.zen-site-header').getBoundingClientRect().bottom}})''')
+    d=page.evaluate('''()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,items:[...document.querySelectorAll('.zen-post-item--standard')].map(e=>({title:e.querySelector('h2').getBoundingClientRect().width,excerpt:e.querySelector('.zen-post-excerpt')?.getBoundingClientRect().width??null})),reading:[...document.querySelectorAll('article.entry-content')].map(e=>({width:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize,line:getComputedStyle(e).lineHeight})),header:{bottom:document.querySelector('.zen-site-header').getBoundingClientRect().bottom}})''')
     assert d['scroll']<=width+1,(name,width,d)
+    if width<640:
+     assert page.locator('.zen-footer-navigation li + li').evaluate_all("es=>es.every(e=>getComputedStyle(e,'::before').content==='none')"),'Wrapped footer rows must not start with orphan separators'
     if name in ('list-page-2','search-page-2'):
      nav=page.get_by_role('navigation',name='分页导航')
      assert nav.locator('[aria-current="page"]').inner_text()=='2', name
@@ -38,12 +50,15 @@ with sync_playwright() as p:
      names_and_descriptions=cards.locator('h2, p').evaluate_all('es=>es.map(e=>({width:e.clientWidth,scroll:e.scrollWidth,wrap:getComputedStyle(e).whiteSpace}))')
      assert all(x['width']>=x['scroll'] and x['wrap']!='nowrap' for x in names_and_descriptions), (name,width,names_and_descriptions)
     if name in ('home','category','tag','search','author','date'):assert d['items'], ('Expected nonempty standard-list fixture',name)
-    assert all(abs(x['title']-x['excerpt'])<1 for x in d['items']),(name,width,d)
-    assert all(x['font']=='18px' and x['line']=='32px' for x in d['reading']),(name,d)
+    assert all(x['excerpt'] is None or abs(x['title']-x['excerpt'])<1 for x in d['items']),(name,width,d)
+    expected_font=16 if width<640 else 17
+    assert all(float(x['font'].removesuffix('px'))==expected_font and abs(float(x['line'].removesuffix('px'))-expected_font*1.55)<0.1 for x in d['reading']),(name,d)
     if width in (390,1440) and not dark:
      for image in page.locator('main img').all():image.scroll_into_view_if_needed();page.wait_for_timeout(40)
      page.evaluate('scrollTo(0,0)');page.screenshot(path=str(out/(name+'-'+str(width)+'.png')),full_page=True)
-    rows.append({'page':name,'width':width,'dark':dark,'metrics':d})
+    row={'page':name,'width':width,'dark':dark,'metrics':d}
+    rows.append(row)
+    with (out/'page-review.jsonl').open('a') as stream:stream.write(json.dumps(row,ensure_ascii=False)+'\n')
  if selected:
   b.close();assert not errors,errors
   (out/'page-review-selected.json').write_text(json.dumps({'rows':rows,'errors':errors},ensure_ascii=False,indent=2));print('PASS',len(rows),'selected page/state/width cases');sys.exit(0)

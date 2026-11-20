@@ -151,10 +151,11 @@ with sync_playwright() as playwright:
         p = logged.new_page()
         try:
             p.goto(origin + '/wp-admin/admin.php?page=zen-options', wait_until='networkidle')
-            for key in ('zen_reading_width', 'zen_content_width', 'zen_excerpt_length'):
+            assert p.locator('#zen-layout, #zen_content_width').count() == 0
+            for key in ('zen_reading_width', 'zen_excerpt_length'):
                 control = p.locator('#' + key)
                 old = control.input_value()
-                p.locator('#zen-layout').evaluate('e=>e.open=false')
+                p.locator('#zen-reading' if key == 'zen_reading_width' else '#zen-list').evaluate('e=>e.open=false')
                 control.evaluate('e=>{e.value="";e.dispatchEvent(new Event("input",{bubbles:true}))}')
                 assert not control.evaluate('e=>e.checkValidity()'), key
                 assert control.evaluate('e=>{let p=e.parentElement;while(p){if(p.tagName==="DETAILS"&&!p.open)return false;p=p.parentElement}return true}'), key

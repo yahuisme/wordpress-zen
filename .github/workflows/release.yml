@@ -53,7 +53,7 @@ jobs:
               if forbidden:
                   raise SystemExit('发布包含开发文件：' + ', '.join(sorted(forbidden)))
               expected = {
-                  'zen/404.php', 'zen/LICENSE', 'zen/README.md', 'zen/archive.php',
+                  'zen/404.php', 'zen/LICENSE', 'zen/archive.php',
                   'zen/assets/css/github-dark.min.css', 'zen/assets/css/phosphor-icons.css', 'zen/assets/css/style.css',
                   'zen/assets/css/admin.css', 'zen/assets/css/reading.css', 'zen/assets/css/layout.css', 'zen/assets/js/admin.js',
                   'zen/assets/css/directories.css', 'zen/assets/css/zen-bins-google-code.css',
@@ -93,9 +93,7 @@ jobs:
                   matches = re.findall(r'^' + re.escape(key) + r':[ \t]*(.*)$', style, re.MULTILINE)
                   if matches != [value]:
                       raise SystemExit('发布包元数据校验失败：' + key)
-              readme = archive.read('zen/README.md').decode('utf-8')
-              if 'WordPress 6.5+、PHP 8.0+' not in readme:
-                  raise SystemExit('发布包环境要求说明不一致')
+
           PY
 
       - name: Upload package for manual Release

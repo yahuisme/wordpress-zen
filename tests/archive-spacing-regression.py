@@ -47,11 +47,11 @@ with sync_playwright() as p:
     for width in (320,390,768,1440):
         page.set_viewport_size({'width':width,'height':900})
         gutter = 28 if width <= 640 else 32
-        page.set_content(f'<style>{css}</style><main style="padding-inline:{gutter}px;margin:auto;max-width:992px">'+html+'<div class="zen-post-list"><article class="zen-post-item">第一篇</article><article id="home-sentinel" class="zen-post-item">首页列表</article></div></main>')
+        page.set_content(f'<style>{css}</style><main style="padding-inline:{gutter}px;margin:auto;max-width:1000px">'+html+'<div class="zen-post-list"><article class="zen-post-item">第一篇</article><article id="home-sentinel" class="zen-post-item">首页列表</article></div></main>')
         rows = page.locator('.zen-archive-row').evaluate_all('es=>es.map(e=>{let c=getComputedStyle(e),t=e.querySelector("a").getBoundingClientRect(),d=e.querySelector("time").getBoundingClientRect();return {align:c.alignItems,gap:parseFloat(c.columnGap),top:parseFloat(c.paddingTop),bottom:parseFloat(c.paddingBottom),height:e.getBoundingClientRect().height,titleLeft:t.left,dateRight:d.right,dateWidth:d.width,dateScroll:e.querySelector("time").scrollWidth}})')
         home = page.locator('#home-sentinel').evaluate('e=>parseFloat(getComputedStyle(e).paddingTop)')
         archive_width = page.locator('.zen-archives-directory').evaluate('e=>e.getBoundingClientRect().width')
-        results.append({'width':width,'rows':rows,'homePadding':home,'archiveWidth':archive_width,'expectedWidth':min(width,992)-2*gutter})
+        results.append({'width':width,'rows':rows,'homePadding':home,'archiveWidth':archive_width,'expectedWidth':min(width,1000)-2*gutter})
     browser.close()
 print(json.dumps(results,ensure_ascii=False))
 assert all(len(r['rows']) == 4 for r in results), 'Archive fixture must render all four rows'

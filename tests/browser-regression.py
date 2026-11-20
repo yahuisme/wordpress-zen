@@ -19,7 +19,13 @@ case = sys.argv[3] if len(sys.argv) > 3 else 'all'
 results = []
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(executable_path=os.environ.get('ZEN_CHROMIUM', '/usr/bin/chromium'), args=['--no-sandbox', '--disable-dev-shm-usage'])
+    browser = playwright.chromium.launch(executable_path=os.environ.get('ZEN_CHROMIUM', '/usr/lib/chromium/chromium'), args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+    group = Path('/proc/self/cgroup').read_text()
+    control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
+    ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
+    assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+    processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+    assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
     context = browser.new_context(viewport={'width': 1440, 'height': 900}, reduced_motion='reduce')
     context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
     page = context.new_page()

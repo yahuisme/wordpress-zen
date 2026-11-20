@@ -49,7 +49,13 @@ test('collapsed fields remain successful controls and native disclosure works', 
     const data = new dom.window.FormData(doc.querySelector('form'));
     assert.equal(data.has('zen_footer_text'), true);
     assert.equal(data.has('zen_code_head'), true);
-    assert.equal(data.getAll('zen_category_ids[]').join(), '');
+    assert.equal(data.has('zen_category_ids[]'), false);
+    assert.equal(data.has('zen_content_width'), false);
+    assert.equal(doc.querySelector('#zen-layout, #zen_content_width'), null);
+    assert.equal(doc.querySelector('#zen_category_ids, .zen-category-choices, #zen-categories-help'), null);
+    const headHelp = doc.querySelector('#zen_code_head').nextElementSibling;
+    assert.equal(headHelp.textContent, '在 </head> 前输出');
+    assert.equal(headHelp.innerHTML, '在 &lt;/head&gt; 前输出');
     doc.querySelector('#zen-code').open = true;
     assert.equal(new dom.window.FormData(doc.querySelector('form')).has('zen_code_head'), true);
     assert.equal(unloading(dom), false);
@@ -96,12 +102,13 @@ test('a native preset selection snapshots the form only after applying the width
 test('native validation opens collapsed invalid controls before submission', () => {
     const dom = boot();
     const doc = dom.window.document;
-    edit(dom, 'zen_content_width', '599');
-    assert.equal(doc.getElementById('zen-layout').open, false);
+    doc.getElementById('zen-reading').open = false;
+    edit(dom, 'zen_reading_width', '599');
+    assert.equal(doc.getElementById('zen-reading').open, false);
     assert.equal(doc.querySelector('form').checkValidity(), false);
-    assert.equal(doc.getElementById('zen-layout').open, true);
+    assert.equal(doc.getElementById('zen-reading').open, true);
     assert.equal(unloading(dom), true);
-    edit(dom, 'zen_content_width', '900');
+    edit(dom, 'zen_reading_width', '800');
     edit(dom, 'zen_footer_text', 'new text');
     doc.querySelector('form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     assert.equal(unloading(dom), false);
@@ -110,8 +117,8 @@ test('native validation opens collapsed invalid controls before submission', () 
 test('empty numeric settings are invalid and reveal their collapsed ancestors', () => {
     const dom = boot();
     const doc = dom.window.document;
-    for (const id of ['zen_reading_width', 'zen_content_width', 'zen_excerpt_length']) {
-        doc.getElementById('zen-layout').open = false;
+    for (const id of ['zen_reading_width', 'zen_excerpt_length']) {
+        doc.getElementById(id === 'zen_reading_width' ? 'zen-reading' : 'zen-list').open = false;
         const control = doc.getElementById(id);
         const original = control.value;
         edit(dom, id, '');
@@ -187,4 +194,6 @@ test('responsive admin CSS scopes controls and respects native adminbar offsets'
     assert.match(css, /782px[\s\S]*--zen-adminbar-offset:\s*46px/);
     assert.match(css, /600px[\s\S]*--zen-adminbar-offset:\s*0px/);
     assert.match(css, /textarea[^}]*width:\s*100%[^}]*max-width:\s*800px/);
+    assert.doesNotMatch(css, /zen-category-choices/);
+    assert.doesNotMatch(css, /zen-options-subgroup/);
 });

@@ -102,4 +102,9 @@ foreach (array(
     zen_scripts();
     check(wp_script_is('comment-reply') === $expected, "$name: Core owns reply behavior only when available");
 }
+$font_css = file_get_contents(ABSPATH . 'assets/css/zen-bins-google-code.css');
+check(substr_count($font_css, '@font-face') === 4 && substr_count($font_css, 'font-weight: 300 700;') === 4, 'variable font families and styles use shared weight ranges without duplicate declarations');
+foreach (array('latin-normal.woff2', 'latin-italic.woff2', 'ascent-override: 96.6157%', 'descent-override: 28.6047%') as $font_contract) {
+    check(str_contains($font_css, $font_contract), 'font source and fallback metrics preserved: ' . $font_contract);
+}
 exit($failures ? 1 : 0);

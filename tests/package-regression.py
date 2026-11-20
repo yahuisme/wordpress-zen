@@ -16,6 +16,9 @@ version_match = re.search(r'^Version:\s*(\S+)', (ROOT / 'style.css').read_text()
 assert validator_match and version_match, 'Release workflow contract missing'
 validator = '\n'.join(line[10:] for line in validator_match.group(1).splitlines())
 version = version_match.group(1)
+readme = (PROJECT / 'README.md').read_text()
+assert 'WordPress 6.5+、PHP 8.0+' in readme, 'Root README must match theme requirements'
+assert not (ROOT / 'README.md').exists(), 'Theme documentation belongs in the root README'
 assert '  workflow_dispatch:' in workflow and not re.search(r'^  (push|pull_request):', workflow, re.M)
 assert '  contents: read' in workflow
 assert 'release_notes:' in workflow
@@ -80,6 +83,7 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
     with zipfile.ZipFile(package) as archive:
         members = {name: archive.read(name) for name in archive.namelist() if not name.endswith('/')}
     assert len(members) == len(expected_files)
+    assert 'zen/README.md' not in members, 'Repository instructions must not enter the installer'
     for name, data in members.items():
         assert data == (ROOT / name.removeprefix('zen/')).read_bytes(), name
     print(f'PASS release ZIP: {len(members)} files match source; metadata accepted')
@@ -90,7 +94,7 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
         ('wrong PHP requirement', 'zen/style.css', b'Requires PHP: 8.0', b'Requires PHP: 7.4'),
         ('duplicate PHP requirement', 'zen/style.css', b'Requires PHP: 8.0', b'Requires PHP: 8.0\nRequires PHP: 8.0'),
         ('version mismatch', 'zen/style.css', ('Version: ' + version).encode(), b'Version: 0.0.0'),
-        ('README mismatch', 'zen/README.md', b'PHP 8.0+', b'PHP 7.4+'),
+
     ]
     for label, target, old, new in cases:
         assert old in members[target]
@@ -106,6 +110,13 @@ with tempfile.TemporaryDirectory(prefix='zen-package-') as temp:
         archive.writestr('zen/tests/unwanted.txt', 'maintenance file')
     assert validate().returncode != 0
     print('PASS rejects extra maintenance files')
+
+    with zipfile.ZipFile(package, 'w') as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
+        archive.writestr('zen/README.md', readme)
+    assert validate().returncode != 0
+    print('PASS rejects a retired theme README')
 
     package.write_bytes(original)
     with warnings.catch_warnings(), zipfile.ZipFile(package, 'a') as archive:

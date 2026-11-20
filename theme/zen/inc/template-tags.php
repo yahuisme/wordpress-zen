@@ -42,14 +42,7 @@ function zen_get_posts_url() {
 }
 
 function zen_category_navigation() {
-    $ids = zen_get_option('zen_category_ids');
-    $args = array('hide_empty' => true);
-    if (is_array($ids) && !empty($ids)) {
-        $args['include'] = $ids;
-        $args['orderby'] = 'include';
-        $args['hide_empty'] = false;
-    }
-    $categories = get_categories($args);
+    $categories = get_categories(array('hide_empty' => true));
     $current = is_category() ? get_queried_object_id() : 0;
     ?>
     <nav class="zen-category-nav" aria-label="文章分类">

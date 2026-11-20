@@ -26,6 +26,7 @@ async function page(t, { positions = [20, 850, 3000, 6000], observer = true, ena
         code.textContent = 'const message = "<safe>";\nconsole.log(message);';
         block.appendChild(code);
         block.getBoundingClientRect = code.getBoundingClientRect = () => ({ top, bottom: top + 100 });
+        block.getClientRects = code.getClientRects = () => [block.getBoundingClientRect()];
         window.document.querySelector('.entry-content').appendChild(block);
         return block;
     });
@@ -70,6 +71,58 @@ test('without IntersectionObserver all code still highlights', async t => {
     assert.equal(observers.length, 0);
     codes.forEach(code => assert.ok(code.querySelector('.hljs-keyword')));
 });
+
+for (const observer of [true, false]) {
+    test(`closed details code ${observer ? 'defers until expansion' : 'keeps the no-observer fallback'}`, async t => {
+        let details;
+        const text = 'const folded = "<safe>";\n'.repeat(400);
+        const { window, codes, blocks, calls, observers, copied } = await page(t, {
+            positions: [20, 20], observer,
+            prepare(window, blocks) {
+                details = window.document.createElement('details');
+                const summary = window.document.createElement('summary');
+                summary.textContent = 'Code';
+                details.append(summary);
+                blocks[1].before(details);
+                details.append(blocks[1]);
+                const code = blocks[1].querySelector('code');
+                code.textContent = text;
+                // jsdom has no layout: model native closed-details zero/empty rects only.
+                const rect = () => new window.DOMRect(0, details.open ? 20 : 0, details.open ? 300 : 0, details.open ? 100 : 0);
+                blocks[1].getBoundingClientRect = code.getBoundingClientRect = rect;
+                blocks[1].getClientRects = code.getClientRects = () => details.open ? [rect()] : [];
+            },
+        });
+        assert.equal(details.open, false);
+        assert.equal(blocks[1].getBoundingClientRect().bottom, 0, 'folded native boxes have zero geometry');
+        assert.equal(blocks[1].getClientRects().length, 0);
+        if (!observer) {
+            assert.deepEqual(calls, codes, 'without IO even folded labelled code still gets the established fallback');
+            assert.ok(codes[1].querySelector('.hljs-keyword'), 'run the real bundled grammar');
+            assert.equal(observers.length, 0);
+            return;
+        }
+        assert.deepEqual(calls, [codes[0]], 'collapsed labelled code must not synchronously reach Highlight.js');
+        assert.equal(codes[1].dataset.highlighted, undefined);
+        assert.equal(codes[1].childElementCount, 0);
+        const pending = observers[0];
+        assert.deepEqual([...pending.targets], [codes[1]], 'reuse the existing deferred-code observer');
+        pending.emit([{ target: codes[1], isIntersecting: false }]);
+        assert.deepEqual(calls, [codes[0]], 'a folded target remains literal');
+        details.open = true;
+        details.dispatchEvent(new window.Event('toggle'));
+        blocks[1].previousElementSibling.click(); await Promise.resolve();
+        assert.deepEqual(copied, [text], 'copy still works before deferred highlighting');
+        assert.ok(blocks[1].getClientRects().length);
+        pending.emit([{ target: codes[1], isIntersecting: true }]);
+        assert.deepEqual(calls, codes);
+        assert.ok(codes[1].querySelector('.hljs-keyword'), 'expansion reaches the real bundled highlighter');
+        assert.equal(codes[1].textContent, text);
+        assert.equal(pending.disconnected, true);
+        pending.emit([{ target: codes[1], isIntersecting: true }]);
+        assert.deepEqual(calls, codes, 'expanded code is highlighted only once');
+    });
+}
 
 for (const enabled of [true, false]) {
     test(`copy preserves literal offscreen code with highlighting ${enabled ? 'enabled' : 'disabled'}`, async t => {
