@@ -40,9 +40,9 @@ function zen_option_schema() {
 
 function zen_code_fields() {
     return array(
-        'zen_code_head'   => array('wp_head', '头部代码', '输出到 </head> 前。'),
-        'zen_code_body'   => array('wp_body_open', '正文起始代码', '输出到 <body> 起始处。'),
-        'zen_code_footer' => array('wp_footer', '页脚代码', '输出到 </body> 前。'),
+        'zen_code_head'   => array('wp_head', '头部代码', 'Google Analytics 请粘贴完整 Google tag（含 <script>）'),
+        'zen_code_body'   => array('wp_body_open', '正文起始代码', '紧接 <body> 输出'),
+        'zen_code_footer' => array('wp_footer', '页脚代码', '在 </body> 前输出'),
     );
 }
 
@@ -168,14 +168,22 @@ function zen_reset_options() {
 add_action('admin_post_zen_reset_options', 'zen_reset_options');
 
 // Raw markup is intentional: only unfiltered_html users may save these fields.
-foreach (zen_code_fields() as $zen_key => list($zen_hook)) {
-    add_action($zen_hook, static function () use ($zen_key) {
-        $code = zen_get_option($zen_key);
-        if (is_string($code) && '' !== trim($code)) {
-            echo "\n" . $code . "\n";
-        }
-    }, 20);
+function zen_print_custom_code($key, $early = false) {
+    $code = zen_get_option($key);
+    if (!is_string($code) || '' === trim($code)) {
+        return;
+    }
+    if ('zen_code_head' === $key && $early !== str_starts_with($code, '<!-- zen:early -->')) {
+        return;
+    }
+    echo "\n" . $code . "\n";
 }
+
+foreach (zen_code_fields() as $zen_key => list($zen_hook)) {
+    add_action($zen_hook, static fn() => zen_print_custom_code($zen_key), 20);
+}
+// Opt-in standalone snippets can run before Core prints its styles at priority 8.
+add_action('wp_head', static fn() => zen_print_custom_code('zen_code_head', true), 7);
 
 function zen_sanitize_checkbox($value) {
     return empty($value) ? 0 : 1;
@@ -375,7 +383,7 @@ function zen_options_page_html() {
                                 <?php foreach (array('auto' => '跟随系统', 'light' => '浅色', 'dark' => '深色') as $value => $label) : ?>
                                     <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $theme_mode); ?>><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
-                            </select><p class="description"><?php esc_html_e('访客首次访问时的默认模式。', 'zen'); ?></p></td>
+                            </select><p class="description"><?php esc_html_e('首次访问时使用的外观', 'zen'); ?></p></td>
                         </tr>
                         <tr>
                             <th scope="row"><label for="zen_reading_width"><?php esc_html_e('正文宽度', 'zen'); ?></label></th>
@@ -389,7 +397,7 @@ function zen_options_page_html() {
                                     <option value="custom" <?php selected(false, in_array((int) $reading_width, $zen_reading_presets, true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
                                 </select>
                                 <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text" aria-describedby="zen-reading-width-help"> px
-                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('正文最大宽度，默认 %dpx；自定义范围 600–960px。选择预设或直接输入。', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
+                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('选择预设或输入 600–960px，默认 %dpx', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
                             </td>
                         </tr>
                         <?php zen_checkbox_field('zen_show_reading_progress', __('阅读进度条', 'zen'), __('在页面顶部显示阅读进度条', 'zen')); ?>
@@ -401,7 +409,7 @@ function zen_options_page_html() {
                         <table class="form-table" role="presentation"><tr>
                             <th scope="row"><label for="zen_content_width"><?php esc_html_e('整体内容宽度', 'zen'); ?></label></th>
                             <td><input type="number" name="zen_content_width" id="zen_content_width" value="<?php echo esc_attr(zen_get_option('zen_content_width')); ?>" min="600" max="1920" step="1" required class="small-text"> px
-                            <p class="description"><?php esc_html_e('整体版面最大宽度，默认 992px（600–1920px）。保留原有值，不等同于正文宽度。', 'zen'); ?></p></td>
+                            <p class="description"><?php esc_html_e('整体版面最大宽度，默认 992px（600–1920px）', 'zen'); ?></p></td>
                         </tr></table>
                     </details>
                 </div>
@@ -409,16 +417,16 @@ function zen_options_page_html() {
             <details class="zen-options-group" id="zen-list" open>
                 <summary><?php esc_html_e('首页与文章列表', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
-                    <?php zen_checkbox_field('zen_show_site_intro', __('站点简介', 'zen'), __('显示 WordPress 站点副标题（在原生站点身份中编辑）', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开、无密码文章，不在下方重复显示。', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_site_intro', __('站点简介', 'zen'), __('首页显示 WordPress 站点副标题', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_latest_card', __('最新文章卡片', 'zen'), __('从文章索引首页选出最新的公开、无密码文章', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_list_style"><?php esc_html_e('列表样式', 'zen'); ?></label></th>
                         <td><select name="zen_list_style" id="zen_list_style" aria-describedby="zen-list-style-help">
                             <option value="standard" <?php selected('standard', $list_style); ?>><?php esc_html_e('标准', 'zen'); ?></option>
                             <option value="compact" <?php selected('compact', $list_style); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
-                        </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式省略卡片及文章列表的摘要。', 'zen'); ?></p></td></tr>
+                        </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式隐藏卡片和列表摘要', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text" aria-describedby="zen-excerpt-length-help"> 字
-                        <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('标准模式下卡片和列表的摘要长度，默认 %d 字（1–300 字）。', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
+                        <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('标准模式摘要长度，默认 %d 字（1–300 字）', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
                     <tr><th scope="row" id="zen-categories-label"><?php esc_html_e('分类归档导航', 'zen'); ?></th>
                         <td><input type="hidden" name="zen_category_ids[]" value="">
                             <fieldset id="zen_category_ids" class="zen-category-choices" aria-labelledby="zen-categories-label" aria-describedby="zen-categories-help">
@@ -427,31 +435,31 @@ function zen_options_page_html() {
                             <?php foreach ($categories as $category) : ?>
                                 <label><input type="checkbox" name="zen_category_ids[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(true, isset($selected_category_ids[(int) $category->term_id])); ?>> <?php echo esc_html($category->name); ?></label>
                             <?php endforeach; ?>
-                            </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('仅在分类归档中显示。全部不勾选时显示所有非空分类。', 'zen'); ?></p>
+                            </fieldset><p class="description" id="zen-categories-help"><?php esc_html_e('仅在分类归档显示，不勾选则显示所有非空分类', 'zen'); ?></p>
                         </td></tr>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-post" open>
                 <summary><?php esc_html_e('文章详情', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
-                    <?php zen_checkbox_field('zen_show_featured_image', __('特色图', 'zen'), __('在文章页展示原生特色图；首页不默认堆叠缩略图', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示文章目录（桌面侧栏 / 移动端抽屉）', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_featured_image', __('特色图', 'zen'), __('在文章页展示原生特色图', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_toc', __('文章目录', 'zen'), __('显示目录（桌面侧栏、移动端抽屉）', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_reading_time', __('预计阅读时间', 'zen'), __('显示预计阅读时间', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_updated_date', __('最后更新时间', 'zen'), __('显示最后更新时间', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_tags', __('标签', 'zen'), __('显示文章底部标签', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_post_navigation', __('上一篇 / 下一篇', 'zen'), __('显示相邻文章导航', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_lightbox', __('图片灯箱', 'zen'), __('点击正文图片放大查看', 'zen')); ?>
                     <?php zen_checkbox_field('zen_show_highlight', __('代码高亮', 'zen'), __('启用代码块语法高亮', 'zen')); ?>
-                    <?php zen_checkbox_field('zen_show_reading_count', __('浏览次数', 'zen'), __('同一 IP 五分钟内计数一次，登录用户不计数。', 'zen')); ?>
+                    <?php zen_checkbox_field('zen_show_reading_count', __('浏览次数', 'zen'), __('显示文章浏览次数', 'zen')); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php esc_html_e('版权协议', 'zen'); ?></label></th>
                         <td><select name="zen_copyright_license" id="zen_copyright_license">
                             <?php foreach (array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0') as $value => $label) : ?>
                                 <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $license); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
-                        </select><p class="description"><?php esc_html_e('文章底部的协议声明。请仅选择你明确授予的许可。', 'zen'); ?></p>
+                        </select><p class="description"><?php esc_html_e('显示在文章底部，仅选择你明确授予的许可', 'zen'); ?></p>
                         <?php $legacy_copyright = get_option('zen_show_copyright', null); ?>
                         <?php if (null !== $legacy_copyright && !$legacy_copyright && 'none' !== $license) : ?>
-                            <p><?php esc_html_e('旧版曾关闭版权声明，但当前已选协议。如不打算公开声明，请改为「不显示」并保存。', 'zen'); ?></p>
+                            <p><?php esc_html_e('旧版曾关闭版权声明，如不公开请选「不显示」并保存', 'zen'); ?></p>
                         <?php endif; ?></td></tr>
                 </table></div>
             </details>
@@ -460,17 +468,17 @@ function zen_options_page_html() {
                 <div class="zen-group-content"><table class="form-table" role="presentation">
                     <tr><th scope="row"><label for="zen_footer_text"><?php esc_html_e('自定义页脚', 'zen'); ?></label></th>
                         <td><textarea name="zen_footer_text" id="zen_footer_text" rows="4" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot;&gt;Hosted by Example&lt;/a&gt;"><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
-                        <p class="description"><?php esc_html_e('支持安全 HTML 标签；留空不显示。', 'zen'); ?></p></td></tr>
+                        <p class="description"><?php esc_html_e('支持安全 HTML，留空不显示', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_site_start_date"><?php esc_html_e('博客起始日期', 'zen'); ?></label></th>
                         <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
-                        <p class="description"><?php esc_html_e('页脚运行时间的起点（YYYY-MM-DD）。留空按首篇公开文章计算。', 'zen'); ?></p></td></tr>
+                        <p class="description"><?php esc_html_e('填写 YYYY-MM-DD，留空按首篇公开文章计算', 'zen'); ?></p></td></tr>
                     <?php zen_checkbox_field('zen_show_footer_rss', __('RSS', 'zen'), __('显示 RSS 订阅链接', 'zen')); ?>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-code">
                 <summary><?php esc_html_e('高级代码', 'zen'); ?></summary>
                 <div class="zen-group-content">
-                    <p><?php esc_html_e('代码将直接输出到页面，可运行脚本并影响安全与加载速度。仅粘贴可信来源代码；更换主题后这些代码不再输出。长期统计或业务功能请使用插件。', 'zen'); ?></p>
+                    <p><?php esc_html_e('仅粘贴可信代码，脚本会直接运行，切换主题后不再输出', 'zen'); ?></p>
                     <?php if (current_user_can('unfiltered_html')) : ?>
                         <table class="form-table" role="presentation">
                             <?php foreach (zen_code_fields() as $key => list(, $label, $description)) : ?>
@@ -480,7 +488,7 @@ function zen_options_page_html() {
                             <?php endforeach; ?>
                         </table>
                     <?php else : ?>
-                        <p><?php esc_html_e('当前账号无权编辑原始代码；保存其他设置不会更改已有代码。', 'zen'); ?></p>
+                        <p><?php esc_html_e('当前账号无权编辑原始代码，保存其他设置不影响已有代码', 'zen'); ?></p>
                     <?php endif; ?>
                 </div>
             </details>

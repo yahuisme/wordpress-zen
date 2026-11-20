@@ -3,7 +3,10 @@
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 $GLOBALS['options'] = $GLOBALS['settings'] = $GLOBALS['errors'] = $GLOBALS['assets'] = array();
 $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => true);
-function add_action($hook, ...$args) { $GLOBALS['hooks'][] = $hook; }
+function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
+    $GLOBALS['hooks'][] = $hook;
+    $GLOBALS['hook_callbacks'][$hook][$priority][] = $callback;
+}
 function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?? $default; }
 function current_user_can($cap) { return $GLOBALS['caps'][$cap] ?? false; }
 function register_setting($group, $key, $args) { $GLOBALS['settings'][$key] = $args; }
@@ -117,7 +120,7 @@ test('single settings form groups all old and new fields', function () {
     expect((bool) preg_match('/<details[^>]*id="zen-layout"[^>]*>/', $html, $width) && !str_contains($width[0], ' open'), 'advanced width must start collapsed');
     expect(!str_contains($html, 'id="zen-update-status"') && !str_contains($html, '关于更新'), 'theme update interface still present');
     expect(str_contains($html, '&lt;研究&gt;'), 'category names must be escaped');
-    expect(str_contains($html, '同一 IP 五分钟内计数一次，登录用户不计数。') && str_contains($html, '更换主题'), 'current counter boundary and code risk explanations missing');
+    expect(str_contains($html, '仅粘贴可信代码') && str_contains($html, '切换主题后不再输出'), 'code risk explanation missing');
     expect(!str_contains($html, '整页缓存命中不计数'), 'cache-safe AJAX counter must not claim page cache hits never count');
     expect(str_contains($html, '恢复默认设置') && str_contains($html, 'zen_reset_options'), 'reset settings action missing');
     expect(!str_contains($html, '<style>'), 'admin style must be enqueued separately');
@@ -154,6 +157,47 @@ test('category choices are touch-friendly successful checkbox controls', functio
     $html = render();
     expect(!str_contains($html, 'id="zen_category_ids" multiple'), 'keyboard-only multi-select remains');
     expect(str_contains($html, 'type="checkbox" name="zen_category_ids[]"'), 'touch category choices missing');
+});
+
+test('option descriptions use short copy without terminal punctuation', function () {
+    $doc = new DOMDocument();
+    @$doc->loadHTML('<?xml encoding="UTF-8">' . render());
+    $xpath = new DOMXPath($doc);
+    foreach (array(
+        'zen_show_site_intro' => '首页显示 WordPress 站点副标题',
+        'zen_show_latest_card' => '从文章索引首页选出最新的公开、无密码文章',
+        'zen_show_featured_image' => '在文章页展示原生特色图',
+        'zen_show_reading_count' => '显示文章浏览次数',
+    ) as $key => $description) {
+        expect(trim($xpath->evaluate('string(//label[@for="' . $key . '"])')) === $description, "$key copy differs");
+    }
+    $descriptions = $xpath->query('//*[@id="zen-options-form"]//*[contains(concat(" ", normalize-space(@class), " "), " description ")]|//*[@id="zen-options-form"]//label[input[@type="checkbox"]]');
+    expect($descriptions->length >= 25, 'descriptions missing');
+    foreach ($descriptions as $element) {
+        $text = trim($element->textContent);
+        expect($text !== '' && !str_contains($text, '。') && !preg_match('/[.!?！？；;，,：:]$/u', $text), "inconsistent option copy: $text");
+    }
+    expect(str_contains($xpath->evaluate('string(//*[@id="zen_code_head"]/following-sibling::p)'), 'Google tag'), 'head code needs a Google tag placement hint');
+});
+
+test('only a leading marker in stored head code opts into early output', function () {
+    $render_hook = static function ($priority) {
+        ob_start();
+        foreach ($GLOBALS['hook_callbacks']['wp_head'][$priority] ?? array() as $callback) $callback();
+        return ob_get_clean();
+    };
+    $marked = "<!-- zen:early -->\r\n<script>window.fixture = true;</script>";
+    try {
+        foreach (array('', "\n", " \t\r\n", '<!-- WordPress dependency -->' . "\n") as $prefix) {
+            $code = $prefix . $marked;
+            $GLOBALS['options']['zen_code_head'] = $code;
+            $early = '' === $prefix;
+            expect($render_hook(7) === ($early ? "\n$code\n" : ''), 'early output requires a marker at the start of the stored value');
+            expect($render_hook(20) === ($early ? '' : "\n$code\n"), 'head code must be output once, preserving its exact bytes');
+        }
+    } finally {
+        unset($GLOBALS['options']['zen_code_head']);
+    }
 });
 
 test('settings header has no link clusters or explanatory text', function () {

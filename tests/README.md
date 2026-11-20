@@ -179,6 +179,7 @@ python tests/repair-ui-regression.py /path/to/fixture
 ```sh
 python tests/design-browser-regression.py /path/to/fixture green
 python tests/native-settings-regression.py /path/to/fixture
+python tests/native-advanced-code-regression.py /path/to/fixture
 python tests/native-boundary-regression.py /path/to/fixture
 python tests/list-width-regression.py /path/to/fixture green
 python tests/page-review-regression.py /path/to/fixture

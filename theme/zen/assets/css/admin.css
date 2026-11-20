@@ -94,9 +94,11 @@
     box-sizing: border-box;
     min-inline-size: 0;
     max-width: 100%;
-    padding: 8px 0;
+    padding: 8px 0 0;
 }
 .zen-options .zen-category-choices label {
+    /* Core adds an !important bottom margin to fieldset labels. */
+    margin-block-end: 0 !important;
     display: inline-flex;
     align-items: center;
     gap: 4px;
