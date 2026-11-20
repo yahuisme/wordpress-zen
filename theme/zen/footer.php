@@ -8,20 +8,6 @@
 
 <footer role="contentinfo" class="zen-site-footer w-full mt-auto">
     <div class="max-w-zen mx-auto flex flex-col sm:flex-row items-center justify-between">
-        <div class="zen-footer-meta text-start">
-            <?php $zen_uptime = zen_get_site_uptime(); ?>
-            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days']); ?> <?php echo 1 === (int) $zen_uptime['days'] ? 'Day' : 'Days'; ?></div>
-        </div>
-        <?php
-        $zen_footer_text = zen_get_option('zen_footer_text');
-        if ($zen_footer_text !== '') :
-        ?>
-        <div class="zen-footer-links flex flex-col items-center gap-y-2">
-            <div class="zen-footer-row flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                <?php echo wp_kses_post($zen_footer_text); ?>
-            </div>
-        </div>
-        <?php endif; ?>
         <nav class="zen-footer-navigation" aria-label="<?php esc_attr_e('页脚菜单', 'zen'); ?>">
             <ul class="flex flex-wrap items-center gap-x-2">
                 <?php if (has_nav_menu('footer')) : ?>
@@ -42,6 +28,20 @@
                 <?php endif; ?>
             </ul>
         </nav>
+        <?php
+        $zen_footer_text = zen_get_option('zen_footer_text');
+        if ($zen_footer_text !== '') :
+        ?>
+        <div class="zen-footer-links flex flex-col items-center gap-y-2">
+            <div class="zen-footer-row flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+                <?php echo wp_kses_post($zen_footer_text); ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        <div class="zen-footer-meta text-start">
+            <?php $zen_uptime = zen_get_site_uptime(); ?>
+            <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days']); ?> <?php echo 1 === (int) $zen_uptime['days'] ? 'Day' : 'Days'; ?></div>
+        </div>
     </div>
 </footer>
 

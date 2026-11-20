@@ -53,14 +53,14 @@ function zen_category_navigation() {
     $current = is_category() ? get_queried_object_id() : 0;
     ?>
     <nav class="zen-category-nav" aria-label="文章分类">
-        <button class="zen-category-arrow zen-category-prev" type="button" aria-label="向左滚动分类" hidden><span aria-hidden="true">‹</span></button>
+        <button class="zen-category-arrow zen-category-prev" type="button" aria-label="<?php esc_attr_e('上一组分类', 'zen'); ?>" hidden><span aria-hidden="true" dir="ltr">‹</span></button>
         <div class="zen-category-track">
         <a class="zen-ui-link" href="<?php echo esc_url(zen_get_posts_url()); ?>"<?php if (is_home()) echo ' aria-current="page"'; ?>>全部</a>
         <?php foreach ($categories as $category) : ?>
         <a class="zen-ui-link" href="<?php echo esc_url(get_category_link($category->term_id)); ?>"<?php if ((int) $category->term_id === $current) echo ' aria-current="page"'; ?>><?php echo esc_html($category->name); ?></a>
         <?php endforeach; ?>
         </div>
-        <button class="zen-category-arrow zen-category-next" type="button" aria-label="向右滚动分类" hidden><span aria-hidden="true">›</span></button>
+        <button class="zen-category-arrow zen-category-next" type="button" aria-label="<?php esc_attr_e('下一组分类', 'zen'); ?>" hidden><span aria-hidden="true" dir="ltr">›</span></button>
     </nav>
     <?php
 }

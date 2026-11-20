@@ -118,6 +118,17 @@ python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
 
 脚本仅浏览页面，不提交后台设置。建议分别将内容宽度设为600、900、1200和1920复测。外部资源被屏蔽，不据此判断字体网络性能。
 
+分类轨和页脚导航专项（固定 loopback 端口 18765）：
+
+```sh
+python tests/category-navigation-regression.py /path/to/evidence CATEGORY_ID
+python tests/category-navigation-regression.py /path/to/rtl-evidence CATEGORY_ID --rtl
+python tests/category-navigation-regression.py /path/to/rtl-compat-evidence CATEGORY_ID --rtl --without-dir-selector
+python tests/footer-navigation-regression.py Home About RSS --custom
+```
+
+分类轨需要六个以上已发布文章所属的分类，以覆盖横滚、键盘、长焦点链接和无脚本；`--rtl` 设置真实页面方向，`--without-dir-selector` 模拟浏览器不支持 `:dir()`。页脚传实际菜单链接文字，RSS 应处末项；分别测试默认／已指派菜单。自定义页脚为空时省略 `--custom`，设为 `<a href="/extra/">Extra</a>` 时加上它。覆盖断点两侧的视觉和 Tab 顺序、关闭脚本，以及模拟不支持 `reading-flow` 时的回退。全部场景串行，在同一 4 GiB、swap=0 cgroup 内运行。
+
 基础体验测试使用同一隔离站点：
 
 ```sh

@@ -109,6 +109,11 @@ body .font-serif {
 .zen-footer-navigation ul { justify-content: flex-end; }
 .zen-footer-navigation a { display: inline-flex; align-items: center; min-height: 32px; }
 .zen-footer-navigation li + li::before { content: "·"; margin-inline-end: 8px; }
+@media (min-width: 640px) {
+    .zen-site-footer > div { reading-flow: flex-visual; }
+    .zen-footer-meta { order: -2; }
+    .zen-footer-links { order: -1; }
+}
 .max-w-zen {
     max-width: var(--zen-content-width);
 }
@@ -296,6 +301,7 @@ body .font-serif {
     .zen-post-list .zen-post-excerpt { grid-area: excerpt; }
 }
 .zen-category-nav {
+    --zen-category-shadow: 8px;
     position: relative;
     min-width: 0;
     margin-bottom: 20px;
@@ -335,7 +341,7 @@ body .font-serif {
     display: none;
 }
 .zen-category-nav.has-overflow .zen-category-track {
-    padding-right: 32px;
+    padding-inline-end: 32px;
 }
 .zen-category-arrow {
     position: absolute;
@@ -350,12 +356,19 @@ body .font-serif {
     cursor: pointer;
 }
 .zen-category-prev {
-    left: 0;
-    box-shadow: 8px 0 8px var(--zen-bg);
+    inset-inline-start: 0;
+    box-shadow: var(--zen-category-shadow) 0 8px var(--zen-bg);
 }
 .zen-category-next {
-    right: 0;
-    box-shadow: -8px 0 8px var(--zen-bg);
+    inset-inline-end: 0;
+    box-shadow: calc(-1 * var(--zen-category-shadow)) 0 8px var(--zen-bg);
+}
+.zen-category-nav.is-rtl { --zen-category-shadow: -8px; }
+.zen-category-nav.is-rtl .zen-category-arrow span { display: inline-block; transform: scaleX(-1); }
+/* Give the focused link the full rail without removing the arrows from the Tab order. */
+.zen-category-nav.has-link-focus .zen-category-arrow:not(:focus) {
+    opacity: 0;
+    pointer-events: none;
 }
 .zen-category-arrow[hidden] { display: none; }
 .zen-category-arrow:focus-visible {
@@ -762,7 +775,6 @@ body .font-serif {
         align-items: center;
     }
     .zen-footer-navigation {
-        order: 1;
         margin-inline-start: 0;
         text-align: center;
     }
@@ -770,7 +782,6 @@ body .font-serif {
         justify-content: center;
     }
     .zen-footer-links {
-        order: 2;
         align-items: center;
         text-align: center;
     }
@@ -778,7 +789,6 @@ body .font-serif {
         justify-content: center;
     }
     .zen-footer-meta {
-        order: 3;
         text-align: center;
     }
 }

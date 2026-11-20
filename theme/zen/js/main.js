@@ -17,27 +17,56 @@ const zenInit = () => {
     const reduceMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     const reduceMotion = reduceMotionQuery ? reduceMotionQuery.matches : false;
 
+    const footerNav = document.querySelector('.zen-site-footer .zen-footer-navigation');
+    const footerLinks = footerNav?.nextElementSibling;
+    if (footerLinks?.classList.contains('zen-footer-links') && window.matchMedia && !window.CSS?.supports('reading-flow', 'flex-visual')) {
+        const desktop = window.matchMedia('(min-width: 640px)');
+        const updateFooterOrder = ({ matches }) => {
+            const [first, second] = matches ? [footerLinks, footerNav] : [footerNav, footerLinks];
+            if (first.nextElementSibling === second) return;
+            // Keep the currently focused subtree in place when crossing the breakpoint.
+            if (first.contains(document.activeElement)) first.after(second);
+            else second.before(first);
+        };
+        updateFooterOrder(desktop);
+        desktop.addEventListener('change', updateFooterOrder);
+    }
+
     document.querySelectorAll('.zen-category-nav').forEach((nav) => {
         const track = nav.querySelector('.zen-category-track');
         const prev = nav.querySelector('.zen-category-prev');
         const next = nav.querySelector('.zen-category-next');
         if (!track || !prev || !next) return;
+        const direction = getComputedStyle(track).direction === 'rtl' ? -1 : 1;
+        nav.classList.toggle('is-rtl', direction === -1);
         const update = () => {
             const padding = nav.classList.contains('has-overflow') ? 32 : 0;
-            nav.classList.toggle('has-overflow', track.scrollWidth - padding > track.clientWidth + 1);
-            prev.hidden = track.scrollLeft <= 1;
-            next.hidden = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+            const overflowing = track.scrollWidth - padding > track.clientWidth + 1;
+            nav.classList.toggle('has-overflow', overflowing);
+            const offset = direction * track.scrollLeft;
+            prev.hidden = !overflowing || offset <= 1;
+            next.hidden = !overflowing || offset + track.clientWidth >= track.scrollWidth - 1;
+        };
+        const reveal = (link) => {
+            const target = link.getBoundingClientRect();
+            const viewport = track.getBoundingClientRect();
+            track.scrollLeft += target.left - viewport.left + (target.width - viewport.width) / 2;
+            update();
         };
         [prev, next].forEach((button, index) => {
             button.addEventListener('click', () => track.scrollBy({
-                left: (index ? 1 : -1) * Math.max(64, track.clientWidth - 96),
+                left: direction * (index ? 1 : -1) * Math.max(64, track.clientWidth - 96),
                 behavior: reduceMotion ? 'auto' : 'smooth',
             }));
         });
         track.addEventListener('focusin', (event) => {
-            if (event.target.matches('a')) {
-                track.scrollLeft = Math.max(0, event.target.offsetLeft - track.clientWidth / 2 + event.target.offsetWidth / 2);
-                update();
+            if (!event.target.matches('a')) return;
+            nav.classList.add('has-link-focus');
+            reveal(event.target);
+        });
+        track.addEventListener('focusout', (event) => {
+            if (!event.relatedTarget?.matches('a') || !track.contains(event.relatedTarget)) {
+                nav.classList.remove('has-link-focus');
             }
         });
         track.addEventListener('scroll', update, { passive: true });
@@ -45,10 +74,7 @@ const zenInit = () => {
         if (window.ResizeObserver) new ResizeObserver(update).observe(track);
         update();
         const current = track.querySelector('[aria-current="page"]');
-        if (current && nav.classList.contains('has-overflow')) {
-            track.scrollLeft = Math.max(0, current.offsetLeft - track.clientWidth / 2 + current.offsetWidth / 2);
-            update();
-        }
+        if (current && nav.classList.contains('has-overflow')) reveal(current);
         if (document.fonts) document.fonts.ready.then(update);
     });
 

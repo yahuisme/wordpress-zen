@@ -49,9 +49,7 @@ check($counts[43] === 2, 'crawler excluded');
 $footer = file_get_contents(dirname(__DIR__) . '/theme/zen/footer.php');
 check(str_contains($footer, 'Since <?php') && str_contains($footer, 'Days'), 'English footer design');
 check(str_contains($footer, "esc_html($" . "zen_uptime['days'])"), 'dynamic escaped uptime');
-check(str_contains($footer, 'class="zen-footer-meta text-start"'), 'footer metadata has a mobile ordering hook');
 $layout = file_get_contents(dirname(__DIR__) . '/theme/zen/assets/css/layout.css');
-check((bool) preg_match('/@media \(max-width: 639\.98px\) \{.*?\.zen-footer-navigation \{.*?order: 1;.*?\.zen-footer-links \{.*?order: 2;.*?\.zen-footer-meta \{.*?order: 3;/s', $layout), 'mobile footer order is navigation, custom text, metadata');
 check((bool) preg_match('/@media \(max-width: 639\.98px\) \{.*?\.zen-site-footer > div \{.*?align-items: center;.*?\.zen-footer-navigation ul \{.*?justify-content: center;/s', $layout), 'mobile footer sections are centered');
 $archive = file_get_contents(dirname(__DIR__) . '/theme/zen/page-archives.php');
 check(!str_contains($archive, 'preg_match'), 'archive dead date branch');
@@ -83,6 +81,7 @@ ob_start(); require ABSPATH . 'footer.php'; $with_about = ob_get_clean();
 check(str_contains($with_about, 'href="/post/77">About</a>'), 'published About page uses its native permalink');
 check(!str_contains($with_about, '/feed/'), 'RSS off hides feed link');
 $GLOBALS['footer_options']['zen_show_footer_rss'] = 1;
+$GLOBALS['footer_options']['zen_footer_text'] = '<a href="/extra/">Extra</a>';
 foreach (array(false => '>About</a>', true => '>Custom</a>') as $custom => $expected_menu_item) {
     $GLOBALS['custom_footer_menu'] = $custom;
     ob_start(); require ABSPATH . 'footer.php'; $footer_with_rss = ob_get_clean();
@@ -90,6 +89,7 @@ foreach (array(false => '>About</a>', true => '>Custom</a>') as $custom => $expe
     preg_match_all('~<a\b[^>]*>.*?</a>~s', $nav[1] ?? '', $links);
     check(str_contains($nav[1] ?? '', $expected_menu_item) && str_contains(end($links[0]) ?: '', 'href="https://example.test/feed/"'), 'RSS is the last link in both default and custom footer menus');
     check(substr_count($footer_with_rss, 'href="https://example.test/feed/"') === 1, 'RSS appears exactly once');
+    check((bool) preg_match('~<nav class="zen-footer-navigation".*?href="/extra/".*?class="zen-footer-meta\b~s', $footer_with_rss), 'mobile footer source and keyboard order match');
 }
 unset($GLOBALS['custom_footer_menu'], $GLOBALS['footer_options']);
 $GLOBALS['about_page']->post_status = 'private';
@@ -109,6 +109,7 @@ function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026-
 function esc_attr($value) { return esc_html($value); }
 function esc_attr_e($value, $domain = '') { echo esc_attr($value); }
 function esc_html_e($value, $domain = '') { echo esc_html($value); }
+function wp_kses_post($value) { return $value; }
 function get_pages($args) { return array(); }
 function home_url($path) { return 'https://example.test' . $path; }
 function wp_reset_postdata() {}

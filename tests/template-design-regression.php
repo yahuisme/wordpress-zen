@@ -24,6 +24,7 @@ function esc_attr($value) { return esc_html($value); }
 function esc_url($value) { return esc_html($value); }
 function __($value, $domain = '') { return $value; }
 function esc_attr__($value, $domain = '') { return esc_attr($value); }
+function esc_attr_e($value, $domain = '') { echo esc_attr__($value, $domain); }
 function zen_get_option($name) { return $GLOBALS['options'][$name] ?? array('zen_list_style' => 'standard', 'zen_excerpt_length' => 100)[$name] ?? 0; }
 function is_home() { return true; }
 function is_front_page() { return $GLOBALS['is_front_page'] ?? false; }
