@@ -758,9 +758,29 @@ body .font-serif {
     .zen-post-nav-next {
         text-align: left;
     }
-    .zen-site-footer > div { align-items: flex-start; }
-    .zen-footer-links { align-items: flex-start; }
-    .zen-footer-row { justify-content: flex-start; }
+    .zen-site-footer > div {
+        align-items: center;
+    }
+    .zen-footer-navigation {
+        order: 1;
+        margin-inline-start: 0;
+        text-align: center;
+    }
+    .zen-footer-navigation ul {
+        justify-content: center;
+    }
+    .zen-footer-links {
+        order: 2;
+        align-items: center;
+        text-align: center;
+    }
+    .zen-footer-row {
+        justify-content: center;
+    }
+    .zen-footer-meta {
+        order: 3;
+        text-align: center;
+    }
 }
 .zen-audio-progress-container,
 .dark .zen-audio-progress-container {

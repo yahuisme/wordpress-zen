@@ -8,7 +8,7 @@
 
 <footer role="contentinfo" class="zen-site-footer w-full mt-auto">
     <div class="max-w-zen mx-auto flex flex-col sm:flex-row items-center justify-between">
-        <div class="text-start">
+        <div class="zen-footer-meta text-start">
             <?php $zen_uptime = zen_get_site_uptime(); ?>
             <div>&copy; <?php echo esc_html(date_i18n('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?> · Since <?php echo esc_html($zen_uptime['year']); ?> · <?php echo esc_html($zen_uptime['days']); ?> <?php echo 1 === (int) $zen_uptime['days'] ? 'Day' : 'Days'; ?></div>
         </div>
