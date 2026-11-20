@@ -171,9 +171,9 @@ async function page(t, html, prepare = () => {}) {
 
 function archiveMarkup(count) {
     return `<div id="zen-archive-years">${Array.from({ length: count }, (_, index) => `
-        <section class="zen-archive-group"><h2 class="zen-archive-year">${2026 - index}</h2>
-            <details class="zen-archive-month" open><summary>10 月</summary><a href="/post/${index}">文章</a></details>
-        </section>`).join('')}</div>
+        <details class="zen-archive-group" open><summary class="zen-archive-year-head"><h2 class="zen-archive-year">${2026 - index}</h2></summary>
+            <section class="zen-archive-month"><h3>10 月</h3><a href="/post/${index}">文章</a></section>
+        </details>`).join('')}</div>
         ${count > 2 ? '<button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years">查看更早年份</button>' : ''}`;
 }
 
@@ -184,16 +184,17 @@ test('archive year disclosure reveals two at a time and keeps focus on newly rev
     const visible = () => years.filter(year => !year.hidden).length;
     assert.equal(visible(), 2);
     assert.equal(more.hidden, false);
-    const monthStates = [...document.querySelectorAll('details')].map(month => month.open);
-    assert.ok(monthStates.every(Boolean), 'months in every year start expanded');
+    assert.ok(years.every(year => year.open), 'every year starts expanded');
+    years[0].open = false;
+    const yearStates = years.map(year => year.open);
     for (const [expected, first] of [[4, 2], [6, 4], [8, 6], [10, 8], [11, 10]]) {
         more.focus();
         more.click();
         assert.equal(visible(), expected);
-        assert.equal(document.activeElement, years[first].querySelector('h2'));
+        assert.equal(document.activeElement, years[first].querySelector('summary'));
         assert.equal(more.hidden, expected === 11);
     }
-    assert.deepEqual([...document.querySelectorAll('details')].map(month => month.open), monthStates, 'revealing years does not change month expansion');
+    assert.deepEqual(years.map(year => year.open), yearStates, 'revealing years does not change existing year expansion');
     assert.equal(document.querySelectorAll('#zen-archive-years a').length, 11, 'all article links stay in the DOM');
 });
 
@@ -1101,7 +1102,7 @@ for (const failure of ['rejected play', 'media error']) {
 
 for (const failure of ['rejected play', 'media error']) {
     test(`audio ${failure} relinquishes media subscriptions and detached UI writes`, async t => {
-        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'ended'];
+        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'durationchange', 'ended'];
         const listeners = new Map(types.map(type => [type, new Set()]));
         const external = [];
         const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t, (window, audio) => {

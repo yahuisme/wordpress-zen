@@ -37,5 +37,16 @@ foreach (array(0, 300, 301, 600, 601) as $length) {
         }
     }
 }
+// Newlines must count the same with and without optional mbstring.
+foreach (array(false, true) as $synced) {
+    $content = str_repeat("字\n", 151);
+    $GLOBALS['reading_patterns'][12] = (object) array('post_type' => 'wp_block', 'post_status' => 'publish', 'post_password' => '', 'post_content' => $content);
+    $GLOBALS['reading_content'] = $synced ? '<!-- wp:block {"ref":12} /-->' : $content;
+    $actual = zen_get_reading_time(1);
+    if ($actual !== 2) {
+        $failures++;
+        fwrite(STDERR, "FAIL multiline UTF-8 synced=" . (int) $synced . " expected=2 actual=$actual\n");
+    }
+}
 if (!$failures) echo "READING_ENTITY_COMPLETE\n";
 exit($failures ? 1 : 0);

@@ -14,10 +14,14 @@ assert (fixture / 'runtime/.zen-isolated-fixture').is_file()
 def assert_date(date, context):
     published = datetime.fromisoformat(date.get_attribute('datetime'))
     current_year = datetime.now(published.tzinfo).year
-    short = context == 'directory' or (context == 'list' and published.year == current_year)
+    short = context == 'directory' or (context in ('home', 'list') and published.year == current_year)
     expected = f'{published.month}月 {published.day}日' if short else published.strftime('%Y.%m.%d')
     actual = ' '.join(date.inner_text().split())
     assert actual == expected, (context, actual, expected)
+    if context == 'home' and short:
+        assert date.locator('span').all_inner_texts() == [f'{published.month}月', f'{published.day}日']
+        parts = date.locator('span').evaluate_all('es=>es.map(e=>e.getBoundingClientRect().top)')
+        assert parts[1] > parts[0], parts
 
 with sync_playwright() as p:
     browser = p.chromium.launch(
@@ -58,14 +62,16 @@ with sync_playwright() as p:
             geom = items.evaluate_all('''items => items.map(item => {
                 const bounds = s => item.querySelector(s).getBoundingClientRect();
                 const [title, text] = ['h2', '.zen-post-excerpt'].map(bounds);
-                const date = document.createRange();
-                date.selectNodeContents(item.querySelector('time'));
+                const time = item.querySelector('time');
+                const nodes = time.classList.contains('zen-index-date') ? [...time.querySelectorAll('span')] : [time];
+                const lines = nodes.map(node => {const range = document.createRange();range.selectNodeContents(node);return range;});
                 return {titleX:title.x, excerptX:text.x, titleWidth:title.width, excerptWidth:text.width,
-                        dateRight:date.getBoundingClientRect().right, dateLines:date.getClientRects().length};
+                        dateRight:Math.max(...lines.map(line=>line.getBoundingClientRect().right)),
+                        dateLines:lines.map(line=>line.getClientRects().length)};
             })''')
             for row in geom:
                 assert abs(row['titleX']-row['excerptX']) < 1 and abs(row['titleWidth']-row['excerptWidth']) < 1, row
-                assert row['dateLines'] == 1 and row['titleX'] >= row['dateRight'] + 12, row
+                assert row['dateLines'] in ([1], [1, 1]) and row['titleX'] >= row['dateRight'] + 12, row
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     if '--settings' in sys.argv:
         fixture_ids = json.loads((fixture / 'fixture.json').read_text())

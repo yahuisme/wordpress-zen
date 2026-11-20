@@ -81,21 +81,24 @@ if (!$archive_locked) {
     ?>
     <div id="zen-archive-years">
     <?php foreach ($archive_years as $year => $months) : ?>
-        <section class="zen-archive-group">
-            <header class="zen-archive-year-head">
+        <details class="zen-archive-group" open>
+            <summary class="zen-archive-year-head">
                 <h2 class="zen-archive-year"><?php echo esc_html($year); ?></h2>
-                <p class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), array_sum(array_map('count', $months)))); ?></p>
-            </header>
+                <span class="zen-archive-year-meta zen-directory-meta">
+                    <span><?php echo esc_html(sprintf(__('%d 篇', 'zen'), array_sum(array_map('count', $months)))); ?></span>
+                    <span aria-hidden="true">/</span>
+                    <span class="zen-archive-toggle">
+                        <span class="zen-archive-expand"><?php echo esc_html(__('展开', 'zen')); ?></span>
+                        <span class="zen-archive-collapse"><?php echo esc_html(__('收起', 'zen')); ?></span>
+                    </span>
+                </span>
+            </summary>
             <?php foreach ($months as $month => $rows) : ?>
-                <details class="zen-archive-month" open>
-                    <summary>
-                        <span class="zen-archive-month-label"><?php echo esc_html(sprintf(__('%d 月', 'zen'), (int) $month)); ?></span>
+                <section class="zen-archive-month">
+                    <header class="zen-archive-month-head">
+                        <h3 class="zen-archive-month-label"><?php echo esc_html(sprintf(__('%d 月', 'zen'), (int) $month)); ?></h3>
                         <span class="zen-directory-meta"><?php echo esc_html(sprintf(__('%d 篇', 'zen'), count($rows))); ?></span>
-                        <span class="zen-archive-toggle" aria-hidden="true">
-                            <span class="zen-archive-expand"><?php echo esc_html(__('展开', 'zen')); ?></span>
-                            <span class="zen-archive-collapse"><?php echo esc_html(__('收起', 'zen')); ?></span>
-                        </span>
-                    </summary>
+                    </header>
                     <ul class="zen-post-list zen-archive-list">
                         <?php foreach ($rows as $archive_post) : ?>
                             <li class="zen-archive-row zen-post-item">
@@ -107,9 +110,9 @@ if (!$archive_locked) {
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                </details>
+                </section>
             <?php endforeach; ?>
-        </section>
+        </details>
     <?php endforeach; ?>
     <?php if (!$archive_years) : ?>
         <p class="zen-empty-state"><?php echo esc_html(__('暂无文章。', 'zen')); ?></p>

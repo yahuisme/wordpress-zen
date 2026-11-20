@@ -145,6 +145,19 @@ seo_context('post', array('excerpt' => '<p>First paragraph.</p><p>Second paragra
 $output = seo_output();
 seo_check('First paragraph. Second paragraph. Literal &copy;' === seo_meta($output), 'HTML metadata preserves paragraph boundaries and literal entity-like text');
 seo_check(seo_meta($output) === (seo_schema($output)['description'] ?? null), 'literal entity-like text matches HTML metadata and JSON-LD');
+foreach (array(
+    '<p>First<p>Second</p>' => 'First Second',
+    '<ul><li>first<li>second</ul>' => 'first second',
+    '<table><tr><td>First</td><td>Second</td></tr></table>' => 'First Second',
+    '<dl><dt>Term<dd>Meaning</dl>' => 'Term Meaning',
+    '<p>inter<em>national</em><br />news</p>' => 'international news',
+    '<p>&lt;br&gt;<p>literal</p>' => '<br> literal',
+) as $source => $expected) {
+    seo_context('post', array('excerpt' => $source));
+    $output = seo_output();
+    seo_check(seo_meta($output) === $expected, 'description preserves visible block boundaries: ' . $source);
+    seo_check((seo_schema($output)['description'] ?? null) === $expected, 'JSON-LD shares visible block boundaries: ' . $source);
+}
 seo_context('post', array('excerpt' => 'Notes &amp;'));
 $output = seo_output();
 seo_check(seo_meta($output) === 'Notes &' && (seo_schema($output)['description'] ?? null) === 'Notes &', 'text truncation does not drop a literal trailing ampersand');

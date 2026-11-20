@@ -38,7 +38,9 @@ SQLITE_DIR=$(find "$RUNTIME" -mindepth 1 -maxdepth 1 -type d -name 'sqlite-datab
 mkdir -p "$RUNTIME/wp-content/plugins/sqlite-database-integration"
 cp -a "$SQLITE_DIR"/. "$RUNTIME/wp-content/plugins/sqlite-database-integration/"
 cp "$RUNTIME/wp-content/plugins/sqlite-database-integration/db.copy" "$RUNTIME/wp-content/db.php"
-sed -i "s|{SQLITE_IMPLEMENTATION_FOLDER_PATH}|$RUNTIME/wp-content/plugins/sqlite-database-integration|g; s|{SQLITE_PLUGIN}|sqlite-database-integration/load.php|g" "$RUNTIME/wp-content/db.php"
+# The upstream drop-in resolves its implementation relative to __DIR__ when
+# the placeholder is not a directory; do not embed runtime paths in PHP or sed.
+sed -i 's|{SQLITE_PLUGIN}|sqlite-database-integration/load.php|g' "$RUNTIME/wp-content/db.php"
 cp -a "$ROOT/theme/zen" "$RUNTIME/wp-content/themes/zen"
 
 cat > "$RUNTIME/private.php" <<PHP
@@ -50,7 +52,7 @@ define('DB_PASSWORD', '');
 define('DB_HOST', 'localhost');
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');
-define('DB_DIR', '$RUNTIME/db/');
+define('DB_DIR', __DIR__ . '/db/');
 define('DB_FILE', 'zen.sqlite');
 define('WP_HOME', 'http://127.0.0.1:18765');
 define('WP_SITEURL', 'http://127.0.0.1:18765');
@@ -62,7 +64,7 @@ define('WP_DEBUG', false);
 PHP
 cat > "$RUNTIME/wp-config.php" <<PHP
 <?php
-require '$RUNTIME/private.php';
+require __DIR__ . '/private.php';
 if (!defined('ABSPATH')) define('ABSPATH', __DIR__ . '/');
 require_once ABSPATH . 'wp-settings.php';
 PHP

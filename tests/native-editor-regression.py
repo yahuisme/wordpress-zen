@@ -11,7 +11,7 @@ def wp(*args):
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
 assert json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);')) == ['local', origin, str(root / 'db/zen.sqlite')]
-content = '<!-- wp:paragraph --><p>阅读记录 Lead text</p><!-- /wp:paragraph -->'
+content = '<!-- wp:paragraph --><p>阅读记录 Lead text <strong>重点文字</strong> <em>斜体文字</em></p><!-- /wp:paragraph -->'
 for level in range(1, 7):
     content += f'<!-- wp:heading {{"level":{level}}} --><h{level} class="wp-block-heading">阅读记录 Level {level}</h{level}><!-- /wp:heading --><!-- wp:paragraph --><p>阅读记录 Body text</p><!-- /wp:paragraph -->'
 content += '<!-- wp:code --><pre class="wp-block-code"><code>printf "阅读记录 code"</code></pre><!-- /wp:code -->'
@@ -34,6 +34,10 @@ try:
         page = context.new_page()
         page.goto(origin + '/?p=' + post, wait_until='networkidle')
         reader = page.locator('#post-content h1,#post-content h2,#post-content h3,#post-content h4,#post-content h5,#post-content h6').evaluate_all('es=>es.map(e=>({tag:e.tagName,font:getComputedStyle(e).fontSize,family:getComputedStyle(e).fontFamily,mt:getComputedStyle(e).marginTop,mb:getComputedStyle(e).marginBottom}))')
+        emphasis_script = 'es=>es.map(e=>({tag:e.tagName,synthesis:getComputedStyle(e).fontSynthesis,weight:getComputedStyle(e).fontWeight,style:getComputedStyle(e).fontStyle}))'
+        reader_emphasis = page.locator('#post-content strong,#post-content em').evaluate_all(emphasis_script)
+        assert {item['tag'] for item in reader_emphasis} == {'STRONG', 'EM'}
+        assert all(item['synthesis'] == 'weight style' for item in reader_emphasis), reader_emphasis
         context.add_cookies(json.loads((root / 'cookies.json').read_text()))
         page.goto(origin + '/wp-admin/post.php?post=' + post + '&action=edit', wait_until='networkidle')
         frame = page.frame_locator('iframe[name="editor-canvas"]')
@@ -54,7 +58,15 @@ try:
         assert len(reader) == len(editor) == 6, (reader, editor)
         assert all('TsangerJinKai02' in heading['family'] for heading in reader), reader
         assert reader == editor, (reader, editor)
-        (root / 'evidence/native-editor.json').write_text(json.dumps({'reader': reader, 'editor': editor, 'content_fonts':content_fonts, 'rendered_fonts':rendered, 'passed': True}, indent=2))
+        editor_emphasis = frame.locator('.wp-block-paragraph strong,.wp-block-paragraph em').evaluate_all(emphasis_script)
+        # Core uses 600 in the editor and prose uses 700; both must retain visible emphasis.
+        assert len(editor_emphasis) == len(reader_emphasis) == 2
+        assert all(item['synthesis'] == 'weight style' for item in editor_emphasis), editor_emphasis
+        for reader_item, editor_item in zip(reader_emphasis, editor_emphasis):
+            assert reader_item['tag'] == editor_item['tag'] and reader_item['style'] == editor_item['style']
+            if reader_item['tag'] == 'STRONG':
+                assert int(reader_item['weight']) > 400 and int(editor_item['weight']) > 400
+        (root / 'evidence/native-editor.json').write_text(json.dumps({'reader': reader, 'editor': editor, 'reader_emphasis':reader_emphasis, 'editor_emphasis':editor_emphasis, 'content_fonts':content_fonts, 'rendered_fonts':rendered, 'passed': True}, indent=2))
         print('NATIVE_EDITOR_COMPLETE 6 heading levels match reader typography')
         browser.close()
 finally:

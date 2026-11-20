@@ -9,7 +9,7 @@ python3 tests/release-font-package-regression.py
 
 使用独立 Git 索引打包当前工作区，不修改暂存区或创建提交；执行发布工作流的源码 ZIP 校验，覆盖显示名、版本、环境要求、文件清单及错误元数据拒绝。需要 Python 3.9+ 与 Git。
 
-完整安装包再通过 `scripts/package-release.py TRACKED_ZIP FONT_SOURCE_ZIP OUTPUT_ZIP` 加入授权仓耳字体。`FONT_SOURCE_ZIP` 使用固定的 v2.0.0 Release `zen.zip`；脚本先校验其 SHA-256，再精确合并字体分包，保留字体版权说明。`release-font-package-regression.py` 使用明确的合成 ZIP 验证实际合并器、错误摘要／重复路径／越界路径拒绝，以及失败时保留原输出；不访问生产或下载网络资源。手动工作流执行相同合并器，不会自动发布 Release。
+完整安装包再通过 `scripts/package-release.py TRACKED_ZIP FONT_SOURCE_ZIP OUTPUT_ZIP` 加入授权仓耳字体。`FONT_SOURCE_ZIP` 使用固定的 v2.0.0 Release `zen.zip`；脚本先校验其 SHA-256，再精确合并字体分包，保留字体版权说明并剔除已无使用者的代码字体别名。`release-font-package-regression.py` 使用明确的合成 ZIP 验证实际合并器、错误摘要／重复路径／越界路径拒绝，以及失败时保留原输出；不访问生产或下载网络资源。手动工作流执行相同合并器，不会自动发布 Release。
 
 ## PHP 行为
 
@@ -38,6 +38,7 @@ php tests/reading-count-assets-regression.php
 
 ```sh
 ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
+ZEN_WP_CORE=/path/to/isolated/wordpress php -n tests/reading-entity-regression.php
 ```
 
 需要 PHP 8.0+。模板与目录首屏测试通过 `ZEN_WP_CORE`（维护环境默认为 `/opt/test-tools/wordpress/clean-core`）加载真实 Core HTML tokenizer；不连接数据库。其余使用明确的 WordPress 边界替身，覆盖分页、缓存钩子、搜索高亮、评论、友链目标及模板输出；不替代真实 WordPress 验收。
@@ -50,7 +51,7 @@ ZEN_WP_CORE=/path/to/isolated/wordpress php tests/reading-entity-regression.php
 
 ```sh
 . /opt/test-tools/env.sh
-node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs tests/frontend-loading-regression.cjs
+node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs tests/frontend-loading-regression.cjs tests/frontend-lifecycle-regression.cjs
 ```
 
 其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。主题安装和运行不需要这些工具。
@@ -83,6 +84,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-counter-storage-regression.php /path/to/iso
 ZEN_TEST_ISOLATED=1 php tests/native-counter-cache-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-excerpt-entity-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-comment-form-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-backend-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-admin-save-regression.php /path/to/isolated/wp-load.php malformed-footer
 ZEN_TEST_ISOLATED=1 php tests/native-admin-save-regression.php /path/to/isolated/wp-load.php refused
 ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-load.php IMAGE_ATTACHMENT_ID 1
@@ -95,7 +98,7 @@ ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-
 
 `native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
 
-`native-admin-save-regression.php` 经原生 `options.php` 验证保存结果与通知，可选 `refused`、`invalid`、`unchanged`、`create` 或 `full`。逐页浏览器验收可在 `fixture.json` 设置 `pagination: true`（首页至少四页、搜索 WordPress 至少两页）及 `bookmarks`（友链数量，含长名称和长说明），以覆盖窄屏分页与友链可读性。
+`native-admin-save-regression.php` 经原生 `options.php` 验证保存结果与通知，可选 `refused`、`invalid`、`unchanged`、`create`、`full` 或 `malformed-footer`。最后一种验证非字符串页脚不会中断原生保存，旧文本被保留并显示字段错误；`native-backend-regression.php` 另只读验证注册的 sanitizer、KSES 及真实 Core 摘要清理。逐页浏览器验收可在 `fixture.json` 设置 `pagination: true`（首页至少四页、搜索 WordPress 至少两页）及 `bookmarks`（友链数量，含长名称和长说明），以覆盖窄屏分页与友链可读性。
 
 `native-counter-concurrency.py` 仅在可销毁 fixture 中运行，覆盖冷初始化、已有计数和同 IP 竞争；验证唯一元数据行、桶写入次数及五分钟 TTL。`native-counter-cache-regression.php` 使用真实 Core API 与显式的两请求缓存边界替身，不等于安装 Redis/Memcached 的集成验收。
 
@@ -148,11 +151,14 @@ python tests/native-layout-regression.py /path/to/fixture
 python tests/native-editor-regression.py /path/to/fixture
 python tests/typography-regression.py /path/to/fixture
 python tests/native-media-typography-regression.py /path/to/fixture
+python tests/ui-detail-regression.py /path/to/fixture
 ```
 
 复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
 
 新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距，并核实标题、正文及代码的实际仓耳字体。字体专项 `typography-regression.py` 需要 `fixture.json` 的 `origin`、`routes`（首页、分类、标签、作者、日期、搜索，每类至少两页）及可选 `surfaces`（普通页、文章、目录、书签、留言、密码页、空搜索和404），安装包含字库的完整 ZIP，并为 `links` 准备至少一个带真实图片的书签。它逐个文本节点与表单控件比较字体，核对分页与「全部篇目」的常态／悬停样式、真实字形来源及书签圆形黑白／悬停彩色。仅在源码、包、配置及数据库未变时可加 `--resume` 续跑 JSONL 未完成项。这些测试都需要带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
+
+`ui-detail-regression.py` 定向检查首屏配色、正文强调、留言间距与同意说明、分类／标签日期栏、年度折叠及新增年份焦点、原生兼容复制、MediaSource 真实时长变化和后台窄屏提示。可追加 `first-paint`、`emphasis`、`guestbook`、`taxonomy`、`archive-years`、`clipboard`、`audio-duration` 或 `admin`；禁脚本归档需单独运行 `archive-noscript`（新浏览器，避免单进程多上下文限制）。需要 `surfaces.article`（含 strong/em、代码和一个原生 audio）、`surfaces.notes`、默认 800px／standard 设置及管理员 Cookie；不伪造浏览器媒体属性或复制结果。
 
 以上测试文件不进入主题发布 ZIP。
 

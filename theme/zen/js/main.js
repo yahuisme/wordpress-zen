@@ -99,11 +99,8 @@ const zenInit = () => {
                 const first = years[shown];
                 const next = Math.min(shown + 2, years.length);
                 for (; shown < next; shown++) years[shown].hidden = false;
-                const heading = first?.querySelector('.zen-archive-year');
-                if (heading) {
-                    heading.tabIndex = -1;
-                    heading.focus({ preventScroll: true });
-                }
+                const heading = first?.querySelector('.zen-archive-year-head');
+                if (heading) heading.focus({ preventScroll: true });
                 archiveMore.hidden = shown >= years.length;
             });
             // Hide content only after the enhancement is ready; without JS every year remains reachable.
@@ -257,6 +254,7 @@ const zenInit = () => {
             return navigator.clipboard.writeText(text);
         }
         return new Promise((resolve, reject) => {
+            const previousFocus = document.activeElement;
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.setAttribute('readonly', '');
@@ -274,6 +272,7 @@ const zenInit = () => {
                 reject(error);
             } finally {
                 textarea.remove();
+                previousFocus?.focus({ preventScroll: true });
             }
         });
     };
@@ -773,6 +772,7 @@ const zenInit = () => {
             audio.removeEventListener('error', useNativeAudio);
             audio.removeEventListener('timeupdate', updateAudioUI);
             audio.removeEventListener('loadedmetadata', updateAudioUI);
+            audio.removeEventListener('durationchange', updateAudioUI);
             audio.removeEventListener('ended', onAudioEnded);
             const restoreFocus = player.contains(document.activeElement);
             audio.style.display = '';
@@ -812,6 +812,7 @@ const zenInit = () => {
         audio.addEventListener('error', useNativeAudio);
         audio.addEventListener('timeupdate', updateAudioUI);
         audio.addEventListener('loadedmetadata', updateAudioUI);
+        audio.addEventListener('durationchange', updateAudioUI);
         audio.addEventListener('ended', onAudioEnded);
 
         progressContainer.addEventListener('click', (e) => {

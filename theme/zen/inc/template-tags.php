@@ -122,11 +122,8 @@ function zen_posted_on_link($context = 'full', $post = null) {
     );
 }
 
-/** Keep the compact date only on a separate posts page. */
+/** Index lists split current-year dates into month/day lines. */
 function zen_index_date_html() {
-    if (is_front_page()) {
-        return zen_post_date_html();
-    }
     if (get_the_date('Y') !== wp_date('Y')) {
         return zen_post_date_html('list');
     }

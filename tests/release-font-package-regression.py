@@ -51,6 +51,22 @@ class FontPackageTests(unittest.TestCase):
             self.assertNotIn(self.prefix+'PERSONAL-USE.txt',archive.namelist())
             self.assertEqual(archive.read(self.prefix+'RELEASE-USE.txt').decode(),packager.USE_NOTICE)
 
+    def test_unused_code_alias_is_removed_without_changing_editorial_faces(self):
+        editorial=self.overlay[self.css]
+        alias=b'@font-face { font-family: "TsangerJinKai02 Code CJK"; src:url("../fonts/base.woff2"); unicode-range:U+4E00; }'
+        variables=b':root { --zen-bins-editorial: "Zen Kami Kai"; --zen-bins-code: "unused"; }'
+        self.overlay[self.css]=editorial+b'\n'+alias+b'\n'+variables
+        self.write(self.source,{'zen/style.css':b'Version: 2.0.0\n',**self.overlay})
+        setattr(packager,'FONT_SOURCE_SHA256',hashlib.sha256(self.source.read_bytes()).hexdigest())
+        packager.package(self.tracked,self.source,self.output)
+        with zipfile.ZipFile(self.output) as archive:
+            css=archive.read(self.css)
+            self.assertIn(editorial,css)
+            self.assertNotIn(b'TsangerJinKai02 Code CJK',css)
+            self.assertNotIn(b'--zen-bins-code',css)
+            self.assertNotIn(b'--zen-bins-editorial',css)
+            self.assertEqual(archive.read(self.font),self.overlay[self.font])
+
     def test_changed_source_is_refused_without_replacing_output(self):
         self.source.write_bytes(self.source.read_bytes()+b'changed')
         self.rejected('SHA-256 mismatch')

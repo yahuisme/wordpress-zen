@@ -21,6 +21,11 @@ function esc_html__($text, $domain = '') { return esc_html($text); }
 function selected($a, $b) { if ((string) $a === (string) $b) echo ' selected="selected"'; }
 function checked($a, $b) { if ((string) $a === (string) $b) echo ' checked="checked"'; }
 function sanitize_text_field($text) { return strip_tags($text); }
+// Native wp_kses_post also requires a string; its full allowlist is covered by the native backend test.
+function wp_kses_post($text) {
+    if (!is_string($text)) throw new TypeError('Footer HTML must be a string');
+    return $text;
+}
 function absint($value) { return abs((int) $value); }
 function settings_errors() {}
 function settings_fields($group) { echo '<input type="hidden" name="option_page" value="' . $group . '">'; wp_nonce_field($group . '-options'); }
@@ -98,6 +103,19 @@ test('registered new options sanitize values and reject invalid numbers without 
     $GLOBALS['caps']['unfiltered_html'] = true;
     $GLOBALS['options'] = array();
 });
+test('malformed footer values preserve saved HTML and report a native settings error', function () {
+    zen_register_options();
+    $GLOBALS['options']['zen_footer_text'] = '<a href="/saved/">Saved footer</a>';
+    $sanitize = $GLOBALS['settings']['zen_footer_text']['sanitize_callback'];
+    $before = count($GLOBALS['errors']);
+    foreach (array(array('unexpected'), null, 17, new stdClass()) as $invalid) {
+        expect($sanitize($invalid) === $GLOBALS['options']['zen_footer_text'], 'malformed footer must not throw or overwrite saved HTML');
+    }
+    expect(count($GLOBALS['errors']) === $before + 4, 'each malformed footer needs a settings error');
+    expect(end($GLOBALS['errors'])['code'] === 'zen_footer_text_invalid', 'footer error must identify the rejected field');
+    $GLOBALS['options'] = array();
+});
+
 test('single settings form groups all old and new fields', function () {
     $html = render();
     preg_match_all('/\bid="([^"]+)"/', $html, $ids);

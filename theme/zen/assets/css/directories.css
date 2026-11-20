@@ -46,6 +46,7 @@
     padding-block-end: 24px;
     border-bottom: 0;
 }
+.zen-notes-shell #comments { margin-top: 8px; }
 .zen-notes-board .zen-comment-panel { padding: clamp(16px, 4vw, 24px); }
 .zen-notes-board .comment-form { gap: 16px; }
 .zen-notes-board .comment-form > * { min-width: 0; grid-column: 1 / -1; }
@@ -86,14 +87,20 @@
 }
 .zen-archive-more:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .zen-archive-more:focus-visible,
-.zen-archive-year:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
+.zen-archive-year-head:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
 .zen-archive-year-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 16px;
+    min-height: 44px;
     margin-block-end: 24px;
+    list-style: none;
+    cursor: pointer;
 }
+.zen-archive-year-head::-webkit-details-marker { display: none; }
+.zen-archive-group:not([open]) > .zen-archive-year-head { margin-block-end: 0; }
+.zen-archive-year-meta { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .zen-archive-year-head .zen-archive-year {
     padding: 0;
     border: 0;
@@ -102,27 +109,23 @@
     font-variant-numeric: tabular-nums;
 }
 .zen-archive-month { border-bottom: 1px solid var(--zen-border); }
-.zen-archive-month > summary {
+.zen-archive-month-head {
     display: flex;
     align-items: baseline;
     gap: 12px;
     min-height: 44px;
     padding-block: 10px;
-    list-style: none;
-    cursor: pointer;
 }
-.zen-archive-month > summary::-webkit-details-marker { display: none; }
 .zen-archive-month-label {
     color: var(--zen-text);
     font: 500 1.125rem/1.35 var(--zen-font-heading);
 }
 .zen-archive-toggle {
-    margin-inline-start: auto;
     color: var(--zen-accent);
     font-size: 0.8125rem;
 }
-.zen-archive-month:not([open]) .zen-archive-collapse,
-.zen-archive-month[open] .zen-archive-expand { display: none; }
+.zen-archive-group:not([open]) > summary .zen-archive-collapse,
+.zen-archive-group[open] > summary .zen-archive-expand { display: none; }
 .zen-archive-list { margin-inline-start: clamp(0px, 9vw, 8.25rem); }
 .zen-archives-directory .zen-archive-row {
     display: grid;

@@ -36,7 +36,7 @@ function esc_html_e($value, $domain = '') { echo esc_html($value); }
 function is_search() { return $GLOBALS['is_search']; }
 function the_ID() { echo '7'; }
 function post_class($classes) { echo 'class="' . esc_attr($classes) . '"'; }
-function get_the_category() { return array(); }
+function get_the_category() { return $GLOBALS['fixture_categories'] ?? array(); }
 function get_the_date($format = '', $post = null) { return gmdate($format ?: 'Y-m-d', strtotime($GLOBALS['fixture_date'] ?? '2026-10-05')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
@@ -153,11 +153,12 @@ test('category navigation ignores legacy selections and uses every nonempty cate
     $GLOBALS['category_archive'] = false;
 });
 function wp_date($format) { return $format === 'Y' ? '2026' : ''; }
-test('only the homepage list uses the full dotted date for current-year posts', function () {
+test('current-year index dates use two lines without changing older dates', function () {
     $conditions = array(
-        array(true, '2026-08-04', '2026.08.04'),
+        array(true, '2026-08-24', '<span>8月</span> <span>24日</span>'),
         array(true, '2025-12-15', '2025.12.15'),
         array(false, '2026-08-04', '<span>8月</span> <span>4日</span>'),
+        array(false, '2025-12-15', '2025.12.15'),
     );
     try {
         foreach ($conditions as [$front, $date, $display]) {
@@ -304,6 +305,7 @@ test('header uses native custom logo without admin Gravatar or nested home links
     $GLOBALS['logo_calls'] = array();
     $GLOBALS['has_menu'] = false;
     $html = render('header.php');
+    check((bool) preg_match('/<script\s+nowprocket>\s*\(function\(\)/', $html), 'initial theme mode uses the supported WP Rocket delay exclusion');
     check(!str_contains($html, 'gravatar'), 'admin email avatar leaks into identity');
     check(count($GLOBALS['logo_calls']) === 1 && $GLOBALS['logo_calls'][0][0] === 91, 'native attachment logo missing');
     check(($GLOBALS['logo_calls'][0][2]['sizes'] ?? '') === '(max-width: 639.98px) 56px, 120px', 'logo responsive sizes must match its actual display limits');
@@ -331,13 +333,14 @@ function get_pages($args) { $GLOBALS['page_args'] = $args; return $GLOBALS['arch
 function get_page_by_path($path, $output = 'OBJECT', $post_type = 'page') { return null; }
 function status_header($status) { $GLOBALS['status'] = $status; }
 function wp_kses_post($html) { return $html; }
-function is_tag() { return false; }
+function is_tag() { return $GLOBALS['tag_archive'] ?? false; }
 function is_author() { return false; }
 function is_date() { return false; }
 function is_day() { return false; }
 function is_month() { return false; }
 function is_year() { return false; }
 function single_cat_title($prefix, $display) { return '分类名称'; }
+function single_tag_title($prefix, $display) { return '标签名称'; }
 function the_archive_title(...$args) { echo '归档'; }
 function get_the_archive_description() { return ''; }
 test('blank native search renders only the form even if WordPress has Loop posts', function () {
@@ -384,6 +387,26 @@ test('404 preserves HTTP status and offers search home and real archive only', f
     check(!str_contains($html, '数字的海洋') && !str_contains($html, '浏览归档'), 'unhelpful copy or false archive destination');
     $GLOBALS['archive_pages'] = array((object) array('ID' => 19));
     check(str_contains(render('404.php'), 'href="/post/19"'), 'published archive recovery missing');
+});
+test('category and tag lists share the index date-only metadata', function () {
+    $GLOBALS['fixture_categories'] = array((object) array('term_id' => 2, 'name' => '文章分类'));
+    $GLOBALS['fixture_date'] = '2026-08-24T12:00:00Z';
+    try {
+        foreach (array('category_archive', 'tag_archive') as $context) {
+            $GLOBALS[$context] = true;
+            $GLOBALS['loop_left'] = 1;
+            $html = render('archive.php');
+            check(str_contains($html, 'zen-post-list--editorial'), 'taxonomy list must use the same date-column layout');
+            check(str_contains($html, '<span>8月</span> <span>24日</span>'), 'taxonomy date must match the current-year index date');
+            check(!str_contains($html, 'zen-meta-category'), 'taxonomy rows must not repeat a category beneath the date');
+            $GLOBALS[$context] = false;
+        }
+        $GLOBALS['loop_left'] = 1;
+        $html = render('archive.php');
+        check(!str_contains($html, 'zen-post-list--editorial') && str_contains($html, 'zen-meta-category'), 'unrelated archive metadata must remain unchanged');
+    } finally {
+        unset($GLOBALS['fixture_categories'], $GLOBALS['fixture_date'], $GLOBALS['category_archive'], $GLOBALS['tag_archive']);
+    }
 });
 test('archive uses shared list and category navigation without changing category URLs', function () {
     $GLOBALS['category_archive'] = true;
@@ -471,7 +494,7 @@ test('friend links label new-window destinations and only show explicitly saved 
     check(str_contains(render('page-links.php'), 'src="https://friend.test/avatar.png"'), 'saved bookmark image no longer renders');
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
-test('archive directory opens every populated month across years', function () {
+test('archive directory has one open disclosure per year and static month headings', function () {
     $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(
         array('id' => 8, 'url' => '/post/8', 'title' => '同月的另一篇文章', 'year' => '2026', 'date' => '2026-10-19'),
         array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026-10-05'),
@@ -483,9 +506,12 @@ test('archive directory opens every populated month across years', function () {
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
     check(str_contains($html, '>10月 5日</time>'), 'cached archive dates are not unified');
-    preg_match_all('/<details class="zen-archive-month"([^>]*)>/', $html, $months);
-    $open = array_map(static fn($attributes) => trim($attributes) === 'open', $months[1]);
-    check($open === array(true, true, true, true, true), 'every populated month must open, including months in older years');
+    preg_match_all('/<details class="zen-archive-group"([^>]*)>/', $html, $years);
+    check(count($years[1]) === 3 && array_filter($years[1], static fn($attributes) => trim($attributes) !== 'open') === array(), 'every year must start open');
+    check(substr_count($html, '<summary class="zen-archive-year-head"') === 3, 'each year must have exactly one disclosure');
+    check(substr_count($html, 'class="zen-archive-collapse"') === 3 && substr_count($html, 'class="zen-archive-expand"') === 3, 'toggle copy belongs to years, not months');
+    check(substr_count($html, '<section class="zen-archive-month"') === 5 && !str_contains($html, '<details class="zen-archive-month"'), 'month headings must not be separate disclosures');
+    check((bool) preg_match('/3 篇<\/span>\s*<span aria-hidden="true">\/<\/span>\s*<span class="zen-archive-toggle"/', $html), 'year count and toggle must be adjacent with a slash');
     check(substr_count($html, 'class="zen-archive-year"') === 3 && substr_count($html, 'class="zen-archive-row') === 6, 'all older archive rows and year groups must remain present');
     check(str_contains($html, '其他月份的文章') && str_contains($html, '上一年的文章') && str_contains($html, '更早月份的文章'), 'month grouping must preserve article titles');
 });
@@ -497,8 +523,8 @@ test('archive directory keeps short and empty archives intact', function () {
     foreach (array(2, 1, 0) as $count) {
         $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array_slice($rows, 0, $count));
         $html = render('page-archives.php');
-        check(substr_count($html, '<details class="zen-archive-month" open>') === $count, 'every available month must open');
-        check(substr_count($html, '<details class="zen-archive-month"') === $count, 'no empty month group may be invented');
+        check(substr_count($html, '<details class="zen-archive-group" open>') === $count, 'every available year must open');
+        check(substr_count($html, '<section class="zen-archive-month"') === $count, 'no empty month group may be invented');
         check(str_contains($html, '暂无文章。') === ($count === 0), 'empty archives must retain their empty state');
     }
 });
@@ -513,7 +539,7 @@ test('archive directory progressively reveals older years without hiding the no-
         $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => $rows);
         $html = render('page-archives.php');
         check(substr_count($html, 'class="zen-archive-group"') === $year_count, 'every year must stay available in the server HTML');
-        check(!preg_match('/<section class="zen-archive-group"[^>]*\bhidden\b/', $html), 'no-script archives must not hide older years');
+        check(!preg_match('/<details class="zen-archive-group"[^>]*\bhidden\b/', $html), 'no-script archives must not hide older years');
         check(str_contains($html, 'id="zen-archive-years"'), 'archive year container needs a stable control target');
         check(str_contains($html, 'class="zen-archive-more" hidden') === ($year_count > 2), 'only archives with more than two years need an initially hidden enhancement control');
         check(str_contains($html, 'aria-controls="zen-archive-years"') === ($year_count > 2), 'older-years control must identify its controlled content');

@@ -52,6 +52,9 @@ try {
     comment_form_check($theme->query('//input[@name="wp-comment-cookies-consent"]')->length === 1, 'Zen preserves Core enabled consent field');
     comment_form_check($theme->query('//input[@name="wp-comment-cookies-consent" and @checked]')->length === 0, 'fresh anonymous visitor is not opted in');
     comment_form_check($theme->query('//input[@name="url"]')->length === 0, 'theme retains existing no-website field contract');
+    $consent_label = $theme->query('//label[@for="wp-comment-cookies-consent"]')->item(0);
+    comment_form_check($consent_label && $consent_label->textContent === '在此浏览器中保存我的称呼和邮箱，以便下次使用。', 'consent copy matches the fields actually shown by Zen');
+    comment_form_check(str_contains(comment_form_render(true), __('Save my name, email, and website in this browser for the next time I comment.')), 'theme consent copy does not change unrelated native forms');
     $email = $theme->query('//input[@id="email"]')->item(0);
     $notice = $email ? $theme->query('//*[@id="' . $email->getAttribute('aria-describedby') . '"]')->item(0) : null;
     comment_form_check($notice && str_contains($notice->textContent, '邮箱不会公开'), 'email privacy notice stays visible after typing and describes the input');

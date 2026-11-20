@@ -14,7 +14,7 @@ USE_NOTICE = '''仓耳今楷网页字体说明
 
 本目录包含仓耳今楷02-W04（TsangerJinKai02 W04）网页字体分包，版权属于北京仓耳文字技术有限公司，不属于 Zen 主题的 GPL 许可证。
 
-维护者已确认获得将这些字体随 Zen Release 安装包公开再分发的授权。本次沿用既有字体分包及 CSS，不修改字形、字符范围或字宽。该再分发授权不将字体变成开源字体，也不自动授予使用者其他商业使用或再次分发的权利；具体使用范围请另行核对权利方许可。
+维护者已确认获得将这些字体随 Zen Release 安装包公开再分发的授权。本次沿用既有字体分包及正文样式声明，仅移除未使用的代码字体别名，不修改字形、字符范围或字宽。该再分发授权不将字体变成开源字体，也不自动授予使用者其他商业使用或再次分发的权利；具体使用范围请另行核对权利方许可。
 
 请同时保留本文件及 NOTICE.md。权利方信息：https://www.tsanger.cn/product/33
 '''
@@ -55,6 +55,13 @@ def package(tracked, font_source, output):
     if css_path not in overlay or PREFIX + 'NOTICE.md' not in overlay:
         raise ValueError('Font CSS or copyright notice missing')
     css = overlay[css_path][1].decode('utf-8')
+    # These aliases belonged to the retired code font and have no theme consumers.
+    css = re.sub(r'@font-face\s*\{\s*font-family:\s*"TsangerJinKai02 Code CJK";[^{}]*\}\s*', '', css)
+    css = re.sub(r'\s*--zen-bins-(?:editorial|code)\s*:[^;{}]+;', '', css)
+    css = re.sub(r':root\s*\{\s*\}\s*', '', css)
+    css_info = copy.copy(overlay[css_path][0])
+    css_info.date_time = payload['zen/style.css'][0].date_time
+    overlay[css_path] = (css_info, css.encode('utf-8'))
     import posixpath
     references = {posixpath.normpath(posixpath.join(posixpath.dirname(css_path), url)) for url in re.findall(r'url\("([^"\)]+)"\)', css)}
     fonts = {name for name in overlay if name.endswith('.woff2')}

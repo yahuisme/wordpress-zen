@@ -1,4 +1,7 @@
-<?php get_header(); ?>
+<?php
+get_header();
+$zen_taxonomy_index = is_category() || is_tag();
+?>
 <header class="zen-directory-heading zen-directory-heading--taxonomy">
     <p class="zen-directory-kicker"><?php
         if (is_category()) esc_html_e('分类', 'zen');
@@ -21,9 +24,9 @@
     <?php endif; ?>
 </header>
 <?php if (is_category()) zen_category_navigation(); ?>
-<div class="zen-post-list">
+<div class="zen-post-list<?php if ($zen_taxonomy_index) echo ' zen-post-list--editorial'; ?>">
     <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
-        <?php get_template_part('template-parts/content', 'excerpt'); ?>
+        <?php get_template_part('template-parts/content', 'excerpt', array('editorial_index' => $zen_taxonomy_index)); ?>
     <?php endwhile; else : ?>
         <div class="zen-empty-state">
             <h2 class="text-xl font-bold">暂无文章</h2>

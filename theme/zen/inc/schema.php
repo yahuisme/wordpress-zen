@@ -12,8 +12,8 @@ function zen_description_substr($text, $length) {
 
 function zen_clean_description($text) {
     $text = strip_shortcodes($text);
-    // Adjacent blocks need a separator even when the saved markup has no newline.
-    $text = preg_replace('~</(?:p|div|li|h[1-6]|blockquote|pre|tr)>|<br\s*/?\s*>~i', '$0 ', $text);
+    // Separate blocks even when HTML permits omitted closing tags; keep inline text intact.
+    $text = preg_replace('~</?(?:br|p|div|li|h[1-6]|blockquote|pre|tr|td|th|dt|dd)(?=[\s/>])~i', ' $0', $text);
     $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim(preg_replace('/[\s\p{Z}]+/u', ' ', $text));
     // The string is already plain text. wp_html_excerpt can drop a literal trailing ampersand.

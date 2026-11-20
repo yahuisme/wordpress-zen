@@ -30,7 +30,7 @@ function zen_option_schema() {
         'zen_theme_mode_default'    => array('auto', 'zen_sanitize_theme_mode'),
         'zen_reading_width'         => array(800, 'zen_sanitize_reading_width'),
         'zen_list_style'            => array('standard', 'zen_sanitize_list_style'),
-        'zen_footer_text'           => array('', 'wp_kses_post'),
+        'zen_footer_text'           => array('', 'zen_sanitize_footer_text'),
         'zen_copyright_license'     => array('none', 'zen_sanitize_copyright_license'),
         'zen_site_start_date'       => array('', 'zen_sanitize_site_start_date'),
     );
@@ -198,6 +198,14 @@ function zen_sanitize_number($value, $key, $min, $max) {
     return zen_get_option($key);
 }
 
+function zen_sanitize_footer_text($value) {
+    if (!is_string($value)) {
+        add_settings_error('zen_footer_text', 'zen_footer_text_invalid', __('请输入有效的页脚文本；已保留上次保存值。', 'zen'));
+        return zen_get_option('zen_footer_text');
+    }
+    return wp_kses_post($value);
+}
+
 function zen_sanitize_list_style($value) {
     return in_array($value, array('standard', 'compact'), true) ? $value : 'standard';
 }
@@ -279,7 +287,7 @@ function zen_get_reading_time($post_id = 0) {
     if (function_exists('mb_strlen')) {
         $length = mb_strlen($content);
     } else {
-        $length = preg_match_all('/./u', $content, $matches);
+        $length = preg_match_all('/./us', $content, $matches);
     }
 
     return max(1, (int) ceil($length / 300));

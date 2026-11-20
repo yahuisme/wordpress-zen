@@ -22,6 +22,9 @@ samp { font-family: var(--zen-font-body); }
     overflow-wrap: anywhere;
 }
 
+/* The bundled face has regular glyphs; keep authored emphasis distinguishable. */
+:is(.entry-content, .editor-styles-wrapper) :is(strong, b, em, i) { font-synthesis: weight style; }
+
 .entry-content :is(p, li),
 .editor-styles-wrapper :is(p, li) { font-feature-settings: "chws"; }
 

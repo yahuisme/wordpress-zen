@@ -82,7 +82,20 @@ $zen_render_comment_list = static function () {
                 'submit_field' => '<p class="form-submit">%1$s %2$s</p>',
             );
 
-            comment_form($form_args);
+            // Keep Core's consent field and plugin markup; describe only Zen's visible fields.
+            $zen_consent_label = static function ($field) {
+                return str_replace(
+                    __('Save my name, email, and website in this browser for the next time I comment.'),
+                    esc_html__('在此浏览器中保存我的称呼和邮箱，以便下次使用。', 'zen'),
+                    $field
+                );
+            };
+            add_filter('comment_form_field_cookies', $zen_consent_label);
+            try {
+                comment_form($form_args);
+            } finally {
+                remove_filter('comment_form_field_cookies', $zen_consent_label);
+            }
             ?>
         <?php else : ?>
             <p class="text-sm text-gray-500 dark:text-gray-400"><?php echo $zen_guestbook ? esc_html(__('目前不接受留言。', 'zen')) : '评论已关闭。'; ?></p>

@@ -52,9 +52,9 @@ try {
     update_option('zen_reading_width', 720);
     update_option('zen_show_toc', 1);
     $case = $argv[2] ?? 'refused';
-    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full'), true)) throw new InvalidArgumentException('Unknown save case');
+    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full', 'malformed-footer'), true)) throw new InvalidArgumentException('Unknown save case');
     if ($case === 'create') delete_option('zen_reading_width');
-    $expected_width = in_array($case, array('create', 'full'), true) ? 800 : 720;
+    $expected_width = in_array($case, array('create', 'full', 'malformed-footer'), true) ? 800 : 720;
     $refuse = static fn($new, $old) => $old;
     if ($case === 'refused') add_filter('pre_update_option_zen_reading_width', $refuse, 10, 2);
     $input = array(
@@ -69,6 +69,9 @@ try {
         // A complete normal form must not report success when only one write is refused.
         $input += zen_get_option_defaults();
         $input['zen_code_head'] = $old_values['zen_code_head'] ?? '';
+    } elseif ($case === 'malformed-footer') {
+        update_option('zen_footer_text', 'Saved footer');
+        $input['zen_footer_text'] = array('unexpected');
     } elseif ($case === 'full') {
         update_option('zen_footer_text', 'Saved footer');
         update_option('zen_category_ids', array(2));
@@ -111,8 +114,9 @@ try {
     } elseif ($case !== 'refused') {
         $check(get_option('zen_code_head', null) === $old_values['zen_code_head'], 'omitted code preserves existing value or absence');
     }
-    if ($case === 'refused' || $case === 'invalid') {
-        $code = $case === 'refused' ? 'zen_reading_width_not_saved' : 'zen_reading_width_invalid';
+    if ($case === 'refused' || $case === 'invalid' || $case === 'malformed-footer') {
+        $code = $case === 'malformed-footer' ? 'zen_footer_text_invalid' : ($case === 'refused' ? 'zen_reading_width_not_saved' : 'zen_reading_width_invalid');
+        if ($case === 'malformed-footer') $check(get_option('zen_footer_text') === 'Saved footer', 'malformed footer preserves the previous text without aborting native save');
         $check(in_array($code, $codes, true), 'native notices identify the unsaved field');
         $check(!in_array('settings_updated', $codes, true), 'native notices do not falsely claim success');
     } else {
