@@ -10,7 +10,9 @@ function zen_content_page_links() {
 
 /** Trim visible characters, keeping combining marks and emoji together. */
 function zen_trim_excerpt($text, $length, $more = '…') {
-    $text = html_entity_decode(wp_strip_all_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // Keep block boundaries and line breaks when Core removes the markup.
+    $text = preg_replace('~</?(?:br|p|div|li|h[1-6]|blockquote|pre|td|th|dt|dd)(?=[\s/>])~i', ' $0', (string) $text);
+    $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
     $length = max(1, min(300, (int) $length));
     return preg_match('/\A(\X{' . $length . '})\X/u', $text, $match)
@@ -354,7 +356,7 @@ function zen_get_site_uptime() {
     $uptime = get_transient('zen_site_uptime');
     if (false === $uptime) {
         $start_date_str = zen_get_option('zen_site_start_date');
-        $start_timestamp = 0;
+        $start_timestamp = null;
 
         $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
         if (!empty($start_date_str) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date_str)) {
@@ -372,12 +374,13 @@ function zen_get_site_uptime() {
                 'fields'      => 'ids',
             ));
             if (!empty($first_posts)) {
-                $start_timestamp = (int) get_post_time('U', true, $first_posts[0]);
+                $post_time = get_post_time('U', true, $first_posts[0]);
+                if (false !== $post_time) $start_timestamp = (int) $post_time;
             }
         }
 
         $now = (new DateTimeImmutable('now', $timezone))->getTimestamp();
-        if ($start_timestamp > 0 && $start_timestamp <= $now) {
+        if (null !== $start_timestamp && $start_timestamp <= $now) {
             $year = wp_date('Y', $start_timestamp, $timezone);
             $days = max(1, (int) floor(($now - $start_timestamp) / DAY_IN_SECONDS));
         } else {

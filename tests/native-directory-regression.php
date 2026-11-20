@@ -272,6 +272,20 @@ function zen_directory_lifecycle() {
     zen_directory_check(zen_get_site_uptime()['year'] !== '2001', 'uptime falls back after deleting start date');
     add_option('zen_site_start_date', '2002-03-04');
     zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'adding explicit start date evicts only uptime');
+    zen_directory_option('timezone_string', 'UTC');
+    foreach (array('1970-01-01', '1969-12-31') as $date) {
+        zen_get_site_uptime();
+        zen_directory_option('zen_site_start_date', $date);
+        zen_directory_check(get_transient('zen_site_uptime') === false, 'editing a historical start date evicts warm uptime');
+        $uptime = zen_get_site_uptime();
+        zen_directory_check($uptime['year'] === substr($date, 0, 4) && $uptime['days'] > 1, "UTC uptime accepts $date");
+    }
+    zen_directory_option('zen_site_start_date', '1970-01-01');
+    zen_get_site_uptime();
+    zen_directory_option('timezone_string', 'Asia/Hong_Kong');
+    zen_directory_check(get_transient('zen_site_uptime') === false, 'timezone change evicts cached epoch uptime');
+    $uptime = zen_get_site_uptime();
+    zen_directory_check($uptime['year'] === '1970' && $uptime['days'] > 1, 'positive-offset site accepts a local epoch date before UTC epoch');
     $category = wp_insert_term('Zen directory category', 'category');
     if (is_wp_error($category)) throw new RuntimeException($category->get_error_message());
     try {

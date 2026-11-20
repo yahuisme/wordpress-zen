@@ -431,22 +431,77 @@ const zenInit = () => {
                 tocItems.push({ id: 'comments', target: comments, level: 'comments', text: '评论区' });
             }
 
+            const anchorNames = new Set(Array.from(document.querySelectorAll('a[name]'), anchor => anchor.name));
+            const hasLiteralAnchor = fragment => usedIds.has(fragment) || anchorNames.has(fragment);
+            let aliasCount = 0;
+            const encodeTocFragment = (item) => {
+                const encoded = encodeURIComponent(item.id);
+                if (!hasLiteralAnchor(encoded)) return encoded;
+                // Escaping ASCII and varying hex case keeps the decoded ID unchanged.
+                const variants = encoded.match(/%[\dA-F]{2}|./g).map(part => {
+                    const hex = part[0] === '%' ? part.slice(1) : part.charCodeAt(0).toString(16).toUpperCase();
+                    const [a, b] = hex;
+                    const forms = [`%${a}${b}`, `%${a.toLowerCase()}${b}`, `%${a}${b.toLowerCase()}`, `%${hex.toLowerCase()}`];
+                    return [...new Set(part[0] === '%' ? forms : [part, ...forms])];
+                });
+                const positions = variants.map(() => 0);
+                // Each candidate is distinct; only existing literal anchors can keep the search going.
+                for (let index = 0; index < positions.length;) {
+                    const fragment = variants.map((choices, i) => choices[positions[i]]).join('');
+                    if (!hasLiteralAnchor(fragment)) return fragment;
+                    for (index = 0; index < positions.length; index++) {
+                        if (++positions[index] < variants[index].length) break;
+                        positions[index] = 0;
+                    }
+                }
+                // All spellings are taken. Give the heading an additional anchor, not a new ID.
+                const alias = document.createElement('span');
+                do { alias.id = `zen-toc-anchor-${++aliasCount}`; } while (hasLiteralAnchor(alias.id));
+                alias.setAttribute('aria-hidden', 'true');
+                alias.style.display = 'block';
+                alias.style.scrollMarginTop = 'inherit';
+                item.target.prepend(alias);
+                usedIds.add(alias.id);
+                return alias.id;
+            };
+
             const createTocLink = (item, nav) => {
                 const link = document.createElement('a');
                 const paddingClass = item.level === 'h3' ? 'pl-6 text-xs' : 'pl-3 text-sm';
                 link.href = '#' + item.id;
+                const fragment = link.hash.slice(1);
+                let matchesHeading = fragment === item.id;
+                // The browser tries the literal fragment before its decoded form.
+                if (!matchesHeading && !hasLiteralAnchor(fragment)) {
+                    try { matchesHeading = decodeURIComponent(fragment) === item.id; } catch {}
+                }
+                if (!matchesHeading || item.id.includes(':~:')) {
+                    item.fragment ??= encodeTocFragment(item);
+                    link.href = '#' + item.fragment;
+                }
                 link.className = `toc-link ${paddingClass}`;
                 link.dataset.target = item.id;
                 link.textContent = item.text;
                 if (nav === tocNav) item.desktopLink = link;
                 else item.drawerLink = link;
-                link.addEventListener('click', () => {
-                    for (let ancestor = item.target.parentElement; ancestor; ancestor = ancestor.parentElement) {
-                        if (ancestor.tagName === 'DETAILS') ancestor.open = true;
-                    }
-                    if (nav === drawerTocNav) closeDrawer?.(item.target);
-                    else focusTocTarget(item.target);
-                    requestScrollUIUpdate();
+                link.addEventListener('click', (event) => {
+                    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    // Let delegated listeners cancel the native click before changing any UI.
+                    setTimeout(() => {
+                        if (event.defaultPrevented) return;
+                        let revealed = false;
+                        for (let ancestor = item.target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                            if (ancestor.tagName === 'DETAILS' && !ancestor.open) {
+                                ancestor.open = true;
+                                revealed = true;
+                            }
+                        }
+                        // Some browsers do not reveal collapsed ancestors during fragment navigation.
+                        if (revealed) item.target.scrollIntoView();
+                        if (nav === drawerTocNav) closeDrawer?.(item.target);
+                        else focusTocTarget(item.target);
+                        requestScrollUIUpdate();
+                    }, 0);
                 });
                 return link;
             };

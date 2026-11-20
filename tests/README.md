@@ -57,7 +57,7 @@ node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interactio
 准备可销毁的 WordPress + SQLite 环境：
 
 ```sh
-ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh
+bash tests/ci-native-setup.sh
 ```
 
 脚本会固定 WordPress 版本、安装 SQLite Database Integration、复制当前主题并创建 loopback 站点。默认随后运行原生回归（含 AJAX 浏览次数）；仅准备环境、只补测计数边界时使用：
@@ -67,7 +67,9 @@ ZEN_CI_RUNTIME="$TMPDIR/zen-native" bash tests/ci-native-setup.sh --prepare-only
 ZEN_TEST_ISOLATED=1 php tests/native-reading-count-regression.php "$TMPDIR/zen-native/wp-load.php"
 ```
 
-它不读取生产配置，也不使用生产数据库；测试后由调用者清理 `ZEN_CI_RUNTIME`。不要把已有或需要保留的目录传给 setup，它会先删除该目录重建。
+脚本不读取生产配置或数据库。默认创建唯一的临时目录并打印路径；指定 `ZEN_CI_RUNTIME` 时须使用父目录已存在、目标尚不存在的绝对路径。可选的 `WPCLI_BIN` 须指向已有、可读的 WP-CLI PHP 文件（绝对路径），脚本不会改写它。测试后由调用者清理此次创建的目录。
+
+无需安装 WordPress 即可检查路径保护：`python3 tests/ci-native-setup-regression.py`。
 
 ```sh
 ZEN_TEST_ISOLATED=1 php tests/native-regression.php /path/to/isolated/wp-load.php

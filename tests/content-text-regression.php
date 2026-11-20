@@ -43,6 +43,11 @@ content_check(zen_trim_excerpt('😀 café', 1) === '😀…', 'emoji-only prefi
 content_check(zen_trim_excerpt("e\u{0301}x", 1) === "e\u{0301}…", 'a combining accent stays with its base letter');
 content_check(zen_trim_excerpt(str_repeat('a ', 60), 60) === rtrim(str_repeat('a ', 30)) . '…', 'a 60-character Latin excerpt is not a 60-word excerpt');
 content_check(zen_trim_excerpt("  <b>中文</b>\n\t 摘要  ", 8) === '中文 摘要', 'plain excerpt whitespace stays normalized');
+content_check(zen_trim_excerpt('<p>First</p><p>Second</p>', 8) === 'First Se…', 'block separator counts as one visible character');
+content_check(zen_trim_excerpt('<p>First<p>Second</p>', 16) === 'First Second', 'paragraphs with an omitted end tag retain their separator');
+content_check(zen_trim_excerpt('<ul><li>first<li>second</ul>', 16) === 'first second', 'list items with omitted end tags retain their separator');
+content_check(zen_trim_excerpt('<div>inter<em>national</em><br />news</div>', 24) === 'international news', 'line breaks separate text without splitting inline markup');
+content_check(zen_trim_excerpt('<p>&lt;br&gt;</p><p>literal</p>', 16) === '<br> literal', 'encoded HTML remains literal after spacing real tags');
 content_check(zen_trim_excerpt('<b> </b>', 8) === '', 'markup-only excerpt is empty');
 content_check(zen_trim_excerpt('<b>中文</b>', 2) === '中文', 'exact character limit does not add ellipsis');
 content_check(zen_trim_excerpt('中文 &amp; example', 6) === '中文 & e…', 'named entity consumes one visible character');

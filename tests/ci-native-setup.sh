@@ -5,16 +5,32 @@ set -Eeuo pipefail
 # Usage: tests/ci-native-setup.sh [--prepare-only]
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-RUNTIME=${ZEN_CI_RUNTIME:-${RUNNER_TEMP:-/tmp}/zen-native}
+if [[ -n "${ZEN_CI_RUNTIME:-}" ]]; then
+    RUNTIME=$ZEN_CI_RUNTIME
+    if [[ "$RUNTIME" != /* ]]; then
+        printf 'ZEN_CI_RUNTIME must be an absolute path.\n' >&2
+        exit 1
+    fi
+    # Create the directory atomically; never reuse or delete an existing path.
+    if ! mkdir -- "$RUNTIME"; then
+        printf 'Choose a new ZEN_CI_RUNTIME with an existing parent directory.\n' >&2
+        exit 1
+    fi
+else
+    RUNTIME=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/zen-native.XXXXXX")
+fi
 WP_VERSION=${ZEN_WP_VERSION:-6.5.5}
 WPCLI=${WPCLI_BIN:-$RUNTIME/wp-cli.phar}
 SQLITE_URL=${ZEN_SQLITE_URL:-https://github.com/WordPress/sqlite-database-integration/archive/refs/tags/v2.2.8.zip}
 
-rm -rf "$RUNTIME"
 mkdir -p "$RUNTIME/db" "$RUNTIME/wp-content/themes" "$RUNTIME/wp-content/plugins"
 
-curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o "$WPCLI"
-chmod 0755 "$WPCLI"
+if [[ -z "${WPCLI_BIN:-}" ]]; then
+    curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o "$WPCLI"
+elif [[ "$WPCLI" != /* || ! -f "$WPCLI" || ! -r "$WPCLI" ]]; then
+    printf 'WPCLI_BIN must be an absolute path to an existing, readable WP-CLI PHP file.\n' >&2
+    exit 1
+fi
 php "$WPCLI" core download --allow-root --path="$RUNTIME" --version="$WP_VERSION" --skip-content
 curl -fsSL "$SQLITE_URL" -o "$RUNTIME/sqlite.zip"
 unzip -q "$RUNTIME/sqlite.zip" -d "$RUNTIME"

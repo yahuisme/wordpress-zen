@@ -437,6 +437,7 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
             target.focus = value => { options.push(value); focus(value); };
             const link = document.querySelector(`#${navId} [data-target="${id}"]`);
             link.focus(); link.click(); flush();
+            if (navId === 'drawer-toc-nav') flush(); // Finish the close transition.
             assert.equal(document.activeElement, target, 'chapter navigation must not return to the header');
             assert.equal(target.closest('[inert]'), null, 'focus only after modal background is restored');
             assert.deepEqual(options.map(value => value?.preventScroll), [true], 'native anchor alone owns scrolling');
@@ -650,6 +651,68 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
     });
 }
 
+test('both TOCs preserve heading IDs when the browser would normalize the fragment', async t => {
+    const { document } = await page(t, `
+        <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>
+        <article id="post-content">
+            <h2 id="章节%20">Unicode and literal percent</h2>
+            <h2 id="notes:~:text=topic">Literal text directive</h2>
+            <h2 id="trailing space ">Trailing space</h2>
+            <h2 id="literal#">Literal hash</h2><h2 id="literal%23">Similar ID</h2>
+            <h2 id="literal#é">Hash with Unicode</h2><h2 id="literal%23%C3%A9">Literal encoding of hash and Unicode</h2>
+            <h2 id="café:guide">Normalized anchor</h2><h2 id="caf%C3%A9%3Aguide">Literal encoded anchor</h2>
+        </article>`);
+    const expected = [
+        ['章节%20', '#%E7%AB%A0%E8%8A%82%2520'],
+        ['notes:~:text=topic', '#notes%3A~%3Atext%3Dtopic'],
+        ['trailing space ', '#trailing%20space%20'],
+        ['literal#', '#literal#'],
+        ['literal%23', '#literal%23'],
+        ['literal#é', '#literal#%C3%A9'],
+        ['literal%23%C3%A9', '#literal%23%C3%A9'],
+        ['café:guide', '#caf%C3%A9:guide'],
+        ['caf%C3%A9%3Aguide', '#caf%C3%A9%3Aguide'],
+    ];
+    assert.deepEqual([...document.querySelectorAll('h2')].map(heading => heading.id), expected.map(([id]) => id));
+    for (const navId of ['toc-nav', 'drawer-toc-nav']) {
+        assert.deepEqual([...document.querySelectorAll(`#${navId} .toc-link`)].map(link => [link.dataset.target, link.hash]), expected);
+    }
+});
+
+test('TOC avoids literal ID and legacy anchor collisions even in encoded fallbacks', async t => {
+    const { document } = await page(t, `
+        <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>
+        <a name="%63af%C3%A9"></a>
+        <article id="post-content">
+            <h2 id="café">Unicode</h2>
+            <h2 id="caf%C3%A9">Literal uppercase encoding</h2>
+            <h2 id="caf%c3%a9">Literal lowercase encoding</h2>
+        </article>`);
+    for (const navId of ['toc-nav', 'drawer-toc-nav']) {
+        const links = [...document.querySelectorAll(`#${navId} .toc-link`)];
+        assert.deepEqual(links.map(link => link.dataset.target), ['café', 'caf%C3%A9', 'caf%c3%a9']);
+        const [unicode, ...literal] = links.map(link => link.hash.slice(1));
+        assert.equal(decodeURIComponent(unicode), 'café');
+        assert.ok(!document.getElementById(unicode) && !document.getElementsByName(unicode).length);
+        assert.deepEqual(literal, ['caf%C3%A9', 'caf%c3%a9']);
+    }
+});
+
+test('fully shadowed TOC headings retain their IDs and share one native alias', async t => {
+    const { document } = await page(t, `
+        <nav id="toc-nav"></nav><nav id="drawer-toc-nav"></nav>
+        <a name="zen-toc-anchor-1"></a>
+        <article id="post-content"><h2 id="é">Original title</h2>
+            <div id="%C3%A9"></div><div id="%c3%A9"></div><div id="%C3%a9"></div><div id="%c3%a9"></div>
+        </article>`);
+    const original = document.getElementById('é');
+    const links = [...document.querySelectorAll('.toc-link')];
+    assert.equal(links.length, 2);
+    assert.ok(links.every(link => link.hash === '#zen-toc-anchor-2' && link.dataset.target === 'é'));
+    assert.equal(original.firstElementChild, document.getElementById('zen-toc-anchor-2'));
+    assert.equal(original.textContent, 'Original title');
+});
+
 test('a scroll burst queues one frame and only changes previous and next TOC entries', async t => {
     let position = 0;
     let frames = 0;
@@ -713,15 +776,18 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
         const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
         const link = document.querySelector(`#${navId} [href="#nested"]`);
         assert.ok(link, 'initially folded heading remains in the directory');
-        let openedAtDefaultAction = false;
+        let scrolled = 0;
+        document.getElementById('nested').scrollIntoView = () => { ++scrolled; };
         document.addEventListener('click', event => {
             if (event.target === link) {
-                openedAtDefaultAction = document.getElementById('outer').open && document.getElementById('inner').open;
                 assert.equal(event.defaultPrevented, false, 'native anchor default is not intercepted');
             }
         });
         link.click();
-        assert.equal(openedAtDefaultAction, true, 'all ancestors open before the anchor default action');
+        flush();
+        assert.equal(document.getElementById('outer').open, true);
+        assert.equal(document.getElementById('inner').open, true);
+        assert.equal(scrolled, 1, 'fallback scroll for a browser that does not reveal folded targets');
         flush();
         assert.equal(link.getAttribute('aria-current'), 'location');
         await new Promise(resolve => setTimeout(resolve, 30));
@@ -733,6 +799,37 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
         assert.equal(window.location.hash, '', 'Back preserves native history');
     });
 }
+
+test('modified or canceled TOC clicks do not unfold content or steal focus', async t => {
+    const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
+    const link = document.querySelector('#toc-nav [href="#nested"]');
+    link.focus();
+    for (const options of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }, {}]) {
+        const event = new window.MouseEvent('click', { bubbles: true, cancelable: true, ...options });
+        const alreadyCanceled = Object.keys(options).length === 0;
+        if (alreadyCanceled) event.preventDefault();
+        link.dispatchEvent(event);
+        flush();
+        assert.equal(event.defaultPrevented, alreadyCanceled, 'the browser still decides how to follow the link');
+        assert.equal(document.getElementById('outer').open, false);
+        assert.equal(document.activeElement, link);
+    }
+});
+
+test('delegated cancellation leaves TOC targets folded and focus unchanged', async t => {
+    const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
+    document.addEventListener('click', event => event.preventDefault());
+    for (const navId of ['toc-nav', 'drawer-toc-nav']) {
+        const link = document.querySelector(`#${navId} [href="#nested"]`);
+        link.focus();
+        link.click();
+        flush();
+        assert.equal(window.location.hash, '');
+        assert.equal(document.getElementById('outer').open, false);
+        assert.equal(document.getElementById('inner').open, false);
+        assert.equal(document.activeElement, link);
+    }
+});
 
 test('TOC ignores folded targets and refreshes on non-bubbling details toggles', async t => {
     const { window, document, flush } = await page(t, detailsMarkup, detailsLayout);
