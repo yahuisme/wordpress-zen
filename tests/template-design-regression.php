@@ -37,7 +37,7 @@ function is_search() { return $GLOBALS['is_search']; }
 function the_ID() { echo '7'; }
 function post_class($classes) { echo 'class="' . esc_attr($classes) . '"'; }
 function get_the_category() { return $GLOBALS['fixture_categories'] ?? array(); }
-function get_the_date($format = '', $post = null) { return gmdate($format ?: 'Y-m-d', strtotime($GLOBALS['fixture_date'] ?? '2026-10-05')); }
+function get_the_date($format = '', $post = null) { return gmdate($format ?: 'Y-m-d', strtotime($post->post_date ?? $GLOBALS['fixture_date'] ?? '2026-10-05')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
 function get_the_title($post = null) { return $GLOBALS['fixture_title'] ?? '清晰的文章标题'; }
@@ -189,6 +189,41 @@ test('editorial dates retain older years; a later sticky position cannot pick an
     $locked->post_password = 'test';
     check(zen_get_latest_index_post(array($older, $locked, $newer)) === $newer, 'card selection follows sticky ordering or includes password-protected posts');
     check(zen_get_latest_index_post(array($locked)) === null, 'no eligible post should render no card');
+});
+
+test('latest card uses a single-line month-day only in the current year', function () {
+    $previous_query = $GLOBALS['wp_query'];
+    $previous_options = $GLOBALS['options'];
+    $GLOBALS['options']['zen_show_latest_card'] = 1;
+    $GLOBALS['options']['zen_show_site_intro'] = 1;
+    // The featured card renders before the main Loop and must use its explicit post.
+    $GLOBALS['fixture_date'] = '2024-03-02T12:00:00Z';
+    $GLOBALS['fixture_categories'] = array((object) array('term_id' => 2, 'name' => '阅读记录'));
+    $GLOBALS['loop_left'] = 0;
+    try {
+        foreach (array('2026' => '11月 9日', '2025' => '2025.11.09') as $year => $display) {
+            $latest = (object) array('ID' => 7, 'post_type' => 'post', 'post_status' => 'publish', 'post_password' => '', 'post_date' => $year . '-11-09 12:00:00');
+            $GLOBALS['wp_query'] = (object) array('posts' => array($latest), 'post_count' => 1, 'found_posts' => 1, 'max_num_pages' => 1);
+            $html = render('index.php');
+            $dom = new DOMDocument();
+            @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+            $xpath = new DOMXPath($dom);
+            $dates = $xpath->query('//article[@class="zen-latest-card"]//time');
+            check($dates->length === 1, 'card must expose exactly one date');
+            $date = $dates->item(0);
+            check($date instanceof DOMElement, 'card date must be a time element');
+            check($date->textContent === $display && $xpath->query('./*', $date)->length === 0, 'card needs a single unsplit date: ' . $year);
+            check($date->getAttribute('datetime') === $year . '-11-09T12:00:00+00:00', 'card must retain its complete machine-readable date');
+            check($xpath->query('//article[@class="zen-latest-card"]//*[contains(@class,"zen-meta-category")]')->length === 0, 'card metadata must contain only the date');
+            check(str_contains(capture(static function () use ($latest) { zen_index_post_meta('full', $latest); }), 'zen-meta-category'), 'article metadata must retain its category');
+            check(str_contains($html, '最近发布 ' . $year . '.11.09'), 'masthead date is independent of the card');
+            check(str_contains(zen_post_date_html('full', $latest), '>' . $year . '.11.09</time>'), 'article detail dates must keep the year');
+        }
+    } finally {
+        $GLOBALS['wp_query'] = $previous_query;
+        $GLOBALS['options'] = $previous_options;
+        unset($GLOBALS['fixture_date'], $GLOBALS['fixture_categories']);
+    }
 });
 
 test('legacy child excerpt renders only ordinary Loop posts with an older sticky first', function () {

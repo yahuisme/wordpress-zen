@@ -2,7 +2,6 @@
 from datetime import datetime
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -53,7 +52,10 @@ with sync_playwright() as p:
             assert items.count() >= 2, 'Seed enough published posts for both pages'
             if is_first:
                 assert card.locator('h2 a').is_visible() and card.locator('.zen-post-excerpt').is_visible()
-                assert re.fullmatch(r'\d{4}\.\d{2}\.\d{2}', card.locator('time').inner_text())
+                assert_date(card.locator('time'), 'list')
+                assert card.locator('.zen-meta-category').count() == 0, 'Latest card metadata is date-only'
+                assert card.locator('time span').count() == 0, 'Latest card date stays unsplit'
+                assert card.locator('time').evaluate('e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length}') == 1
                 assert card.get_attribute('id') not in items.evaluate_all('items => items.map(i => i.id)')
                 assert card.locator('time').get_attribute('datetime') > items.first.locator('time').get_attribute('datetime')
             for date in items.locator('.zen-post-date').all():
