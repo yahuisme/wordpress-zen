@@ -6,7 +6,7 @@
 .zen-directory-kicker {
     margin-block-end: 12px;
     color: var(--zen-muted);
-    font: 400 0.875rem/1.7 var(--zen-font-mono, monospace);
+    font: 400 0.875rem/1.7 var(--zen-font-body);
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
@@ -137,7 +137,7 @@
 .zen-archive-row .zen-post-date {
     grid-column: 1;
     color: var(--zen-muted);
-    font: 400 0.8125rem/1.5 var(--zen-font-mono, monospace);
+    font: 400 0.8125rem/1.5 var(--zen-font-body);
     white-space: normal;
 }
 .zen-archive-row .zen-archive-link {
@@ -172,9 +172,15 @@
     flex: 0 0 auto;
     inline-size: 40px;
     block-size: 40px;
-    border-radius: 4px;
+    border-radius: 50%;
     background: var(--zen-accent-soft);
     object-fit: cover;
+    filter: grayscale(1);
+}
+.zen-link-label .zen-link-avatar:hover,
+.zen-link-card:focus-visible .zen-link-avatar { filter: grayscale(0); }
+@media (prefers-reduced-motion: no-preference) {
+    .zen-link-label .zen-link-avatar { transition: filter 0.18s ease; }
 }
 .zen-link-card .zen-link-label h2 {
     font: 500 1.25rem/1.35 var(--zen-font-heading);
@@ -193,7 +199,7 @@
     gap: 8px;
     min-width: 0;
     color: var(--zen-muted);
-    font: 400 0.8125rem/1.5 var(--zen-font-mono, monospace);
+    font: 400 0.8125rem/1.5 var(--zen-font-body);
     overflow-wrap: anywhere;
 }
 .zen-link-arrow { color: var(--zen-accent); }
@@ -233,7 +239,7 @@
 .zen-tag-recent a { color: var(--zen-text); }
 .zen-tag-recent time {
     grid-column: 2;
-    font-family: var(--zen-font-mono, monospace);
+    font-family: var(--zen-font-body);
     white-space: nowrap;
 }
 .zen-tag-item a:is(:hover, :focus-visible) { color: var(--zen-accent); text-decoration: underline; }
@@ -313,7 +319,7 @@
 .zen-error-code {
     margin-block-end: 18px;
     color: var(--zen-muted);
-    font: 500 0.875rem/1.55 var(--zen-font-mono, monospace);
+    font: 500 0.875rem/1.55 var(--zen-font-body);
     letter-spacing: 0.22em;
 }
 .zen-error-page h1 { font: 500 clamp(2.7rem, 5vw, 3.35rem)/1.08 var(--zen-font-heading); }
@@ -331,7 +337,7 @@
     gap: 0 10px;
     margin-block-start: 64px;
     color: var(--zen-muted);
-    font: 500 0.875rem/1.55 var(--zen-font-mono, monospace);
+    font: 500 0.875rem/1.55 var(--zen-font-body);
     letter-spacing: 0.08em;
 }
 .zen-error-page .zen-recovery-links a {

@@ -56,10 +56,7 @@ jobs:
                   'zen/404.php', 'zen/LICENSE', 'zen/archive.php',
                   'zen/assets/css/github-dark.min.css', 'zen/assets/css/phosphor-icons.css', 'zen/assets/css/style.css',
                   'zen/assets/css/admin.css', 'zen/assets/css/reading.css', 'zen/assets/css/layout.css', 'zen/assets/js/admin.js',
-                  'zen/assets/css/directories.css', 'zen/assets/css/zen-bins-google-code.css',
-                  'zen/assets/fonts/google-sans-code/OFL.txt',
-                  'zen/assets/fonts/google-sans-code/google-sans-code-latin-normal.woff2',
-                  'zen/assets/fonts/google-sans-code/google-sans-code-latin-italic.woff2',
+                  'zen/assets/css/directories.css',
                   'zen/assets/fonts/Phosphor.woff2', 'zen/assets/js/highlight.min.js',
                   'zen/licenses/Phosphor-MIT.txt',
                   'zen/licenses/Highlight-BSD-3-Clause.txt', 'zen/licenses/Tailwind-MIT.txt',
@@ -95,6 +92,13 @@ jobs:
                       raise SystemExit('发布包元数据校验失败：' + key)
 
           PY
+
+          mv zen.zip "$RUNNER_TEMP/zen-tracked.zip"
+          curl --fail --location --retry 2 \
+            https://github.com/yahuisme/wordpress-zen/releases/download/v2.0.0/zen.zip \
+            --output "$RUNNER_TEMP/zen-font-source.zip"
+          python scripts/package-release.py "$RUNNER_TEMP/zen-tracked.zip" \
+            "$RUNNER_TEMP/zen-font-source.zip" zen.zip
 
       - name: Upload package for manual Release
         uses: actions/upload-artifact@v4

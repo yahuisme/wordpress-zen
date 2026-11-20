@@ -29,7 +29,7 @@ with sync_playwright() as p:
   try:
    q.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');q.evaluate('document.fonts.ready')
    computed=q.locator('#post-content').evaluate('e=>getComputedStyle(e).fontFamily');assert 'TsangerJinKai02' in computed,computed
-   assert q.locator('link[href*="zen-bins-google-code.css"]').count()==1
+   assert q.locator('link[href*="zen-bins-google-code.css"]').count()==0
    assert q.locator('link[href*="fonts.googleapis.com"],link[href*="fonts.gstatic.com"]').count()==0
   finally:
    cli('option','delete','zen_font_family')

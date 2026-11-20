@@ -12,8 +12,18 @@ def wp(*args):
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
 assert json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);')) == ['local', origin, str(root / 'db/zen.sqlite')]
-rows, errors, posts = [], [], []
+startup_from = int(os.environ.get('ZEN_LAYOUT_STARTUP_FROM', '0'))
+assert startup_from in (0, 390, 768, 1440), 'Unsupported startup resume width'
+evidence_file = root / 'evidence/native-layout.jsonl'
+rows = [json.loads(line) for line in evidence_file.read_text().splitlines()] if startup_from else []
+if not startup_from: evidence_file.write_text('')
+assert all(row['passed'] for row in rows), 'Resume requires valid earlier evidence'
+completed = {row['name'] for row in rows}
+errors, posts = [], []
 def check(name, passed, detail=None):
+    if name in completed:
+        assert passed, (name, detail)
+        return
     row = {'name': name, 'passed': bool(passed), 'detail': detail}
     rows.append(row)
     with (root / 'evidence/native-layout.jsonl').open('a') as stream:
@@ -31,7 +41,7 @@ try:
     post = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Native layout checks', '--comment_status=open', '--post_content=' + content, '--porcelain'); posts.append(post)
     plain = wp('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=Plain startup', '--post_content=<p>No headings.</p>', '--porcelain'); posts.append(plain)
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+        browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'], env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/nonexistent', 'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=/nonexistent'})
         group_path = Path('/proc/self/cgroup').read_text().strip().split('::', 1)[1]
         scope = Path('/sys/fs/cgroup' + group_path).parent
         assert int((scope / 'memory.max').read_text()) <= 4 * 1024**3
@@ -46,7 +56,7 @@ try:
                 membership.append({'pid': process['id'], 'cgroup': group})
         (root / 'evidence/layout-cgroup.json').write_text(json.dumps(membership, indent=2))
         def fresh_context(**kwargs):
-            nonlocal_browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+            nonlocal_browser = p.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'], env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/nonexistent', 'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=/nonexistent'})
             processes = nonlocal_browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
             assert processes and all(Path(f'/proc/{item["id"]}/cgroup').read_text().strip().endswith('::'+group_path) for item in processes)
             context = nonlocal_browser.new_context(**kwargs)
@@ -55,7 +65,7 @@ try:
         context = browser.new_context(reduced_motion='reduce')
         context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') or route.request.url.startswith('data:') else route.abort())
         page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
-        for width in (320, 390, 768, 1440):
+        for width in (() if startup_from else (320, 390, 768, 1440)):
             page.set_viewport_size({'width': width, 'height': 900})
             page.goto(origin + '/?p=' + post, wait_until='networkidle')
             for dark in (False, True):
@@ -82,7 +92,7 @@ try:
         check('no script removes unusable directory reservation', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0 and page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
         check('no script preserves content and native search', page.locator('#post-content h2').count() > 0 and page.locator('#search-fallback').is_visible())
         browser.close()
-        for width in (390, 768, 1440):
+        for width in (w for w in (390, 768, 1440) if w >= startup_from):
             for name, identifier in (('headings', post), ('plain', plain)):
                 browser, context = fresh_context(viewport={'width': width, 'height': 900}, reduced_motion='reduce')
                 held = []; context.route('**/js/main.js?*', lambda route: held.append(route))

@@ -55,7 +55,7 @@ foreach (array('system', 'kami', 'inter', 'space-grotesk') as $retired_font) {
     $GLOBALS['asset_options']['zen_font_family'] = $retired_font;
     $GLOBALS['styles'] = $GLOBALS['inline'] = $GLOBALS['scripts'] = array();
     zen_scripts();
-    check(isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), "$retired_font cannot switch the new theme to an old font");
+    check(!isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), "$retired_font cannot switch the new theme to an old font");
     check(count($GLOBALS['scripts']) === 1 && $GLOBALS['scripts'][0][0] === 'zen-main', 'non-article pages omit code highlighter');
     check(!str_contains(implode('', $GLOBALS['inline']), 'url('), 'saved settings cannot inject font URLs');
 }
@@ -102,9 +102,5 @@ foreach (array(
     zen_scripts();
     check(wp_script_is('comment-reply') === $expected, "$name: Core owns reply behavior only when available");
 }
-$font_css = file_get_contents(ABSPATH . 'assets/css/zen-bins-google-code.css');
-check(substr_count($font_css, '@font-face') === 4 && substr_count($font_css, 'font-weight: 300 700;') === 4, 'variable font families and styles use shared weight ranges without duplicate declarations');
-foreach (array('latin-normal.woff2', 'latin-italic.woff2', 'ascent-override: 96.6157%', 'descent-override: 28.6047%') as $font_contract) {
-    check(str_contains($font_css, $font_contract), 'font source and fallback metrics preserved: ' . $font_contract);
-}
+check(zen_reference_font_styles() === array(), 'source-only checkout loads no missing Kai files or retired code font');
 exit($failures ? 1 : 0);

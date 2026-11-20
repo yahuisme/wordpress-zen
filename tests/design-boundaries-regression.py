@@ -1,6 +1,7 @@
 """Native local-color inheritance and no-script search; isolated WP only."""
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 from playwright.sync_api import sync_playwright
@@ -37,7 +38,7 @@ rows = []
 try:
     with sync_playwright() as playwright:
         def launch():
-            browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+            browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'], env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/nonexistent', 'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=/nonexistent'})
             group = Path('/proc/self/cgroup').read_text()
             control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
             ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]

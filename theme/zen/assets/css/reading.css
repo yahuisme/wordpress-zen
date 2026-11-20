@@ -5,11 +5,12 @@
         "Zen Kami Kai", "TsangerJinKai02", "TsangerJinKai02-W04", "Source Han Serif SC",
         "Source Han Serif CN", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
     --zen-font-heading: var(--zen-font-body);
-    --zen-font-mono:
-        "TsangerJinKai02 Code CJK", "Google Sans Code", "Google Sans Code fallback: Courier New",
-        monospace, "JetBrains Mono", "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas,
-        "Zen Kami Kai", "Source Han Serif SC", "Songti SC";
 }
+
+code,
+kbd,
+pre,
+samp { font-family: var(--zen-font-body); }
 
 .entry-content,
 .editor-styles-wrapper {
@@ -112,7 +113,7 @@
 }
 .entry-content :where(pre, .wp-block-code),
 .editor-styles-wrapper :where(pre, .wp-block-code) {
-    font-family: var(--zen-font-mono);
+    font-family: var(--zen-font-body);
     font-size: 14px;
     line-height: 1.7;
     white-space: pre;
@@ -145,7 +146,7 @@
 pre.wp-block-code:not(.entry-content pre) .hljs .hljs-section { color: #58a6ff; }
 .entry-content code:not(pre code),
 .editor-styles-wrapper code:not(pre code) {
-    font-family: var(--zen-font-mono);
+    font-family: var(--zen-font-body);
     font-size: 0.88em;
 }
 .entry-content img,

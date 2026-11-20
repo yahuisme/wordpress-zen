@@ -11,9 +11,10 @@ def wp(*args):
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
 assert json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);')) == ['local', origin, str(root / 'db/zen.sqlite')]
-content = '<!-- wp:paragraph --><p>Lead text</p><!-- /wp:paragraph -->'
+content = '<!-- wp:paragraph --><p>阅读记录 Lead text</p><!-- /wp:paragraph -->'
 for level in range(1, 7):
-    content += f'<!-- wp:heading {{"level":{level}}} --><h{level} class="wp-block-heading">Level {level}</h{level}><!-- /wp:heading --><!-- wp:paragraph --><p>Body text</p><!-- /wp:paragraph -->'
+    content += f'<!-- wp:heading {{"level":{level}}} --><h{level} class="wp-block-heading">阅读记录 Level {level}</h{level}><!-- /wp:heading --><!-- wp:paragraph --><p>阅读记录 Body text</p><!-- /wp:paragraph -->'
+content += '<!-- wp:code --><pre class="wp-block-code"><code>printf "阅读记录 code"</code></pre><!-- /wp:code -->'
 post = wp('post', 'create', '--post_status=publish', '--post_title=Native editor typography', '--post_content=' + content, '--porcelain')
 try:
     with sync_playwright() as p:
@@ -37,11 +38,23 @@ try:
         page.goto(origin + '/wp-admin/post.php?post=' + post + '&action=edit', wait_until='networkidle')
         frame = page.frame_locator('iframe[name="editor-canvas"]')
         frame.locator('.wp-block-heading').first.wait_for(timeout=30000)
+        page.evaluate('document.querySelector(\'iframe[name="editor-canvas"]\').contentDocument.fonts.ready')
+        content_fonts = frame.locator('.wp-block-heading,p.wp-block-paragraph,.wp-block-code code').evaluate_all('es=>es.map(e=>({tag:e.tagName,family:getComputedStyle(e).fontFamily}))')
+        assert content_fonts and all(item['family']==reader[0]['family'] for item in content_fonts),content_fonts
+        assert page.locator('link[href*="zen-bins-google-code"]').count()==0
+        cdp=context.new_cdp_session(page);cdp.send('DOM.enable');cdp.send('CSS.enable');cdp.send('DOM.getDocument',{'depth':-1,'pierce':True})
+        rendered=[]
+        for selector in ['.wp-block-heading','p.wp-block-paragraph','.wp-block-code code']:
+            obj=cdp.send('Runtime.evaluate',{'expression':'document.querySelector(\'iframe[name="editor-canvas"]\').contentDocument.querySelector('+json.dumps(selector)+')'})['result']['objectId']
+            node=cdp.send('DOM.requestNode',{'objectId':obj})['nodeId']
+            fonts=cdp.send('CSS.getPlatformFontsForNode',{'nodeId':node})['fonts']
+            assert any(font['isCustomFont'] and 'TsangerJinKai02' in font['familyName'] for font in fonts),(selector,fonts)
+            rendered.append({'selector':selector,'fonts':fonts})
         editor = frame.locator('.wp-block-heading').evaluate_all('es=>es.map(e=>({tag:e.tagName,font:getComputedStyle(e).fontSize,family:getComputedStyle(e).fontFamily,mt:getComputedStyle(e).marginTop,mb:getComputedStyle(e).marginBottom}))')
         assert len(reader) == len(editor) == 6, (reader, editor)
         assert all('TsangerJinKai02' in heading['family'] for heading in reader), reader
         assert reader == editor, (reader, editor)
-        (root / 'evidence/native-editor.json').write_text(json.dumps({'reader': reader, 'editor': editor, 'passed': True}, indent=2))
+        (root / 'evidence/native-editor.json').write_text(json.dumps({'reader': reader, 'editor': editor, 'content_fonts':content_fonts, 'rendered_fonts':rendered, 'passed': True}, indent=2))
         print('NATIVE_EDITOR_COMPLETE 6 heading levels match reader typography')
         browser.close()
 finally:

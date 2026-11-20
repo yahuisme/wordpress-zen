@@ -123,14 +123,7 @@ html {
     -moz-tab-size: 4;
     -o-tab-size: 4;
     tab-size: 4;
-    font-family:
-        ui-sans-serif,
-        system-ui,
-        sans-serif,
-        Apple Color Emoji,
-        Segoe UI Emoji,
-        Segoe UI Symbol,
-        Noto Color Emoji;
+    font-family: var(--zen-font-body);
     font-feature-settings: normal;
     font-variation-settings: normal;
     -webkit-tap-highlight-color: transparent;
@@ -169,15 +162,7 @@ code,
 kbd,
 pre,
 samp {
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        Liberation Mono,
-        Courier New,
-        monospace;
+    font-family: var(--zen-font-body);
     font-feature-settings: normal;
     font-variation-settings: normal;
     font-size: 1em;
@@ -583,7 +568,7 @@ select {
     --zen-on-accent: #172838;
 }
 body {
-    font-family: Inter, sans-serif;
+    font-family: var(--zen-font-body);
     background: var(--zen-bg);
     color: var(--zen-text);
 }
@@ -594,7 +579,7 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: "Noto Serif SC", serif;
+    font-family: var(--zen-font-heading);
 }
 .container {
     width: 100%;
@@ -776,7 +761,7 @@ select:focus-visible {
     align-items: center;
     min-height: 32px;
     color: var(--zen-accent);
-    font: 0.8125rem/1.35 var(--zen-font-ui);
+    font: 0.8125rem/1.35 var(--zen-font-body);
     text-underline-offset: 0.2em;
 }
 #cancel-comment-reply-link:hover,
@@ -1119,7 +1104,7 @@ select:focus-visible {
     border-radius: 50%;
     background: var(--zen-bg-soft);
     color: var(--zen-muted);
-    font-family: Inter, sans-serif;
+    font-family: var(--zen-font-body);
     font-size: 0.9rem;
     font-weight: 700;
     line-height: 1;
@@ -1255,7 +1240,7 @@ select:focus-visible {
 }
 .zen-audio-time {
     font-size: 0.75rem;
-    font-family: monospace;
+    font-family: var(--zen-font-body);
     color: var(--zen-muted);
     min-width: 5.6rem;
     text-align: right;
@@ -1338,7 +1323,7 @@ select:focus-visible {
     margin: 0;
 }
 .wp-block-pullquote p {
-    font-family: "Noto Serif SC", serif;
+    font-family: var(--zen-font-heading);
     font-size: clamp(1.25rem, 2vw, 1.8rem);
     line-height: 1.75;
 }
@@ -2179,34 +2164,13 @@ select:focus-visible {
     text-align: center;
 }
 .font-mono {
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        Liberation Mono,
-        Courier New,
-        monospace;
+    font-family: var(--zen-font-body);
 }
 .font-sans {
-    font-family:
-        ui-sans-serif,
-        system-ui,
-        sans-serif,
-        Apple Color Emoji,
-        Segoe UI Emoji,
-        Segoe UI Symbol,
-        Noto Color Emoji;
+    font-family: var(--zen-font-body);
 }
 .font-serif {
-    font-family:
-        ui-serif,
-        Georgia,
-        Cambria,
-        Times New Roman,
-        Times,
-        serif;
+    font-family: var(--zen-font-body);
 }
 .text-2xl {
     font-size: 1.5rem;

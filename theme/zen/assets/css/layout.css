@@ -7,15 +7,18 @@
     --zen-space-5: 48px;
     --zen-control-radius: 8px;
     --zen-gutter: 32px;
-    --zen-font-ui: "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 body { font-family: var(--zen-font-body); }
+/* Core owns these players; only their text follows the shared theme font. */
+.entry-content .mejs-container,
+.entry-content .mejs-container :not(.ph) { font-family: var(--zen-font-body); }
 body button,
 body input,
 body textarea,
-body select {
-    font-family: var(--zen-font-ui);
+body select,
+body optgroup {
+    font-family: var(--zen-font-body);
 }
 body h1,
 body h2,
@@ -54,7 +57,7 @@ body .font-serif {
 }
 .zen-site-title {
     min-width: 0;
-    font: 400 1.3rem/1.15 var(--zen-font-mono);
+    font: 400 1.3rem/1.15 var(--zen-font-body);
     letter-spacing: 0.035em;
     overflow-wrap: anywhere;
 }
@@ -103,7 +106,7 @@ body .font-serif {
 }
 .zen-site-footer {
     color: var(--zen-muted);
-    font: 400 0.75rem/1.7 var(--zen-font-mono);
+    font: 400 0.75rem/1.7 var(--zen-font-body);
 }
 .zen-footer-navigation { min-width: 0; overflow-wrap: anywhere; margin-inline-start: auto; }
 .zen-footer-navigation ul { justify-content: flex-end; }
@@ -187,7 +190,7 @@ body .font-serif {
 .zen-masthead-meta {
     margin-top: 16px;
     color: var(--zen-muted);
-    font: 400 0.86rem/1.6 var(--zen-font-mono);
+    font: 400 0.86rem/1.6 var(--zen-font-body);
     overflow-wrap: anywhere;
 }
 .zen-masthead-stats::before,
@@ -208,10 +211,20 @@ body .font-serif {
 }
 .zen-index-heading h1,
 .zen-index-heading h2 { font: 500 1rem/1.3 var(--zen-font-heading); }
-.zen-index-heading a {
+.zen-index-heading a,
+.zen-pagination a {
+    display: inline-flex;
+    align-items: center;
     min-height: 24px;
     gap: 6px;
+    color: var(--zen-accent);
     font: 400 1rem/1.55 var(--zen-font-body);
+    text-decoration: none;
+}
+.zen-index-heading a:hover,
+.zen-pagination a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
 }
 .zen-index-heading + .zen-post-list { margin-top: 10px; }
 .zen-post-list { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -228,7 +241,7 @@ body .font-serif {
     align-items: baseline;
     gap: 6px 14px;
     color: var(--zen-muted);
-    font: 400 0.78rem/1.55 var(--zen-font-mono);
+    font: 400 0.78rem/1.55 var(--zen-font-body);
 }
 .zen-post-meta > * { min-width: 0; }
 .zen-post-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -380,7 +393,7 @@ body .font-serif {
     white-space: nowrap;
     min-height: 44px;
     color: var(--zen-muted);
-    font: 0.875rem/1.45 var(--zen-font-ui);
+    font: 0.875rem/1.45 var(--zen-font-body);
     text-decoration: none;
 }
 .zen-category-nav a:is([aria-current="page"], :hover) {
@@ -449,7 +462,7 @@ body .font-serif {
 .zen-toc-title {
     margin: 0 0 16px 12px;
     color: var(--zen-muted);
-    font: 500 12px/1.4 var(--zen-font-mono);
+    font: 500 12px/1.4 var(--zen-font-body);
 }
 #toc-nav {
     border-left: 1px solid var(--zen-border);
@@ -676,20 +689,9 @@ body .font-serif {
     justify-self: end;
 }
 .zen-pagination a {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     min-width: 44px;
     min-height: 44px;
     padding-block: 8px;
-    color: var(--zen-muted);
-    font: 400 0.875rem/1.5 var(--zen-font-ui);
-    text-decoration: none;
-}
-.zen-pagination a:hover {
-    color: var(--zen-text);
-    text-decoration: underline;
-    text-underline-offset: 0.3em;
 }
 .zen-pagination a:focus-visible {
     outline: 2px solid var(--zen-accent);

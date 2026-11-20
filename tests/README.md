@@ -4,9 +4,12 @@
 
 ```sh
 python3 tests/package-regression.py
+python3 tests/release-font-package-regression.py
 ```
 
-使用独立 Git 索引打包当前工作区，不修改暂存区或创建提交；执行发布工作流的 ZIP 校验，覆盖显示名、版本、环境要求、文件清单及错误元数据拒绝。需要 Python 3.9+ 与 Git。
+使用独立 Git 索引打包当前工作区，不修改暂存区或创建提交；执行发布工作流的源码 ZIP 校验，覆盖显示名、版本、环境要求、文件清单及错误元数据拒绝。需要 Python 3.9+ 与 Git。
+
+完整安装包再通过 `scripts/package-release.py TRACKED_ZIP FONT_SOURCE_ZIP OUTPUT_ZIP` 加入授权仓耳字体。`FONT_SOURCE_ZIP` 使用固定的 v2.0.0 Release `zen.zip`；脚本先校验其 SHA-256，再精确合并字体分包，保留字体版权说明。`release-font-package-regression.py` 使用明确的合成 ZIP 验证实际合并器、错误摘要／重复路径／越界路径拒绝，以及失败时保留原输出；不访问生产或下载网络资源。手动工作流执行相同合并器，不会自动发布 Release。
 
 ## PHP 行为
 
@@ -143,13 +146,17 @@ python tests/experience-regression.py http://127.0.0.1:18765 /path/to/fixture.js
 python tests/native-content-regression.py /path/to/fixture
 python tests/native-layout-regression.py /path/to/fixture
 python tests/native-editor-regression.py /path/to/fixture
+python tests/typography-regression.py /path/to/fixture
+python tests/native-media-typography-regression.py /path/to/fixture
 ```
 
 复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
 
-新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距；这两项需带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
+新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距，并核实标题、正文及代码的实际仓耳字体。字体专项 `typography-regression.py` 需要 `fixture.json` 的 `origin`、`routes`（首页、分类、标签、作者、日期、搜索，每类至少两页）及可选 `surfaces`（普通页、文章、目录、书签、留言、密码页、空搜索和404），安装包含字库的完整 ZIP，并为 `links` 准备至少一个带真实图片的书签。它逐个文本节点与表单控件比较字体，核对分页与「全部篇目」的常态／悬停样式、真实字形来源及书签圆形黑白／悬停彩色。仅在源码、包、配置及数据库未变时可加 `--resume` 续跑 JSONL 未完成项。这些测试都需要带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
 
 以上测试文件不进入主题发布 ZIP。
+
+`native-media-typography-regression.py` 另需 `runtime/media-font.wav` 与 `runtime/media-font.webm` 两个可实际播放的本地音视频文件。它创建并清理原生 `[audio]`／`[video]` 文章，核对 Core MediaElement 文本及控件字体、实际字形来源与播放／暂停，同时确认普通音频仍由 Zen 增强且没有重复播放器。
 
 ## 内容颜色与交互边界
 

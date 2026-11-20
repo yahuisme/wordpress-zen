@@ -68,10 +68,11 @@ if (isset($GLOBALS['hooks']['block_editor_settings_all'])) {
 verify($GLOBALS['content_width_reads'] === 0, 'frontend and editor never read the retired content width option');
 $reading_css = file_get_contents(ABSPATH . 'assets/css/reading.css');
 verify(preg_match('/--zen-font-body:\s*"Zen Kami Kai", "TsangerJinKai02"/', $reading_css) && str_contains($reading_css, '--zen-font-heading: var(--zen-font-body)'), 'reader and editor body/title use the same Kai stack');
-verify(preg_match('/--zen-font-mono:\s*"TsangerJinKai02 Code CJK", "Google Sans Code"/', $reading_css), 'mixed code uses separate CJK and Latin families');
-verify($GLOBALS['editor_styles'] === array('assets/css/zen-bins-google-code.css', 'assets/css/reading.css'), 'editor registers the shared text and code font styles');
-verify(in_array('zen-bins-google-code', $GLOBALS['styles']['zen-reading-style'][1], true), 'reader style keeps its code font dependency');
-verify(isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), 'reference code font is self-hosted');
-verify(in_array('assets/css/zen-bins-google-code.css', $GLOBALS['editor_styles'], true), 'editor loads the same local code font');
-verify(!isset($GLOBALS['styles']['zen-bins-kai']), 'public package does not request missing optional Kai fonts');
+verify(!str_contains($reading_css, '--zen-font-mono') && !str_contains($reading_css, 'Google Sans Code'), 'code and body share one font stack');
+verify($GLOBALS['editor_styles'] === array('assets/css/reading.css'), 'source-only editor loads shared typography without a second text font');
+verify($GLOBALS['styles']['zen-reading-style'][1] === array('zen-compiled-style'), 'source-only reader has no separate code font dependency');
+verify(!isset($GLOBALS['styles']['zen-bins-google-code']) && !isset($GLOBALS['styles']['zen-google-fonts']), 'reader never loads a separate local or remote text font');
+$frontend_css = $reading_css . file_get_contents(ABSPATH . 'assets/css/layout.css') . file_get_contents(ABSPATH . 'assets/css/directories.css');
+verify(!str_contains($frontend_css, '--zen-font-ui') && !str_contains($frontend_css, '--zen-font-mono'), 'all frontend components use the shared body or heading font');
+verify(!isset($GLOBALS['styles']['zen-bins-kai']), 'source-only package does not request missing Kai files');
 exit($failed ? 1 : 0);

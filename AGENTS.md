@@ -221,7 +221,7 @@ PHP 改动至少检查相关模板是否能正常渲染，并用 `php -l` 检查
 GitHub Actions（`.github/workflows/release.yml`）仅通过 `workflow_dispatch` 手动触发：
 
 1. 从 `theme/zen/style.css` 读取版本号；
-2. 用 `git archive` 从 `theme/zen/` 子目录打包并校验 `zen.zip`（顶层 `zen/` 目录）；
+2. 用 `git archive` 从 `theme/zen/` 子目录打包并校验源码 ZIP，再由 `scripts/package-release.py` 合并固定来源、经 SHA-256 核验的授权仓耳字体，生成完整 `zen.zip`（顶层 `zen/` 目录）；
 3. 上传 ZIP 与手填的简短中文发布说明，供单独授权后手动发布。
 
 工作流不创建提交、tag 或 Release；推送不会触发打包或发布。

@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) exit;
 
 /** Only an explicitly installed, same-theme Kai add-on can supply its webfonts. */
 function zen_reference_font_styles() {
-    $styles = array('zen-bins-google-code' => 'assets/css/zen-bins-google-code.css');
+    $styles = array();
     $kai = 'assets/zen-kai/assets/css/zen-bins-kai.css';
     if (is_readable(get_template_directory() . '/' . $kai)) {
         $styles['zen-bins-kai'] = $kai;
