@@ -654,6 +654,10 @@ body .font-serif {
     gap: 8px;
     margin-top: 32px;
 }
+.comment-reply-title {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+}
 .zen-comment-input {
     font-size: 16px;
 }

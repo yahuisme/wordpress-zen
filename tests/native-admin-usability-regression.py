@@ -176,6 +176,8 @@ with sync_playwright() as p:
         page.set_viewport_size({'width': width, 'height': 900})
         page.evaluate('document.querySelectorAll(".CodeMirror").forEach(e=>e.CodeMirror.refresh())')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), width
+        width_controls = page.locator('#zen_reading_width_preset').evaluate('''e=>{const a=e.getBoundingClientRect(),b=document.querySelector('#zen_reading_width').getBoundingClientRect();return Math.max(b.left-a.right,b.top-a.bottom)}''')
+        assert width_controls >= 7, (width, width_controls)
         save_box = page.locator('#zen_save_top').bounding_box()
         reset_box = page.locator('[form="zen-reset-form"]').bounding_box()
         status_box = page.locator('#zen-save-state').bounding_box()

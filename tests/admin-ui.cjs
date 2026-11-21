@@ -330,6 +330,36 @@ test('CodeMirror keyboard save honors repeat, composition, and the native submit
     }
 });
 
+test('native code-editor opt-out and missing resources preserve plain-text saving', () => {
+    for (const reason of ['localized false', 'missing API']) {
+        const dom = boot(window => {
+            window.zenAdmin = { codeEditor: reason === 'localized false' ? '' : { codemirror: {} } };
+            if (reason === 'localized false') window.wp = { codeEditor: { initialize() { throw new Error('editor opt-out was ignored'); } } };
+        });
+        const { document, Event, KeyboardEvent } = dom.window;
+        const section = document.getElementById('zen-code');
+        section.open = true;
+        section.dispatchEvent(new Event('toggle'));
+        const field = document.getElementById('zen_code_head');
+        const code = '<script>window.literal = "<>&\\\\fixture";</script>';
+        edit(dom, field.id, code);
+        assert.equal(field.style.display, '', reason + ' keeps a visible native textarea');
+        assert.equal(document.querySelector('.CodeMirror'), null);
+        assert.equal(unloading(dom), true);
+        const form = document.getElementById('zen-options-form');
+        const submissions = [];
+        form.requestSubmit = submitter => {
+            submissions.push(new dom.window.FormData(form).get(field.name));
+            form.dispatchEvent(new dom.window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter }));
+        };
+        field.focus();
+        field.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
+        assert.deepEqual(submissions, [code], reason + ' shares the native save path and literal bytes');
+        assert.equal(unloading(dom), false);
+        dom.window.close();
+    }
+});
+
 test('settings initialization does not check for updates', async () => {
     let requests = 0;
     const dom = boot(window => {

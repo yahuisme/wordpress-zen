@@ -54,7 +54,19 @@ try:
                 scrollable = page.locator('.zen-comment-text pre').evaluate_all('es=>es.map(e=>{e.scrollLeft=e.scrollWidth;return e.scrollLeft>0})')
                 assert all(scrollable) and len(scrollable)==3, scrollable
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
-                row = {'width': width, 'dark': dark, 'passed': True, 'metrics': data}
+                for reply in (page.locator('.comment-reply-link').first, page.locator('.comment-reply-link').last):
+                    reply.click()
+                    assert page.locator('#comment_parent').input_value() != '0'
+                    title = page.locator('#reply-title').evaluate('''e=>{const r=e.getBoundingClientRect(),c=e.querySelector('small').getBoundingClientRect();return {width:r.width,scroll:e.scrollWidth,left:c.left,right:c.right,text:e.textContent}}''')
+                    assert 'Reader' * 35 in title['text'], title
+                    assert title['scroll'] <= title['width'] + 1 and 0 <= title['left'] < title['right'] <= width, title
+                    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                    cancel = page.locator('#cancel-comment-reply-link')
+                    cancel.scroll_into_view_if_needed()
+                    assert cancel.evaluate('e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))}')
+                    cancel.click()
+                    assert page.locator('#comment_parent').input_value() == '0'
+                row = {'width': width, 'dark': dark, 'passed': True, 'metrics': data, 'reply_first_and_nested': True}
                 rows.append(row)
                 with (root / 'evidence/native-comment-layout.jsonl').open('a') as stream:
                     stream.write(json.dumps(row) + '\n')

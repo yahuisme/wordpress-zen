@@ -80,6 +80,11 @@ for (const [label, response] of [
     ['rejected action', { ok: true, json: async () => ({ success: false, data: { count: 100 } }) }],
     ['invalid JSON', { ok: true, json: async () => { throw new SyntaxError('Invalid JSON'); } }],
     ['missing count', { ok: true, json: async () => ({ success: true, data: {} }) }],
+    ...[-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, null, {}, []].map(count => [
+        `invalid count ${JSON.stringify(count)} (${typeof count})`,
+        { ok: true, json: async () => ({ success: true, data: { count } }) },
+    ]),
+    ['empty formatted count', { ok: true, json: async () => ({ success: true, data: { count: '' } }) }],
 ]) {
     test(`reading count keeps the cached value for ${label}`, async t => {
         const { document } = await countPage(t, countMarkup, window => {
@@ -303,6 +308,64 @@ for (const direction of ['ltr', 'rtl']) {
         assert.equal(document.activeElement, links.at(-1));
         assert.ok(sign * track.scrollLeft > 0, 'normal focusin still reveals an offscreen link');
     });
+}
+
+for (const direction of ['ltr', 'rtl']) {
+    for (const activity of ['current', 'focused', 'scrolled']) {
+        test(`category rail ${direction} respects ${activity} browsing when webfont metrics settle`, async t => {
+            const sign = direction === 'rtl' ? -1 : 1;
+            let metrics = 40;
+            let ready;
+            let offset = 0;
+            const { document } = await page(t, `
+                <nav class="zen-category-nav"><button class="zen-category-prev" hidden>Previous</button>
+                    <div class="zen-category-track" style="direction:${direction}">
+                        ${Array.from({ length: 6 }, (_, index) => `<a href="#category-${index}"${index === 4 ? ' aria-current="page"' : ''}>Category ${index}</a>`).join('')}
+                    </div><button class="zen-category-next" hidden>Next</button></nav>`, window => {
+                Object.defineProperty(window.document, 'fonts', { value: { ready: new Promise(resolve => { ready = resolve; }) } });
+                const track = window.document.querySelector('.zen-category-track');
+                Object.defineProperties(track, {
+                    clientWidth: { value: 200 },
+                    scrollWidth: { get: () => metrics * 6 + (track.parentElement.classList.contains('has-overflow') ? 32 : 0) },
+                    scrollLeft: {
+                        get: () => sign * offset,
+                        set: value => { offset = Math.min(track.scrollWidth - 200, Math.max(0, sign * value)); },
+                    },
+                });
+                track.getBoundingClientRect = () => new window.DOMRect(100, 0, 200, 44);
+                [...track.querySelectorAll('a')].forEach((link, index) => {
+                    link.getBoundingClientRect = () => new window.DOMRect(
+                        direction === 'ltr' ? 100 + index * metrics - offset : 300 - (index + 1) * metrics + offset,
+                        0, metrics, 44);
+                });
+            });
+            const track = document.querySelector('.zen-category-track');
+            const current = track.querySelector('[aria-current]');
+            const target = activity === 'focused' ? track.querySelectorAll('a')[3] : current;
+            const visible = () => {
+                const bounds = track.getBoundingClientRect();
+                const rect = target.getBoundingClientRect();
+                return rect.left >= bounds.left && rect.right <= bounds.right;
+            };
+            assert.equal(visible(), true, 'the initial fallback-font layout reveals the selected category');
+            if (activity === 'focused') target.focus();
+            if (activity === 'scrolled') track.scrollLeft = 0;
+            const previousOffset = track.scrollLeft;
+            metrics = 100;
+            assert.equal(visible(), false, 'webfont width changes can move the selected or focused link outside the scrollport');
+            ready();
+            await new Promise(resolve => setImmediate(resolve));
+            if (activity === 'scrolled') {
+                assert.equal(track.scrollLeft, previousOffset, 'font-ready must not reset an intentionally scrolled rail');
+                assert.equal(document.querySelector('.zen-category-prev').hidden, true);
+            } else {
+                assert.equal(visible(), true, 'font-ready reveals the selected or focused link, not just the edge arrows');
+                assert.equal(document.querySelector('.zen-category-prev').hidden, false);
+            }
+            assert.equal(document.querySelector('.zen-category-next').hidden, false);
+            assert.equal(document.activeElement, activity === 'focused' ? target : document.body, 'layout correction never steals keyboard focus');
+        });
+    }
 }
 
 test('global keyboard handling registers one document listener', async t => {
@@ -638,6 +701,49 @@ test('Core lightbox images keep native ownership while plain images retain Zen c
     assert.equal(lightbox.classList.contains('hidden'), false);
     assert.equal(document.activeElement.id, 'lightbox-close');
     assert.equal(document.getElementById('lightbox-img').getAttribute('src'), 'https://zen.test/plain.jpg');
+});
+
+for (const owner of ['button', 'summary', 'label']) {
+    test(`images inside native ${owner} controls retain their native activation`, async t => {
+        const image = '<img id="owned-image" src="/owned.jpg" alt="Native control image">';
+        const markup = owner === 'button' ? `<form id="image-form"><button type="submit">${image}</button></form>` :
+            owner === 'summary' ? `<details id="image-details"><summary>${image}</summary>Native content</details>` :
+                `<label>${image}<input id="image-checkbox" type="checkbox"></label>`;
+        const { document, press } = await page(t, `
+            <article class="entry-content">${markup}<img id="plain-image" src="/plain.jpg" alt="Plain"></article>
+            <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
+        const owned = document.getElementById('owned-image');
+        const lightbox = document.getElementById('lightbox');
+        assert.equal(owned.outerHTML, image, 'enhancement must not add a nested focus target or replace native semantics');
+        let submissions = 0;
+        document.getElementById('image-form')?.addEventListener('submit', event => {
+            ++submissions;
+            event.preventDefault();
+        });
+        owned.click();
+        assert.equal(lightbox.classList.contains('hidden'), true, 'native image activation must not open a competing dialog');
+        if (owner === 'button') assert.equal(submissions, 1, 'image click still activates the submit button');
+        else if (owner === 'summary') assert.equal(document.getElementById('image-details').open, true);
+        else assert.equal(document.getElementById('image-checkbox').checked, true);
+        document.getElementById('plain-image').click();
+        assert.equal(lightbox.classList.contains('hidden'), false, 'ordinary images still get the Zen lightbox');
+        press('Escape');
+        assert.equal(lightbox.classList.contains('hidden'), true);
+        assert.equal(document.activeElement.id, 'plain-image');
+    });
+}
+
+test('lightbox relinquishes image activation when a native control adopts an already enhanced image', async t => {
+    const { document } = await page(t, `
+        <article class="entry-content"><img id="adopted" src="/owned.jpg"><button id="adopter" type="button"></button></article>
+        <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
+    const image = document.getElementById('adopted');
+    document.getElementById('adopter').append(image);
+    let canceled;
+    document.addEventListener('click', event => { canceled = event.defaultPrevented; });
+    image.click();
+    assert.equal(canceled, false, 'the new native owner receives an uncanceled click');
+    assert.equal(document.getElementById('lightbox').classList.contains('hidden'), true);
 });
 
 test('WordPress and MediaElement audio keep native ownership while plain and block audio retain Zen controls', async t => {

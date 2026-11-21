@@ -29,6 +29,9 @@ content = '''<h2 id="visible-first">Visible first</h2>
 <details id="audit-details"><summary>Hidden by default</summary><h2 id="inside-details">Hidden chapter</h2><p>Hidden content</p></details>'''
 content += f'<!-- wp:image {{"id":{image},"sizeSlug":"large","linkDestination":"none","lightbox":{{"enabled":true}}}} --><figure class="wp-block-image size-large"><img src="{image_url}" alt="Core lightbox" class="wp-image-{image}"/></figure><!-- /wp:image -->'
 content += '<p><img id="ordinary-image" src="' + image_url + '" alt="Ordinary image"></p>'
+content += '<form id="image-form"><button type="submit"><img id="button-image" src="' + image_url + '" alt="Submit"></button></form>'
+content += '<details id="image-details"><summary><img id="summary-image" src="' + image_url + '" alt="Toggle"></summary><p>Image summary content</p></details>'
+content += '<label><img id="label-image" src="' + image_url + '" alt="Select"><input id="image-checkbox" type="checkbox"></label>'
 content += '[audio src="' + origin + '/tone.wav"]<audio id="ordinary-audio" controls src="/tone.wav"></audio>'
 for ratio in ratios:
     content += f'<figure id="audit-embed-{ratio}" class="wp-block-embed is-type-video wp-embed-aspect-{ratio} wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"><iframe src="/embed.html" title="Ratio {ratio}" width="560" height="315"></iframe></div></figure>'
@@ -47,8 +50,15 @@ def check(name, condition, detail=None):
 
 try:
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
-        page = browser.new_page(viewport={'width': 1440, 'height': 1000}, reduced_motion='reduce')
+        browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+        group = Path('/proc/self/cgroup').read_text()
+        control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
+        assert any((a / 'memory.max').is_file() and (a / 'memory.max').read_text().strip() == '4294967296' and (a / 'memory.swap.max').read_text().strip() == '0' for a in (control, *control.parents))
+        processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+        assert processes and all(Path(f'/proc/{item["id"]}/cgroup').read_text() == group for item in processes)
+        context = browser.new_context(viewport={'width': 1440, 'height': 1000}, reduced_motion='reduce')
+        context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') or route.request.url.startswith('data:') else route.abort())
+        page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
         for width in ((320, 1440) if slice_name in ('all', 'css') else ()):
             page.set_viewport_size({'width': width, 'height': 1000})
@@ -87,6 +97,15 @@ try:
             page.wait_for_timeout(150)
             check('ordinary image keeps Zen lightbox', page.locator('#lightbox').evaluate('e=>!e.classList.contains("hidden")'))
             page.keyboard.press('Escape')
+            page.evaluate('''()=>{window.nativeImageSubmits=0;document.getElementById('image-form').addEventListener('submit',event=>{event.preventDefault();window.nativeImageSubmits++})}''')
+            for owner in ('button', 'summary', 'label'):
+                image = page.locator('#' + owner + '-image')
+                check(owner + ' image retains native semantics', image.get_attribute('role') is None and image.get_attribute('tabindex') is None)
+                image.click()
+                check(owner + ' image opens no competing lightbox', page.locator('#lightbox').evaluate('e=>e.classList.contains("hidden")'))
+            check('button image submits once', page.evaluate('window.nativeImageSubmits') == 1)
+            check('summary image expands native details', page.locator('#image-details').evaluate('e=>e.open'))
+            check('label image checks native field', page.locator('#image-checkbox').is_checked())
         if slice_name in ('all', 'details'):
             page.set_viewport_size({'width': 390, 'height': 900})
             page.reload(wait_until='networkidle')

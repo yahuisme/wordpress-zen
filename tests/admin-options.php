@@ -163,7 +163,7 @@ test('admin assets are isolated to the existing top-level hook', function () {
     expect(count($GLOBALS['code_editor_args'] ?? array()) === 1, 'authorized settings must enqueue the native code editor once');
     expect($GLOBALS['code_editor_args'][0]['type'] === 'text/html' && $GLOBALS['code_editor_args'][0]['codemirror']['lint'] === false, 'snippets use HTML editing without blocking lint');
     expect($GLOBALS['assets'][1][2] === array('code-editor'), 'native editor must load before the settings script');
-    expect($GLOBALS['localized'][0][1] === 'zenAdmin' && !empty($GLOBALS['localized'][0][2]['codeEditor']), 'editor settings must reach the page');
+    expect($GLOBALS['localized'][0][1] === 'zenAdmin' && $GLOBALS['localized'][0][2]['codeEditor'] === true, 'only native editor availability should reach the page; Core owns its settings');
     $count = count($GLOBALS['code_editor_args']);
     $GLOBALS['caps']['unfiltered_html'] = false;
     zen_options_admin_assets('toplevel_page_zen-options');

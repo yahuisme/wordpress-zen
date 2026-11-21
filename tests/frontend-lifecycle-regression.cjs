@@ -21,6 +21,36 @@ async function page(t, markup, prepare = () => {}) {
     return window;
 }
 
+for (const listenerApi of ['addEventListener', 'addListener']) {
+    test(`footer breakpoint ordering supports ${listenerApi} and preserves focus and later initialization`, async t => {
+        let changed;
+        const media = { matches: false };
+        if (listenerApi === 'addEventListener') media.addEventListener = (type, listener) => { changed = listener; };
+        else media.addListener = listener => { changed = listener; };
+        const window = await page(t, `
+            <button id="theme-toggle" hidden><i></i></button>
+            <footer class="zen-site-footer"><nav class="zen-footer-navigation"><a id="footer-nav" href="#nav">Nav</a></nav>
+                <div class="zen-footer-links"><a id="footer-custom" href="#custom">Custom</a></div></footer>`, window => {
+            window.matchMedia = query => query === '(min-width: 640px)' ? media : { matches: false, addListener() {} };
+            window.CSS = { supports: () => false };
+        });
+        const { document } = window;
+        const nav = document.querySelector('.zen-footer-navigation');
+        const links = document.querySelector('.zen-footer-links');
+        assert.equal(nav.nextElementSibling, links, 'narrow fallback order stays navigation first');
+        assert.equal(document.getElementById('theme-toggle').hidden, false, 'media listener compatibility must not abort basic controls');
+        for (const id of ['footer-nav', 'footer-custom']) {
+            for (const matches of [true, false]) {
+                document.getElementById(id).focus();
+                media.matches = matches;
+                changed(media);
+                assert.equal(document.activeElement.id, id, 'the focused subtree must never be detached');
+                assert.equal(matches ? links.nextElementSibling : nav.nextElementSibling, matches ? nav : links);
+            }
+        }
+    });
+}
+
 for (const outcome of ['success', 'failure', 'throw']) {
     test(`fallback code copy ${outcome} preserves the keyboard position`, async t => {
         const commands = [];

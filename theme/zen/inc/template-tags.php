@@ -217,8 +217,7 @@ function zen_highlight_search_terms($text, $query = '') {
     foreach ($parts as $part) {
         $is_match = (bool) preg_match($pattern, $part);
         // Keep entity-like text literal after decoding exactly one input layer.
-        $part = preg_replace('/&(?=(?:[A-Za-z][A-Za-z0-9]+|#\d+|#x[0-9A-Fa-f]+);)/', '&amp;', $part);
-        $escaped_part = esc_html($part);
+        $escaped_part = esc_html(str_replace('&', '&amp;', $part));
         if ($is_match) {
             $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . $escaped_part . '</mark>';
         } else {
@@ -343,6 +342,13 @@ function zen_clear_archives_cache_on_author_reassignment($user_id, $reassign) {
     }
 }
 add_action('deleted_user', 'zen_clear_archives_cache_on_author_reassignment', 10, 2);
+function zen_clear_archives_cache_on_default_category() {
+    // Uncategorized posts use this fallback without a relationship or post-save event.
+    if (str_contains((string) get_option('permalink_structure'), '%category%')) {
+        zen_clear_archives_cache();
+    }
+}
+add_action('update_option_default_category', 'zen_clear_archives_cache_on_default_category');
 add_action('update_option_permalink_structure', 'zen_clear_archives_cache');
 add_action('update_option_home', 'zen_clear_archives_cache');
 function zen_clear_uptime_cache() {

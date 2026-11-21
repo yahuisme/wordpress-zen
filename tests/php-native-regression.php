@@ -153,6 +153,11 @@ function zen_php_search() {
     }
     $html = zen_highlight_search_terms('&lt;script&gt; &amp;lt; &quot;title&quot;', '<script> &lt; title');
     zen_php_check(!str_contains($html, '<script>') && html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '<script> &lt; "title"', 'search: encoded markup stays text and doubly encoded entities retain their visible value');
+    foreach (array('amp', '#X41;', 'missing') as $query) {
+        $html = zen_highlight_search_terms('Literal &amp;#X41; amp', $query);
+        zen_php_check(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'Literal &#X41; amp', 'search: uppercase hexadecimal entity-looking text stays literal for query ' . $query);
+        zen_php_check(substr_count($html, '<mark ') === (int) ($query !== 'missing'), 'search: uppercase hexadecimal literal keeps intended match count for query ' . $query);
+    }
 }
 function zen_php_links() {
     require_once ABSPATH . 'wp-admin/includes/bookmark.php';

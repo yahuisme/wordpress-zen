@@ -332,7 +332,7 @@ function zen_options_admin_assets($hook) {
         : false;
     wp_enqueue_style('zen-admin', $uri . '/assets/css/admin.css', array(), filemtime($dir . '/assets/css/admin.css'));
     wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', $editor ? array('code-editor') : array(), filemtime($dir . '/assets/js/admin.js'), true);
-    wp_localize_script('zen-admin', 'zenAdmin', array('codeEditor' => $editor));
+    wp_localize_script('zen-admin', 'zenAdmin', array('codeEditor' => (bool) $editor));
 }
 add_action('admin_enqueue_scripts', 'zen_options_admin_assets');
 

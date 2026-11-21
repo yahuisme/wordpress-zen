@@ -15,15 +15,13 @@ def check(label,fn):
 preserve_only = '--preserve-only' in sys.argv
 layout_only = '--layout-only' in sys.argv
 with sync_playwright() as p:
- args=['--no-sandbox','--disable-dev-shm-usage']
- if preserve_only or layout_only: args.extend(['--single-process','--no-zygote'])
+ args=['--no-sandbox','--disable-dev-shm-usage','--single-process','--no-zygote']
  b=p.chromium.launch(executable_path='/usr/lib/chromium/chromium',args=args,env={**os.environ,'DBUS_SESSION_BUS_ADDRESS':'unix:path=/nonexistent','DBUS_SYSTEM_BUS_ADDRESS':'unix:path=/nonexistent'})
- if preserve_only or layout_only:
-  group=Path('/proc/self/cgroup').read_text()
-  scope=(Path('/sys/fs/cgroup')/group.strip().split('::',1)[1].lstrip('/')).parent
-  assert int((scope/'memory.max').read_text()) <= 4*1024**3 and (scope/'memory.swap.max').read_text().strip()=='0'
-  processes=b.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
-  assert len(processes)==1 and Path(f'/proc/{processes[0]["id"]}/cgroup').read_text()==group
+ group=Path('/proc/self/cgroup').read_text()
+ scope=(Path('/sys/fs/cgroup')/group.strip().split('::',1)[1].lstrip('/')).parent
+ assert int((scope/'memory.max').read_text()) <= 4*1024**3 and (scope/'memory.swap.max').read_text().strip()=='0'
+ processes=b.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+ assert processes and all(Path(f'/proc/{item["id"]}/cgroup').read_text()==group for item in processes)
  c=b.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce');c.add_cookies(json.loads((r/'cookies.json').read_text()));page=c.new_page();dialogs=[]
  def unexpected_dialog(dialog):
   dialogs.append({'type':dialog.type,'message':dialog.message});dialog.dismiss()
@@ -32,8 +30,8 @@ with sync_playwright() as p:
  def settings():page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen-options-form').count()==1
  def fill_code(position,value):
   field=page.locator('#zen_code_'+position)
-  if field.is_visible():field.fill(value)
-  else:field.evaluate('(field,value)=>field.nextElementSibling.CodeMirror.setValue(value)',value)
+  page.wait_for_function('(id)=>{const e=document.getElementById(id);return e.nextElementSibling?.CodeMirror||!window.wp?.codeEditor}',arg='zen_code_'+position)
+  field.evaluate('(field,value)=>{const editor=field.nextElementSibling?.CodeMirror;if(editor)editor.setValue(value);else{field.value=value;field.dispatchEvent(new Event("input",{bubbles:true}))}}',value)
  def save():
   with page.expect_navigation(wait_until='networkidle'):page.locator('#zen_save_top').click()
   assert page.locator('.notice-success,.updated').count()>0,page.locator('body').inner_text()[:1500]
@@ -62,8 +60,11 @@ with sync_playwright() as p:
   page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-list .zen-post-excerpt').count()==0
   assert page.locator('.zen-latest-card .zen-post-excerpt').is_visible()
   assert page.locator('.zen-category-nav').count()==0
-  for route in ('/?cat='+str(f['categories'][0]),'/?tag_id='+str(f['tag']),'/?s=WordPress'):
-   page.goto(o+route,wait_until='networkidle')
+  tag_url=cli('eval','echo get_tag_link('+str(int(f['tag']))+');')
+  assert tag_url.startswith(o+'/'), 'Tag route must belong to the fixture'
+  for route in (o+'/?cat='+str(f['categories'][0]),tag_url,o+'/?s=WordPress'):
+   page.goto(route,wait_until='networkidle')
+   if route==tag_url: assert page.locator('body').evaluate('(e,id)=>e.classList.contains("tag-"+id)',f['tag'])
    assert page.locator('.zen-post-item--compact').count()>0 and page.locator('.zen-post-list .zen-post-excerpt').count()==0
   page.goto(o+'/?cat='+str(f['categories'][0]),wait_until='networkidle')
   expected=json.loads(cli('eval','echo wp_json_encode(array_values(array_map(static fn($category) => get_category_link($category->term_id), get_categories(["hide_empty" => true]))));'))
@@ -94,10 +95,13 @@ with sync_playwright() as p:
   for pos,value in values.items():fill_code(pos,value)
   save()
   for pos,value in values.items():assert option('zen_code_'+pos)==value
-  anon=b.new_context();q=anon.new_page();q.goto(o+'/',wait_until='networkidle')
-  assert q.evaluate('window.zenPositionHead')=='head\n' and q.evaluate('window.zenPositionFooter')=='footer'
-  assert q.locator('body > #zen-position-body').count()==1
-  anon.close()
+  c.clear_cookies()
+  try:
+   page.goto(o+'/',wait_until='networkidle')
+   assert page.evaluate('window.zenPositionHead')=='head\n' and page.evaluate('window.zenPositionFooter')=='footer'
+   assert page.locator('body > #zen-position-body').count()==1
+  finally:
+   c.add_cookies(json.loads((r/'cookies.json').read_text()))
  check('three authorized code positions preserve backslashes and anonymous placement',code)
  def responsive():
   for width in (320,390,768,1024,1440):

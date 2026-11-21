@@ -29,7 +29,8 @@ const zenInit = () => {
             else second.before(first);
         };
         updateFooterOrder(desktop);
-        desktop.addEventListener('change', updateFooterOrder);
+        if (desktop.addEventListener) desktop.addEventListener('change', updateFooterOrder);
+        else if (desktop.addListener) desktop.addListener(updateFooterOrder);
     }
 
     document.querySelectorAll('.zen-category-nav').forEach((nav) => {
@@ -86,7 +87,14 @@ const zenInit = () => {
         update();
         const current = track.querySelector('[aria-current="page"]');
         if (current && nav.classList.contains('has-overflow')) reveal(current);
-        if (document.fonts) document.fonts.ready.then(update);
+        const initialOffset = track.scrollLeft;
+        if (document.fonts) document.fonts.ready.then(() => {
+            update();
+            const active = document.activeElement;
+            const target = track.contains(active) && active.matches('a') ? active :
+                (track.scrollLeft === initialOffset && active !== prev && active !== next ? current : null);
+            if (target && nav.classList.contains('has-overflow')) reveal(target);
+        });
     });
 
     const archiveYears = document.getElementById('zen-archive-years');
@@ -340,10 +348,11 @@ const zenInit = () => {
     if (lightbox && lightboxImg) {
         const closeBtn = document.getElementById('lightbox-close');
         const images = document.querySelectorAll('.entry-content img, .wp-block-image img');
+        const nativeImageOwner = 'a, button, summary, label, .wp-lightbox-container';
         let lightboxTrigger;
 
         images.forEach(img => {
-            if (img.closest('a, .wp-lightbox-container')) return;
+            if (img.closest(nativeImageOwner)) return;
             img.classList.add('cursor-zoom-in');
             img.setAttribute('tabindex', '0');
             img.setAttribute('role', 'button');
@@ -351,7 +360,7 @@ const zenInit = () => {
             img.setAttribute('aria-label', imageDescription ? `${imageDescription}，点击查看大图` : '点击查看大图');
 
             const openLightbox = (e) => {
-                if (e.defaultPrevented || activeModal || img.closest('a, .wp-lightbox-container') || coreLightboxOpen()) return;
+                if (e.defaultPrevented || activeModal || img.closest(nativeImageOwner) || coreLightboxOpen()) return;
                 e.preventDefault();
                 lightboxTrigger = img;
 

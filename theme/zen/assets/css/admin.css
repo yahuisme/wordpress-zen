@@ -88,6 +88,10 @@
     width: 200px;
     max-width: 100%;
 }
+.zen-options #zen_reading_width_preset {
+    margin-inline-end: 8px;
+    margin-block-end: 8px;
+}
 .zen-options input.small-text {
     width: 80px;
     max-width: 100%;

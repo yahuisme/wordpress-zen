@@ -153,6 +153,14 @@ zen_test('search does not highlight entity escaping introduced only for output',
     zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '&lt; amp', 'literal entity-looking text changed');
 });
 
+zen_test('search preserves uppercase hexadecimal entity-looking text after one-layer decoding', function () {
+    foreach (array('amp', '#X41;', 'missing') as $query) {
+        $html = zen_highlight_search_terms('Literal &amp;#X41; amp', $query);
+        zen_expect(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'Literal &#X41; amp', 'uppercase hexadecimal literal became a decoded letter');
+        zen_expect(substr_count($html, '<mark ') === (int) ($query !== 'missing'), 'literal hexadecimal match count changed');
+    }
+});
+
 zen_test('search highlighting escapes decoded ampersands exactly once', function () {
     $html = zen_highlight_search_terms('Tom &amp; Jerry', 'Jerry');
     zen_expect(str_contains($html, 'Tom &amp; <mark'), 'ampersand was double-escaped');

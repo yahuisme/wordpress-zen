@@ -74,7 +74,8 @@ for mode in ('standard', 'compact'):
         assert rejects(invalid, mode, width, frozenset({'4', '5', '6'})), 'Multiple latest cards must fail'
         negative += 1
 
-page_review = (root / 'page-review-regression.py').read_text()
-assert "'/?tag_id='" not in page_review, 'Tag coverage must use a native public tag route'
-assert "tag-" in page_review and 'body' in page_review, 'Tag page identity must be asserted'
+for entrypoint in ('page-review-regression.py', 'native-settings-regression.py'):
+    page_review = (root / entrypoint).read_text()
+    assert "'/?tag_id='" not in page_review, 'Tag coverage must use a native public tag route: ' + entrypoint
+    assert "tag-" in page_review and 'body' in page_review, 'Tag page identity must be asserted: ' + entrypoint
 print(f'PASS browser checker: {positive} valid controls, {negative} invalid controls and tag identity contract')

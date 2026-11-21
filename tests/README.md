@@ -85,6 +85,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-counter-cache-regression.php /path/to/isola
 ZEN_TEST_ISOLATED=1 php tests/native-excerpt-entity-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-comment-form-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-backend-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-cache-policy-regression.php /path/to/isolated/wp-load.php
+ZEN_TEST_ISOLATED=1 php tests/native-reset-storage-regression.php /path/to/isolated/wp-load.php
 ZEN_TEST_ISOLATED=1 php tests/native-admin-save-regression.php /path/to/isolated/wp-load.php malformed-footer
 ZEN_TEST_ISOLATED=1 php tests/native-admin-save-regression.php /path/to/isolated/wp-load.php refused
 ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /path/to/isolated/wp-load.php
@@ -97,6 +99,8 @@ ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-
 `php-native-regression.php` 覆盖待审评论原生边界、搜索实体、友链 rel 和分类关系缓存；可追加 `comments`、`search`、`links`、`category-cache` 仅运行相应部分，须看到 `PHP_NATIVE_COMPLETE` 且退出码为 0。隔离环境须拦截出站 HTTP 与邮件，测试数据及选项由脚本清理恢复。
 
 `native-content-text-regression.php` 覆盖手写与自动摘要、结构化标题实体编码、密码文章高亮资源的锁定和解锁边界，须看到 `NATIVE_CONTENT_COMPLETE` 且退出码为 0。
+
+`native-cache-policy-regression.php` 通过真实默认分类变更核对无分类关系文章的固定链接与预热归档一致，并保留不相关运行天数及非分类链接缓存。`native-reset-storage-regression.php` 覆盖恢复默认的权限、nonce、显式空值／零、已退役行保留和真实 DELETE 拒绝后的数据库读回。
 
 `native-admin-save-regression.php` 经原生 `options.php` 验证保存结果与通知，可选 `refused`、`invalid`、`unchanged`、`create`、`full` 或 `malformed-footer`。最后一种验证非字符串页脚不会中断原生保存，旧文本被保留并显示字段错误；`native-backend-regression.php` 另只读验证注册的 sanitizer、KSES 及真实 Core 摘要清理。逐页浏览器验收可在 `fixture.json` 设置 `pagination: true`（首页至少四页、搜索 WordPress 至少两页）及 `bookmarks`（友链数量，含长名称和长说明），以覆盖窄屏分页与友链可读性。
 
@@ -159,7 +163,7 @@ python tests/ui-detail-regression.py /path/to/fixture
 
 新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距，并核实标题、正文及代码的实际仓耳字体。字体专项 `typography-regression.py` 需要 `fixture.json` 的 `origin`、`routes`（首页、分类、标签、作者、日期、搜索，每类至少两页）及可选 `surfaces`（普通页、文章、目录、书签、留言、密码页、空搜索和404），安装包含字库的完整 ZIP，并为 `links` 准备至少一个带真实图片的书签。它逐个文本节点与表单控件比较字体，核对分页与「全部篇目」的常态／悬停样式、真实字形来源及书签圆形黑白／悬停彩色。仅在源码、包、配置及数据库未变时可加 `--resume` 续跑 JSONL 未完成项。这些测试都需要带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
 
-`native-comment-layout-regression.py` 创建并清理三级原生评论，核对超长昵称和预格式长代码在320–1440px浅深模式下不撑宽页面、代码可在局部横向滚动且回复入口保留。
+`native-comment-layout-regression.py` 创建并清理三级原生评论，核对超长昵称和预格式长代码在320–1440px浅深模式下不撑宽页面、代码可在局部横向滚动；另逐层触发回复／取消，确认完整作者名及取消入口仍在视口内且可点击。
 
 `ui-detail-regression.py` 定向检查首屏配色、正文强调、留言间距与同意说明、分类／标签日期栏、年度折叠及新增年份焦点、原生兼容复制、MediaSource 真实时长变化和后台窄屏提示。可追加 `first-paint`、`emphasis`、`guestbook`、`taxonomy`、`archive-years`、`clipboard`、`audio-duration` 或 `admin`；禁脚本归档需单独运行 `archive-noscript`（新浏览器，避免单进程多上下文限制）。需要 `surfaces.article`（含 strong/em、代码和一个原生 audio）、`surfaces.notes`、默认 800px／standard 设置及管理员 Cookie；不伪造浏览器媒体属性或复制结果。
 
@@ -207,6 +211,8 @@ python tests/archive-spacing-regression.py
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
 
 `clipboard` 在真实页面响应上施加 `clipboard-write=()` 权限策略，验证原生现代 API 拒绝后的 `execCommand` 实际剪贴板、焦点及连续复制反馈；不伪造复制结果。`native-interaction-regression.py` 可追加 `toc-race`，在关闭过渡内快速选择两个章节，要求最后一个原生 fragment、焦点与下一 Tab 一致。
+
+`native-settings-regression.py` 以单进程浏览器覆盖原生保存、显式清空、错误输入及代码输出；标签归档使用 Core 生成的 URL 并确认页面身份，代码输入等待原生 CodeMirror 就绪。`native-content-regression.py` 另检查按钮、折叠标题、标签中的图片不被 Zen 灯箱接管。
 
 `native-admin-usability-regression.py` 专项检查普通分组的会话内展开状态、Ctrl／⌘+S 原生保存与校验、真实 CodeMirror 输入／缩进／撤销、长按快捷键不重复提交和 Escape 后 Tab 离开编辑区、320–1440px 保存栏左右分离，以及个人关闭语法高亮时的普通文本框回退；由调用者快照并恢复隔离数据库。高级代码不增加启停选项，保存、权限与三个原生输出位置保持不变。
 
