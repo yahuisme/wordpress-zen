@@ -770,6 +770,11 @@ select:focus-visible {
 .zen-comment-card .zen-comment-text p:first-child {
     margin-top: 0;
 }
+.zen-comment-card { overflow-wrap: anywhere; }
+.zen-comment-text pre {
+    max-width: 100%;
+    overflow-x: auto;
+}
 .comment-form {
     display: grid;
     gap: 1.05rem 1.25rem;
@@ -911,6 +916,7 @@ select:focus-visible {
 }
 .comment-list {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
     padding-top: 0.5rem;
 }
@@ -925,6 +931,7 @@ select:focus-visible {
 }
 .comment-list .children {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
     margin-top: 0.9rem;
     margin-left: 2.25rem;

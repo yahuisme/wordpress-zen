@@ -587,6 +587,21 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
     });
 }
 
+test('successive drawer TOC activations focus the last native navigation target', async t => {
+    const { document, flush } = await page(t, `
+        <button id="floating-toc-btn">Directory</button>
+        <article id="post-content"><h2 id="first">First</h2><h2 id="second">Second</h2></article>
+        <div id="toc-overlay" class="hidden opacity-0"></div>
+        <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><nav id="drawer-toc-nav"></nav></aside>`);
+    document.getElementById('floating-toc-btn').click(); flush();
+    document.querySelector('#drawer-toc-nav [href="#first"]').click();
+    document.querySelector('#drawer-toc-nav [href="#second"]').click();
+    flush(); flush(); // Both navigation callbacks run before the close transition completes.
+    assert.equal(document.activeElement, document.getElementById('second'), 'focus must follow the final selected chapter, not the first click');
+    assert.equal(document.getElementById('drawer-toc').hasAttribute('inert'), true);
+    assert.equal(document.body.style.overflow, '');
+});
+
 test('Core lightbox images keep native ownership while plain images retain Zen controls', async t => {
     const { window, document, flush } = await page(t, `
         <article class="entry-content">

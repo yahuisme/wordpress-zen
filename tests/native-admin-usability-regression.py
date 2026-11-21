@@ -145,6 +145,23 @@ with sync_playwright() as p:
     assert page.locator('#zen-code > summary').evaluate('e=>e===document.activeElement')
     assert page.evaluate('typeof window.zenEditorLiteral') == 'undefined', 'Code must not run in settings'
     page.locator('#zen_code_footer + .CodeMirror').evaluate('e=>e.CodeMirror.focus()')
+    # HTTP 204 leaves the same real document active while a held key repeats.
+    page.route(origin + '/wp-admin/options.php', lambda route: route.fulfill(status=204, body=''))
+    page.evaluate('''()=>{window.__saveKeys=[];document.addEventListener('keydown',e=>{
+        if(e.key.toLowerCase()==='s'&&e.ctrlKey)window.__saveKeys.push({repeat:e.repeat,trusted:e.isTrusted});
+    },true)}''')
+    before = len(posts)
+    page.keyboard.down('Control')
+    page.keyboard.down('s')
+    page.wait_for_timeout(120)
+    page.keyboard.down('s')
+    page.keyboard.up('s')
+    page.keyboard.up('Control')
+    page.wait_for_timeout(120)
+    assert page.evaluate('window.__saveKeys') == [{'repeat': False, 'trusted': True}, {'repeat': True, 'trusted': True}]
+    assert len(posts) == before + 1, 'Held native CodeMirror shortcut must not send duplicate POSTs'
+    assert not dialogs, dialogs
+    page.unroute(origin + '/wp-admin/options.php')
     save('Control+s')
     for position, expected in values.items():
         assert option('zen_code_' + position).replace('\r\n', '\n') == expected

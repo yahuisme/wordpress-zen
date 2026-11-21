@@ -14,7 +14,9 @@ with sync_playwright() as p:
  def check(label,fn):
   if case not in ('all',label):return
   try:fn();rows.append({'name':label,'passed':True})
-  except Exception as e:rows.append({'name':label,'passed':False,'error':str(e)})
+  except Exception as e:
+   import traceback
+   rows.append({'name':label,'passed':False,'error':traceback.format_exc()})
  def first_paint():
   page.goto(origin+'/',wait_until='networkidle')
   attrs=page.locator('head script').evaluate_all('es=>es.filter(e=>e.textContent.includes("var storageKey = ")).map(e=>({exclude:e.hasAttribute("nowprocket"),type:e.type}))')
@@ -96,14 +98,33 @@ with sync_playwright() as p:
   assert page.locator('.zen-archive-row a:visible').count()==page.locator('.zen-archive-row a').count()
  if case=='archive-noscript':check('archive-noscript',archive_noscript)
  def clipboard():
-  page.add_init_script('''Object.defineProperty(navigator,'clipboard',{value:undefined});const nativeCopy=document.execCommand;document.execCommand=function(...args){window.__nativeCopy={command:args[0],selected:window.getSelection().toString(),active:document.activeElement.tagName};return nativeCopy.apply(this,args)};''')
+  page.add_init_script('''const nativeCopy=document.execCommand;document.execCommand=function(...args){window.__nativeCopy={command:args[0],selected:window.getSelection().toString(),active:document.activeElement.tagName};return nativeCopy.apply(this,args)};''')
+  def deny_modern_write(route):
+   response=route.fetch()
+   route.fulfill(response=response,headers={**response.headers,'Permissions-Policy':'clipboard-write=()'})
+  page.route(f['surfaces']['article'],deny_modern_write)
   page.goto(f['surfaces']['article'],wait_until='networkidle')
+  assert page.evaluate('Boolean(isSecureContext && navigator.clipboard?.writeText)'), 'Native Clipboard API required'
+  assert page.evaluate('navigator.permissions.query({name:"clipboard-write"}).then(p=>p.state)')=='denied', 'Document policy must deny native modern writes'
+  denied=page.evaluate('navigator.clipboard.writeText("permission check").then(()=>false,error=>error.name==="NotAllowedError")')
+  assert denied, 'Native modern-copy denial was not reached'
   copy=page.locator('.zen-code-copy').first;copy.scroll_into_view_if_needed();copy.focus();page.keyboard.press('Enter')
   page.wait_for_function('window.__nativeCopy && /已复制|复制失败/.test(document.activeElement.textContent)')
   assert page.evaluate('document.activeElement===document.querySelector(".zen-code-copy")')
+  assert copy.inner_text()=='已复制', copy.inner_text()
   assert page.locator('body>textarea').count()==0
   native=page.evaluate('window.__nativeCopy')
   assert native['command']=='copy' and native['active']=='TEXTAREA' and native['selected']==page.locator('pre code').first.text_content(),native
+  c.grant_permissions(['clipboard-read'],origin=origin)
+  assert page.evaluate('navigator.clipboard.readText()')==native['selected'], 'Native clipboard must contain literal code'
+  page.wait_for_timeout(600)
+  copy.focus();page.keyboard.press('Enter')
+  page.wait_for_timeout(1100)
+  assert copy.inner_text()=='已复制' and copy.get_attribute('aria-label')=='已复制', 'Earlier reset must not erase newer feedback'
+  assert copy.locator('.ph-check').count()==1 and 'is-copied' in copy.get_attribute('class')
+  page.wait_for_function('document.querySelector(".zen-code-copy").getAttribute("aria-label")==="复制代码"')
+  assert copy.locator('.ph-copy').count()==1 and 'is-copied' not in copy.get_attribute('class')
+  c.clear_permissions()
  check('clipboard',clipboard)
  def audio_duration():
   page.goto(f['surfaces']['article'],wait_until='networkidle')

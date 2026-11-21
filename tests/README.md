@@ -54,7 +54,7 @@ ZEN_WP_CORE=/path/to/isolated/wordpress php -n tests/reading-entity-regression.p
 node --test --test-concurrency=1 tests/highlight-regression.cjs tests/interaction-regression.cjs tests/admin-ui.cjs tests/search-lifecycle-regression.cjs tests/frontend-loading-regression.cjs tests/frontend-lifecycle-regression.cjs
 ```
 
-其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。主题安装和运行不需要这些工具。
+其他环境需自行在仓库外安装 `jsdom`，并将 `NODE_PATH` 指向对应的 `node_modules` 目录。`admin-ui.cjs` 的真实 CodeMirror 键盘回归另需解压的 WordPress Core，使用 `ZEN_WP_CORE=/path/to/wordpress` 指定（维护环境默认为 `/opt/test-tools/wordpress/clean-core`），不连接数据库。主题安装和运行不需要这些工具。
 
 ## 原生 WordPress
 
@@ -151,12 +151,15 @@ python tests/native-layout-regression.py /path/to/fixture
 python tests/native-editor-regression.py /path/to/fixture
 python tests/typography-regression.py /path/to/fixture
 python tests/native-media-typography-regression.py /path/to/fixture
+python tests/native-comment-layout-regression.py /path/to/fixture
 python tests/ui-detail-regression.py /path/to/fixture
 ```
 
 复用下面原生设置测试的隔离目录结构及 `media` 附件 ID，并准备本地 `tone.wav`、`embed.html`。测试会创建并删除自己的文章，覆盖正文列表、按钮、7 种嵌入比例、Core/Zen 媒体所有权及折叠目录；可追加 `css`、`media` 或 `details` 仅补测对应部分。浏览器仍须串行并由外部 cgroup 限制内存。
 
 新增布局检查覆盖六级标题、显式字号、原生表格内外间距、宽幅／全宽嵌入、评论同意行、16px输入、44px分页和延迟主脚本下的目录首屏稳定性。编辑器检查通过原生 block editor iframe 比较六级标题与前台的字号和间距，并核实标题、正文及代码的实际仓耳字体。字体专项 `typography-regression.py` 需要 `fixture.json` 的 `origin`、`routes`（首页、分类、标签、作者、日期、搜索，每类至少两页）及可选 `surfaces`（普通页、文章、目录、书签、留言、密码页、空搜索和404），安装包含字库的完整 ZIP，并为 `links` 准备至少一个带真实图片的书签。它逐个文本节点与表单控件比较字体，核对分页与「全部篇目」的常态／悬停样式、真实字形来源及书签圆形黑白／悬停彩色。仅在源码、包、配置及数据库未变时可加 `--resume` 续跑 JSONL 未完成项。这些测试都需要带 `.zen-isolated-fixture` 标记的 loopback 环境，并验证浏览器与测试进程同属合计不超过4GiB、swap=0的共同父cgroup。
+
+`native-comment-layout-regression.py` 创建并清理三级原生评论，核对超长昵称和预格式长代码在320–1440px浅深模式下不撑宽页面、代码可在局部横向滚动且回复入口保留。
 
 `ui-detail-regression.py` 定向检查首屏配色、正文强调、留言间距与同意说明、分类／标签日期栏、年度折叠及新增年份焦点、原生兼容复制、MediaSource 真实时长变化和后台窄屏提示。可追加 `first-paint`、`emphasis`、`guestbook`、`taxonomy`、`archive-years`、`clipboard`、`audio-duration` 或 `admin`；禁脚本归档需单独运行 `archive-noscript`（新浏览器，避免单进程多上下文限制）。需要 `surfaces.article`（含 strong/em、代码和一个原生 audio）、`surfaces.notes`、默认 800px／standard 设置及管理员 Cookie；不伪造浏览器媒体属性或复制结果。
 
@@ -203,6 +206,8 @@ python tests/archive-spacing-regression.py
 
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
 
-`native-admin-usability-regression.py` 专项检查普通分组的会话内展开状态、Ctrl／⌘+S 原生保存与校验、真实 CodeMirror 输入／缩进／撤销和 Escape 后 Tab 离开编辑区、320–1440px 保存栏左右分离，以及个人关闭语法高亮时的普通文本框回退；由调用者快照并恢复隔离数据库。高级代码不增加启停选项，保存、权限与三个原生输出位置保持不变。
+`clipboard` 在真实页面响应上施加 `clipboard-write=()` 权限策略，验证原生现代 API 拒绝后的 `execCommand` 实际剪贴板、焦点及连续复制反馈；不伪造复制结果。`native-interaction-regression.py` 可追加 `toc-race`，在关闭过渡内快速选择两个章节，要求最后一个原生 fragment、焦点与下一 Tab 一致。
+
+`native-admin-usability-regression.py` 专项检查普通分组的会话内展开状态、Ctrl／⌘+S 原生保存与校验、真实 CodeMirror 输入／缩进／撤销、长按快捷键不重复提交和 Escape 后 Tab 离开编辑区、320–1440px 保存栏左右分离，以及个人关闭语法高亮时的普通文本框回退；由调用者快照并恢复隔离数据库。高级代码不增加启停选项，保存、权限与三个原生输出位置保持不变。
 
 列表宽度测试在固定 1000px 版面下执行15个原生保存/视口场景，`--focused` 保留为兼容参数；仍断言真实文章ID与非空样本。逐页测试的 `fixture.json` 还需 `tag`、`emptycat`、`protected`、`multipage` 对象ID，覆盖15类前台页面、后台及其实际操作。站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。

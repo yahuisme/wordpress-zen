@@ -249,9 +249,12 @@ const zenInit = () => {
     });
 
     // --- 1. 代码高亮 + 一键复制 ---
-    const copyTextToClipboard = (text) => {
+    const copyTextToClipboard = async (text) => {
         if (navigator.clipboard && window.isSecureContext) {
-            return navigator.clipboard.writeText(text);
+            try {
+                await navigator.clipboard.writeText(text);
+                return;
+            } catch (error) {}
         }
         return new Promise((resolve, reject) => {
             const previousFocus = document.activeElement;
@@ -299,26 +302,28 @@ const zenInit = () => {
             copyBtn.appendChild(copyIcon);
             copyBtn.appendChild(copyLabel);
 
+            let copyAttempt = 0;
+            let copyResetTimer;
+            const showCopyResult = (copied, attempt) => {
+                if (attempt !== copyAttempt) return;
+                copyIcon.className = copied ? 'ph ph-check' : 'ph ph-copy';
+                copyLabel.textContent = copied ? '已复制' : '复制失败';
+                copyBtn.classList.toggle('is-copied', copied);
+                copyBtn.setAttribute('aria-label', copyLabel.textContent);
+                copyResetTimer = setTimeout(() => {
+                    copyIcon.className = 'ph ph-copy';
+                    copyLabel.textContent = '复制';
+                    copyBtn.classList.remove('is-copied');
+                    copyBtn.setAttribute('aria-label', '复制代码');
+                }, 1600);
+            };
             copyBtn.addEventListener('click', () => {
-                copyTextToClipboard(code.textContent).then(() => {
-                    copyIcon.className = 'ph ph-check';
-                    copyLabel.textContent = '已复制';
-                    copyBtn.classList.add('is-copied');
-                    copyBtn.setAttribute('aria-label', '已复制');
-                    setTimeout(() => {
-                        copyIcon.className = 'ph ph-copy';
-                        copyLabel.textContent = '复制';
-                        copyBtn.classList.remove('is-copied');
-                        copyBtn.setAttribute('aria-label', '复制代码');
-                    }, 1600);
-                }).catch(() => {
-                    copyLabel.textContent = '复制失败';
-                    copyBtn.setAttribute('aria-label', '复制失败');
-                    setTimeout(() => {
-                        copyLabel.textContent = '复制';
-                        copyBtn.setAttribute('aria-label', '复制代码');
-                    }, 1600);
-                });
+                const attempt = ++copyAttempt;
+                clearTimeout(copyResetTimer);
+                copyTextToClipboard(code.textContent).then(
+                    () => showCopyResult(true, attempt),
+                    () => showCopyResult(false, attempt)
+                );
             });
 
             const frame = document.createElement('div');
@@ -648,6 +653,7 @@ const zenInit = () => {
     const drawerClose = document.getElementById('drawer-toc-close');
     let lastFocusBeforeDrawer;
     let drawerCloseTimer;
+    let drawerNavigationTarget;
     let drawerOpening = 0;
 
     if (tocTriggers.length && drawerToc && tocOverlay) {
@@ -660,6 +666,7 @@ const zenInit = () => {
             } else {
                 lastFocusBeforeDrawer = event.currentTarget;
             }
+            drawerNavigationTarget = null;
             tocOverlay.classList.remove('hidden');
             const opening = ++drawerOpening;
             requestAnimationFrame(() => {
@@ -675,7 +682,9 @@ const zenInit = () => {
         };
 
         closeDrawer = (navigationTarget = null) => {
-            if (activeModal?.container !== drawerToc || drawerCloseTimer) return;
+            if (activeModal?.container !== drawerToc) return;
+            if (navigationTarget) drawerNavigationTarget = navigationTarget;
+            if (drawerCloseTimer) return;
             ++drawerOpening;
             tocOverlay.classList.add('opacity-0');
             drawerToc.classList.add('translate-x-full');
@@ -687,8 +696,9 @@ const zenInit = () => {
                 drawerToc.setAttribute('inert', '');
                 drawerCloseTimer = null;
                 unlockModal();
-                if (navigationTarget) focusTocTarget(navigationTarget);
+                if (drawerNavigationTarget) focusTocTarget(drawerNavigationTarget);
                 else restoreModalFocus(lastFocusBeforeDrawer);
+                drawerNavigationTarget = null;
             }, 300);
         };
 

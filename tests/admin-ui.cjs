@@ -287,6 +287,49 @@ test('native code editors initialize on disclosure once, sync raw text and dirty
     dom.window.close();
 });
 
+test('CodeMirror keyboard save honors repeat, composition, and the native submit lifecycle', async () => {
+    // Use the real Core-bundled keyboard engine; jsdom only needs geometry doubled.
+    const core = process.env.ZEN_WP_CORE || '/opt/test-tools/wordpress/clean-core';
+    const dom = boot(window => {
+        window.Range.prototype.getBoundingClientRect = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+        window.Range.prototype.getClientRects = () => [];
+        window.eval(fs.readFileSync(path.join(core, 'wp-includes/js/codemirror/codemirror.min.js'), 'utf8'));
+        window.zenAdmin = { codeEditor: { codemirror: { mode: 'htmlmixed' } } };
+        window.wp.codeEditor = { initialize(textarea, settings) {
+            return { codemirror: window.wp.CodeMirror.fromTextArea(textarea, settings.codemirror) };
+        } };
+    });
+    try {
+        const { document, KeyboardEvent, SubmitEvent, Event } = dom.window;
+        const form = document.getElementById('zen-options-form');
+        const section = document.getElementById('zen-code');
+        section.open = true;
+        section.dispatchEvent(new Event('toggle'));
+        const cm = section.querySelector('.CodeMirror').CodeMirror;
+        let submissions = 0;
+        form.requestSubmit = submitter => {
+            ++submissions;
+            form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter }));
+        };
+        cm.setValue('<script>window.literal = "C:\\\\fixture";</script>');
+        const key = options => cm.getInputField().dispatchEvent(new KeyboardEvent('keydown', {
+            key: 's', keyCode: 83, which: 83, ctrlKey: true, bubbles: true, cancelable: true, ...options,
+        }));
+        key();
+        assert.equal(submissions, 1, 'one physical shortcut submits once');
+        assert.equal(unloading(dom), false, 'the CodeMirror submit keeps its native unload exemption');
+        key({ repeat: true });
+        assert.equal(submissions, 1, 'holding Ctrl S must not repeatedly submit from CodeMirror');
+        key({ isComposing: true, keyCode: 229, which: 229 });
+        assert.equal(submissions, 1, 'IME composition must not submit');
+        assert.equal(unloading(dom), true, 'later non-submitting keyboard activity must leave dirty protection intact');
+        assert.equal(new dom.window.FormData(form).get('zen_code_head'), cm.getValue());
+    } finally {
+        await new Promise(resolve => setTimeout(resolve, 0)); // Drain native disclosure toggles before closing jsdom.
+        dom.window.close();
+    }
+});
+
 test('settings initialization does not check for updates', async () => {
     let requests = 0;
     const dom = boot(window => {

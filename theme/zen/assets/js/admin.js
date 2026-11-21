@@ -80,8 +80,7 @@
                 if (!editors[index]) {
                     var instance = window.wp.codeEditor.initialize(field, {
                         codemirror: {
-                            screenReaderLabel: field.labels[0].textContent.trim(),
-                            extraKeys: { 'Ctrl-S': saveSettings, 'Cmd-S': saveSettings }
+                            screenReaderLabel: field.labels[0].textContent.trim()
                         },
                         onTabNext: function () { focusCode(index + 1); },
                         onTabPrevious: function () { focusCode(index - 1); }
@@ -122,11 +121,12 @@
         document.addEventListener('click', clearSubmission, true);
         document.addEventListener('keydown', clearSubmission, true);
         document.addEventListener('keydown', function (event) {
+            // Capture before CodeMirror consumes the key: one validated save path for every control.
             if (event.defaultPrevented || event.isComposing || event.key.toLowerCase() !== 's'
                 || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey || !form.requestSubmit) return;
             event.preventDefault();
             if (!event.repeat) saveSettings();
-        });
+        }, true);
         window.addEventListener('beforeunload', function (event) {
             // A native submit may leave this document open (for example on HTTP 204).
             var leavingForSubmit = submission && !submission.defaultPrevented;

@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 root = Path(sys.argv[1]).resolve()
 selection = sys.argv[2] if len(sys.argv) > 2 else 'all'
-assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'toc', 'highlight', 'highlight-failure')
+assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'toc', 'toc-race', 'highlight', 'highlight-failure')
 assert (root / 'runtime/wp-load.php').is_file() and (root / 'db/zen.sqlite').is_file()
 origin = 'http://127.0.0.1:18765'
 cli = ['php', '/opt/test-tools/wordpress/wp-cli.phar', '--allow-root', '--path=' + str(root / 'runtime')]
@@ -35,7 +35,7 @@ try:
         control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
         ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
         assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
-        for case in (('audio', 'audio-ltr', 'audio-rtl', 'toc', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
+        for case in (('audio', 'audio-ltr', 'audio-rtl', 'toc', 'toc-race', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
             browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
             processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
             assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
@@ -107,6 +107,27 @@ try:
                 page.wait_for_timeout(400)
                 page.locator('pre').scroll_into_view_if_needed()
                 record('plain code and copy survive unavailable library', page.locator('pre code').inner_text() == 'const quiet = 42;' and page.locator('.zen-code-copy').is_visible())
+            elif case == 'toc-race':
+                page.locator('#header-toc-btn').click()
+                page.wait_for_timeout(350)
+                page.evaluate('''()=>{window.__chapterChoices=[];document.querySelector('#drawer-toc-nav').addEventListener('click',e=>{
+                    if(e.target.closest('a'))window.__chapterChoices.push({time:performance.now(),trusted:e.isTrusted});
+                })}''')
+                page.locator('#drawer-toc-nav a[href="#first"]').focus()
+                page.keyboard.press('Enter')
+                page.locator('#drawer-toc-nav a[href="#middle"]').focus()
+                page.keyboard.press('Enter')
+                choices=page.evaluate('window.__chapterChoices')
+                assert len(choices)==2 and all(item['trusted'] for item in choices) and choices[1]['time']-choices[0]['time']<300, choices
+                page.wait_for_timeout(400)
+                record('rapid chapter choices retain the last native fragment and focus', page.evaluate('location.hash==="#middle" && document.activeElement.id==="middle"'))
+                page.keyboard.press('Tab')
+                record('next Tab follows the last selected chapter', page.evaluate('document.activeElement.id==="middle-link"'))
+                page.locator('#header-toc-btn').click()
+                page.wait_for_timeout(350)
+                page.keyboard.press('Escape')
+                page.wait_for_timeout(350)
+                record('reopening and Escape do not reuse an old chapter focus', page.evaluate('document.activeElement.id==="header-toc-btn"'))
             elif case == 'toc':
                 page.locator('#header-toc-btn').click()
                 page.wait_for_timeout(350)

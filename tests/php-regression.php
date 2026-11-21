@@ -42,6 +42,9 @@ function zen_capture($callback) {
 function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
     $GLOBALS['zen_test_hooks'][$hook][] = $callback;
 }
+// The comments template briefly installs a Core filter around comment_form().
+function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {}
+function remove_filter($hook, $callback, $priority = 10) {}
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false); }
 function esc_attr($value) { return esc_html($value); }
 function esc_url($value) { return esc_html($value); }

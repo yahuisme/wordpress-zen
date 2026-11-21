@@ -51,6 +51,61 @@ for (const outcome of ['success', 'failure', 'throw']) {
     });
 }
 
+for (const clipboardFailure of ['reject', 'throw']) {
+    test(`secure clipboard ${clipboardFailure} retries the native copy fallback without losing focus`, async t => {
+        const calls = [];
+        const window = await page(t, '<article class="entry-content"><pre><code>const answer = 42;</code></pre></article>', window => {
+            Object.defineProperty(window, 'isSecureContext', { value: true });
+            Object.defineProperty(window.navigator, 'clipboard', { value: { writeText(text) {
+                calls.push(['clipboard', text]);
+                if (clipboardFailure === 'throw') throw new window.DOMException('Denied', 'NotAllowedError');
+                return Promise.reject(new window.DOMException('Denied', 'NotAllowedError'));
+            } } });
+            window.document.execCommand = command => {
+                calls.push([command, window.document.querySelector('textarea').value]);
+                return true;
+            };
+        });
+        const copy = window.document.querySelector('.zen-code-copy');
+        copy.focus(); copy.click();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(calls, [['clipboard', 'const answer = 42;'], ['copy', 'const answer = 42;']]);
+        assert.equal(copy.textContent, '已复制');
+        assert.equal(window.document.querySelector('textarea'), null);
+        assert.equal(window.document.activeElement, copy);
+    });
+}
+
+test('rapid code copies keep the newest result and feedback timeout', async t => {
+    const attempts = [];
+    const timers = new Map();
+    let token = 0;
+    const window = await page(t, '<article class="entry-content"><pre><code>copy me</code></pre></article>', window => {
+        Object.defineProperty(window, 'isSecureContext', { value: true });
+        Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: () => new Promise((resolve, reject) => attempts.push({ resolve, reject })) } });
+        window.document.execCommand = () => false;
+        window.setTimeout = callback => { timers.set(++token, callback); return token; };
+        window.clearTimeout = id => timers.delete(id);
+    });
+    const copy = window.document.querySelector('.zen-code-copy');
+    const settle = () => new Promise(resolve => setImmediate(resolve));
+    copy.click(); attempts[0].resolve(); await settle();
+    assert.equal(copy.textContent, '已复制', 'positive control reaches clipboard success');
+    copy.click(); attempts[1].reject(new Error('denied')); await settle();
+    assert.equal(copy.textContent, '复制失败');
+    assert.equal(copy.classList.contains('is-copied'), false, 'failure must not keep the previous success appearance');
+    assert.equal(copy.querySelector('i').classList.contains('ph-check'), false);
+    assert.equal(timers.size, 1, 'only the latest feedback may schedule a reset');
+    copy.click(); copy.click();
+    attempts[3].resolve(); await settle();
+    attempts[2].reject(new Error('obsolete failure')); await settle();
+    assert.equal(copy.textContent, '已复制', 'a late earlier copy must not overwrite the newest result');
+    assert.equal(timers.size, 1);
+    [...timers.values()][0]();
+    assert.equal(copy.textContent, '复制');
+    assert.equal(copy.getAttribute('aria-label'), '复制代码');
+});
+
 test('paused audio reflects corrected duration without waiting for playback', async t => {
     const window = await page(t, '<audio controls></audio>', window => {
         Object.defineProperty(window.document.querySelector('audio'), 'duration', { value: NaN, writable: true });
