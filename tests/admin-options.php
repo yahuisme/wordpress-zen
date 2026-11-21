@@ -194,6 +194,8 @@ test('option descriptions use short copy without terminal punctuation', function
         $text = trim($element->textContent);
         expect($text !== '' && !str_contains($text, '。') && !preg_match('/[.!?！？；;，,：:]$/u', $text), "inconsistent option copy: $text");
     }
+    expect($xpath->evaluate('string(//*[@id="zen-list-style-help"])') === '紧凑模式隐藏列表摘要', 'list style help must use the requested copy');
+    expect(!str_contains($xpath->evaluate('string(//*[@id="zen-excerpt-length-help"])'), '标准模式'), 'excerpt length also applies to the card in compact mode');
     $help = $xpath->query('//*[@id="zen_code_head"]/following-sibling::p')->item(0);
     expect($help !== null && trim($help->textContent) === '在 </head> 前输出', 'head code needs the generic placement hint');
     expect($help->childNodes->length === 1 && $help->firstChild->nodeType === XML_TEXT_NODE, 'head placement hint must be escaped text');

@@ -402,10 +402,10 @@ function zen_options_page_html() {
                         <td><select name="zen_list_style" id="zen_list_style" aria-describedby="zen-list-style-help">
                             <option value="standard" <?php selected('standard', $list_style); ?>><?php esc_html_e('标准', 'zen'); ?></option>
                             <option value="compact" <?php selected('compact', $list_style); ?>><?php esc_html_e('紧凑', 'zen'); ?></option>
-                        </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式隐藏卡片和列表摘要', 'zen'); ?></p></td></tr>
+                        </select><p class="description" id="zen-list-style-help"><?php esc_html_e('紧凑模式隐藏列表摘要', 'zen'); ?></p></td></tr>
                     <tr><th scope="row"><label for="zen_excerpt_length"><?php esc_html_e('摘要长度', 'zen'); ?></label></th>
                         <td><input type="number" name="zen_excerpt_length" id="zen_excerpt_length" value="<?php echo esc_attr(zen_get_option('zen_excerpt_length')); ?>" min="1" max="300" step="1" required class="small-text" aria-describedby="zen-excerpt-length-help"> 字
-                        <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('标准模式摘要长度，默认 %d 字（1–300 字）', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
+                        <p class="description" id="zen-excerpt-length-help"><?php printf(esc_html__('默认 %d 字（1–300 字）', 'zen'), zen_get_option_defaults()['zen_excerpt_length']); ?></p></td></tr>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-post" open>

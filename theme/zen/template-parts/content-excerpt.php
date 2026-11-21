@@ -17,5 +17,5 @@ $zen_post_id = (int) get_the_ID();
             <?php else : echo esc_html(zen_post_title()); endif; ?>
         </a>
     </h2>
-    <?php zen_index_post_excerpt(); ?>
+    <?php if (!$zen_compact) zen_index_post_excerpt(); ?>
 </article>

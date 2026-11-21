@@ -52,6 +52,7 @@ with sync_playwright() as p:
     for mode in ('standard', 'compact', 'standard'):
         page.goto(o + '/wp-admin/admin.php?page=zen-options', wait_until='networkidle')
         assert page.locator('#zen-layout, #zen_content_width').count() == 0
+        assert page.locator('#zen-list-style-help').inner_text() == '紧凑模式隐藏列表摘要'
         page.locator('#zen_list_style').select_option(mode)
         with page.expect_navigation(wait_until='networkidle'):
             page.locator('#zen_save_top').click()
@@ -63,6 +64,10 @@ with sync_playwright() as p:
         for width in (320, 390, 768, 1440, 2560):
             page.set_viewport_size({'width': width, 'height': 900})
             page.goto(o + '/', wait_until='networkidle')
+            card = page.locator('.zen-latest-card')
+            if card.count():
+                assert card.locator('.zen-post-excerpt').is_visible(), 'Latest card excerpt remains visible in both list modes'
+                assert card.locator('.zen-post-excerpt').inner_text().strip(), 'Seed a nonempty latest card excerpt'
             data = page.evaluate('''() => ({
                 overflow: document.documentElement.scrollWidth > innerWidth + 1,
                 site: getComputedStyle(document.documentElement).getPropertyValue('--zen-content-width').trim(),
@@ -89,6 +94,9 @@ with sync_playwright() as p:
                     for item in data['items']
                 )
             )
+            if mode == 'compact' and width in (390, 1440):
+                page.evaluate('document.fonts.ready')
+                page.screenshot(path=str(r / 'evidence' / (label + '-compact-' + str(width) + '.png')), full_page=True)
             row = {'content': 1000, 'mode': mode, 'viewport': width, 'measurements': data, 'passed': not error}
             rows.append(row)
             if error:

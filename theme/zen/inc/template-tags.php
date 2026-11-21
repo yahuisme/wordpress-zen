@@ -155,7 +155,6 @@ function zen_display_excerpt($excerpt) {
 }
 
 function zen_index_post_excerpt($post = null) {
-    if (zen_get_option('zen_list_style') === 'compact') return;
     // Let Core prepare this excerpt without cutting entities. Nested excerpts keep their native limit.
     $excerpt_stack = array_merge($GLOBALS['wp_current_filter'] ?? array(), array('get_the_excerpt', 'excerpt_length'));
     $defer_trimming = static function ($length) use ($excerpt_stack) {

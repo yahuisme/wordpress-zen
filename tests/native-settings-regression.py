@@ -1,5 +1,5 @@
 """Native Settings API and cross-page acceptance; isolated fixture only."""
-import json,os,sys,subprocess,time
+import json,os,sys,subprocess,time,traceback
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 r=Path(sys.argv[1]).resolve();assert (r/'runtime/wp-load.php').is_file() and (r/'db/zen.sqlite').is_file(), 'Isolated fixture required';f=json.loads((r/'fixture.json').read_text());o='http://127.0.0.1:18765';e=r/'evidence';results=[]
@@ -11,13 +11,14 @@ def option(key):return json.loads(cli('option','get',key,'--format=json'))
 def setoption(key,val):return cli('option','update',key,json.dumps(val,ensure_ascii=False),'--format=json')
 def check(label,fn):
  try:fn();results.append({'name':label,'passed':True});print('PASS',label,flush=True)
- except Exception as ex:results.append({'name':label,'passed':False,'error':str(ex)});print('FAIL',label,str(ex),flush=True)
+ except Exception as ex:results.append({'name':label,'passed':False,'error':traceback.format_exc()});print('FAIL',label,str(ex),flush=True);traceback.print_exc()
 preserve_only = '--preserve-only' in sys.argv
+layout_only = '--layout-only' in sys.argv
 with sync_playwright() as p:
  args=['--no-sandbox','--disable-dev-shm-usage']
- if preserve_only: args.extend(['--single-process','--no-zygote'])
+ if preserve_only or layout_only: args.extend(['--single-process','--no-zygote'])
  b=p.chromium.launch(executable_path='/usr/lib/chromium/chromium',args=args,env={**os.environ,'DBUS_SESSION_BUS_ADDRESS':'unix:path=/nonexistent','DBUS_SYSTEM_BUS_ADDRESS':'unix:path=/nonexistent'})
- if preserve_only:
+ if preserve_only or layout_only:
   group=Path('/proc/self/cgroup').read_text()
   scope=(Path('/sys/fs/cgroup')/group.strip().split('::',1)[1].lstrip('/')).parent
   assert int((scope/'memory.max').read_text()) <= 4*1024**3 and (scope/'memory.swap.max').read_text().strip()=='0'
@@ -45,7 +46,7 @@ with sync_playwright() as p:
   assert 'Edited footer' in page.locator('.zen-site-footer').inner_text()
   assert 'Theme By RyanZ' not in page.locator('.zen-site-footer').inner_text() and 'Powered By WordPress' not in page.locator('.zen-site-footer').inner_text()
   for key,val in legacy.items():assert str(option(key))==str('Edited footer' if key=='zen_footer_text' else val),(key,option(key),val)
- check('native save retains old option rows and current settings without reactivating removed credits',preserve)
+ if not layout_only: check('native save retains old option rows and current settings without reactivating removed credits',preserve)
  if preserve_only:
   b.close()
   sys.exit(0 if results[0]['passed'] else 1)
@@ -54,10 +55,14 @@ with sync_playwright() as p:
   assert int(option('zen_reading_width'))==800 and option('zen_list_style')=='compact'
   assert option('zen_category_ids')==[f['categories'][0]],option('zen_category_ids')
   assert option('zen_show_site_intro')=='0' or option('zen_show_site_intro')==0
-  page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-excerpt').count()==0
+  page.goto(o+'/',wait_until='networkidle');assert page.locator('.zen-site-intro').count()==0 and page.locator('.zen-post-list .zen-post-excerpt').count()==0
+  assert page.locator('.zen-latest-card .zen-post-excerpt').is_visible()
   assert page.locator('.zen-category-nav').count()==0
+  for route in ('/?cat='+str(f['categories'][0]),'/?tag_id='+str(f['tag']),'/?s=WordPress'):
+   page.goto(o+route,wait_until='networkidle')
+   assert page.locator('.zen-post-item--compact').count()>0 and page.locator('.zen-post-list .zen-post-excerpt').count()==0
   page.goto(o+'/?cat='+str(f['categories'][0]),wait_until='networkidle')
-  expected=json.loads(cli('eval','echo wp_json_encode(array_map(static fn($category) => get_category_link($category->term_id), get_categories(["hide_empty" => true])));'))
+  expected=json.loads(cli('eval','echo wp_json_encode(array_values(array_map(static fn($category) => get_category_link($category->term_id), get_categories(["hide_empty" => true]))));'))
   links=page.locator('.zen-category-track > a');assert links.count()==len(expected)+1
   assert links.all()[0].is_visible() and links.all()[1].is_visible()
   assert links.evaluate_all('es=>es.slice(1).map(e=>e.href)')==expected
@@ -65,6 +70,11 @@ with sync_playwright() as p:
   page.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');assert page.locator('#post-content').evaluate('e=>Math.round(e.getBoundingClientRect().width)')==800,page.locator('#post-content').evaluate('e=>({width:e.getBoundingClientRect().width,var:getComputedStyle(e).getPropertyValue("--zen-reading-width")})')
   assert '版权声明' not in page.locator('main').inner_text() and '浏览次数' not in page.locator('.zen-post-meta').inner_text()
  check('saved reading width list intro categories and license drive frontend',edited)
+ if layout_only:
+  b.close()
+  (e/'native-settings-layout.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+  assert len(results)==1 and results[0]['passed'],results
+  sys.exit(0)
  def clear():
   settings();page.locator('#zen_footer_text').fill('');page.locator('#zen-code > summary').click();page.locator('#zen_code_head').fill('');save()
   assert option('zen_footer_text')=='' and option('zen_category_ids')==[f['categories'][0]] and option('zen_code_head')==''

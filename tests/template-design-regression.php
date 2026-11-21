@@ -44,7 +44,11 @@ function get_the_title($post = null) { return $GLOBALS['fixture_title'] ?? '清�
 function get_the_ID() { return $GLOBALS['child_excerpt_post_id'] ?? 42; }
 function the_title() { echo esc_html(get_the_title()); }
 function the_title_attribute() { echo esc_attr(get_the_title()); }
-function get_the_excerpt() { $GLOBALS['excerpt_calls']++; return '标准列表摘要内容'; }
+function get_the_excerpt($post = null) {
+    $GLOBALS['excerpt_calls']++;
+    $GLOBALS['excerpt_posts'][] = is_object($post) ? $post->ID : ($post ?? get_the_ID());
+    return $GLOBALS['fixture_excerpt'] ?? '标准列表摘要内容';
+}
 function wp_strip_all_tags($text, $remove_breaks = false) {
     $text = strip_tags(preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', $text));
     return trim($remove_breaks ? preg_replace('/[\r\n\t ]+/', ' ', $text) : $text);
@@ -223,6 +227,43 @@ test('latest card uses a single-line month-day only in the current year', functi
         $GLOBALS['wp_query'] = $previous_query;
         $GLOBALS['options'] = $previous_options;
         unset($GLOBALS['fixture_date'], $GLOBALS['fixture_categories']);
+    }
+});
+
+test('compact mode hides only list excerpts while the latest card keeps its explicit post excerpt', function () {
+    $previous_query = $GLOBALS['wp_query'];
+    $previous_options = $GLOBALS['options'];
+    $older = (object) array('ID' => 42, 'post_type' => 'post', 'post_status' => 'publish', 'post_password' => '', 'post_date' => '2026-10-01 12:00:00');
+    $latest = clone $older;
+    $latest->ID = 7;
+    $latest->post_date = '2026-11-09 12:00:00';
+    $GLOBALS['wp_query'] = (object) array('posts' => array($older, $latest), 'post_count' => 2, 'found_posts' => 2, 'max_num_pages' => 1);
+    $GLOBALS['options']['zen_show_latest_card'] = 1;
+    try {
+        foreach (array('compact', 'standard') as $style) {
+            $GLOBALS['options']['zen_list_style'] = $style;
+            $GLOBALS['options']['zen_excerpt_length'] = 4;
+            $GLOBALS['loop_left'] = 1;
+            $GLOBALS['excerpt_posts'] = array();
+            $html = render('index.php');
+            $dom = new DOMDocument();
+            @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+            $xpath = new DOMXPath($dom);
+            $card_excerpt = $xpath->query('//article[@class="zen-latest-card"]//div[contains(@class,"zen-post-excerpt")]');
+            check($card_excerpt->length === 1 && $card_excerpt->item(0)->textContent === '标准列表…', 'latest card must retain its bounded excerpt in ' . $style . ' mode');
+            $list_excerpts = $xpath->query('//div[@class="zen-post-list"]//div[contains(@class,"zen-post-excerpt")]');
+            check($list_excerpts->length === ($style === 'compact' ? 0 : 1), 'only ordinary list excerpts should follow ' . $style . ' mode');
+            check($GLOBALS['excerpt_posts'] === ($style === 'compact' ? array(7) : array(7, 42)), 'card must fetch its explicit post without fetching hidden list excerpts');
+            $GLOBALS['fixture_excerpt'] = '';
+            $GLOBALS['loop_left'] = 0;
+            check(!str_contains(render('index.php'), 'zen-post-excerpt'), 'empty card excerpt must not leave a wrapper');
+            unset($GLOBALS['fixture_excerpt']);
+        }
+    } finally {
+        $GLOBALS['wp_query'] = $previous_query;
+        $GLOBALS['options'] = $previous_options;
+        $GLOBALS['loop_left'] = 0;
+        unset($GLOBALS['excerpt_posts'], $GLOBALS['fixture_excerpt']);
     }
 });
 
