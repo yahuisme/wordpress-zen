@@ -10,6 +10,21 @@
         var width = document.getElementById('zen_reading_width');
         var preset = document.getElementById('zen_reading_width_preset');
         var submission = null;
+        var groups = Array.from(form.querySelectorAll('.zen-options-group')).filter(group => group.id && group.id !== 'zen-code');
+        var groupsKey = 'zen-options-groups';
+        try {
+            var savedGroups = JSON.parse(window.sessionStorage.getItem(groupsKey) || '{}');
+            groups.forEach(function (group) {
+                if (savedGroups && typeof savedGroups[group.id] === 'boolean') group.open = savedGroups[group.id];
+            });
+        } catch (error) {}
+        groups.forEach(function (group) {
+            group.addEventListener('toggle', function () {
+                var state = {};
+                groups.forEach(item => { state[item.id] = item.open; });
+                try { window.sessionStorage.setItem(groupsKey, JSON.stringify(state)); } catch (error) {}
+            });
+        });
 
         function snapshot() {
             // Successful controls only; unnamed UI presets are not settings.
@@ -45,6 +60,45 @@
         }
         form.addEventListener('input', refreshSetting);
         form.addEventListener('change', refreshSetting);
+
+        function saveSettings() {
+            if (form.requestSubmit) form.requestSubmit(document.getElementById('zen_save_top'));
+        }
+        var codeSection = document.getElementById('zen-code');
+        var codeFields = codeSection ? Array.from(codeSection.querySelectorAll('textarea')) : [];
+        var editors = [];
+        function focusCode(index) {
+            if (index < 0) codeSection.querySelector('summary').focus();
+            else if (index >= codeFields.length) document.getElementById('submit').focus();
+            else if (editors[index]) editors[index].focus();
+            else codeFields[index].focus();
+        }
+        function initCodeEditors() {
+            if (!codeSection.open || !window.zenAdmin || !window.zenAdmin.codeEditor
+                || !window.wp || !window.wp.codeEditor) return;
+            codeFields.forEach(function (field, index) {
+                if (!editors[index]) {
+                    var instance = window.wp.codeEditor.initialize(field, {
+                        codemirror: {
+                            screenReaderLabel: field.labels[0].textContent.trim(),
+                            extraKeys: { 'Ctrl-S': saveSettings, 'Cmd-S': saveSettings }
+                        },
+                        onTabNext: function () { focusCode(index + 1); },
+                        onTabPrevious: function () { focusCode(index - 1); }
+                    });
+                    editors[index] = instance.codemirror;
+                    editors[index].on('change', function () {
+                        editors[index].save();
+                        refresh();
+                    });
+                }
+                editors[index].refresh();
+            });
+        }
+        if (codeSection) {
+            codeSection.addEventListener('toggle', initCodeEditors);
+            initCodeEditors();
+        }
         form.addEventListener('reset', function () {
             window.setTimeout(function () { syncPreset(); refresh(); }, 0);
         });
@@ -67,6 +121,12 @@
         window.addEventListener('pageshow', clearSubmission);
         document.addEventListener('click', clearSubmission, true);
         document.addEventListener('keydown', clearSubmission, true);
+        document.addEventListener('keydown', function (event) {
+            if (event.defaultPrevented || event.isComposing || event.key.toLowerCase() !== 's'
+                || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey || !form.requestSubmit) return;
+            event.preventDefault();
+            if (!event.repeat) saveSettings();
+        });
         window.addEventListener('beforeunload', function (event) {
             // A native submit may leave this document open (for example on HTTP 204).
             var leavingForSubmit = submission && !submission.defaultPrevented;

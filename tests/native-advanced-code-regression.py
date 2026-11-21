@@ -97,9 +97,17 @@ with sync_playwright() as playwright:
         assert page.locator('#zen-code > summary').is_visible()
         assert page.locator('#zen_category_ids, [name="zen_category_ids[]"], .zen-category-choices, #zen-categories-help, #zen_content_width, #zen-layout').count() == 0
         page.locator('#zen-code > summary').click()
-        help_text = page.locator('#zen_code_head + .description')
+        help_text = page.locator('#zen_code_head').locator('..').locator('p.description')
         assert help_text.inner_text() == '在 </head> 前输出'
         assert help_text.inner_html() == '在 &lt;/head&gt; 前输出'
+
+    def fill_code(position, text):
+        field = page.locator(f'#zen_code_{position}')
+        if field.is_visible():
+            field.fill(text)
+        else:
+            field.evaluate('(field, text) => field.nextElementSibling.CodeMirror.setValue(text)', text)
+        assert field.input_value() == text
 
     def save():
         with page.expect_navigation():
@@ -132,7 +140,7 @@ with sync_playwright() as playwright:
     page.locator('#zen_reading_width').fill('720')
     page.locator('#zen_footer_text').fill('Ordinary native save')
     for position, text in fields.items():
-        page.locator(f'#zen_code_{position}').fill(text)
+        fill_code(position, text)
     save()
     retired_unchanged()
     assert option('zen_footer_text') == 'Ordinary native save'
@@ -167,7 +175,7 @@ with sync_playwright() as playwright:
     context.add_cookies(cookies)
     settings()
     for position in fields:
-        page.locator(f'#zen_code_{position}').fill('')
+        fill_code(position, '')
     save()
     retired_unchanged()
     for position in fields:

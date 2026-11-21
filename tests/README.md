@@ -193,6 +193,7 @@ python tests/repair-ui-regression.py /path/to/fixture
 python tests/design-browser-regression.py /path/to/fixture green
 python tests/native-settings-regression.py /path/to/fixture
 python tests/native-advanced-code-regression.py /path/to/fixture
+python tests/native-admin-usability-regression.py /path/to/fixture
 python tests/native-boundary-regression.py /path/to/fixture
 python tests/list-width-regression.py /path/to/fixture green
 python tests/page-review-regression.py /path/to/fixture
@@ -201,5 +202,7 @@ python tests/archive-spacing-regression.py
 ```
 
 只用于可销毁的隔离 fixture，目录包含 `runtime/`、`db/zen.sqlite`、`fixture.json`、`evidence/`、管理员原生 Cookie 文件 `cookies.json`；权限边界测试另需 `restricted-cookies.json`，其用户具有 `manage_options` 但不具有 `unfiltered_html`。这些脚本会修改 fixture 设置、主题 mods 和样本文章，不得复用生产配置。Cookie 文件须 0600，测试后连同数据库清理。
+
+`native-admin-usability-regression.py` 专项检查普通分组的会话内展开状态、Ctrl／⌘+S 原生保存与校验、真实 CodeMirror 输入／缩进／撤销和 Escape 后 Tab 离开编辑区、320–1440px 保存栏左右分离，以及个人关闭语法高亮时的普通文本框回退；由调用者快照并恢复隔离数据库。高级代码不增加启停选项，保存、权限与三个原生输出位置保持不变。
 
 列表宽度测试在固定 1000px 版面下执行15个原生保存/视口场景，`--focused` 保留为兼容参数；仍断言真实文章ID与非空样本。逐页测试的 `fixture.json` 还需 `tag`、`emptycat`、`protected`、`multipage` 对象ID，覆盖15类前台页面、后台及其实际操作。站点固定为 `http://127.0.0.1:18765`。设计测试复现目录遮字、字段内部换行及编辑器排版差异；设置测试覆盖旧值保留、空值清除、校验错误、代码输出与320–1440px固定保存栏；边界测试覆盖Logo、特色图、字体、宽幅媒体和伪造代码提交。浏览器仍须单实例串行并置于外部已验证内存限制内。

@@ -327,8 +327,12 @@ function zen_options_admin_assets($hook) {
     }
     $dir = get_template_directory();
     $uri = get_template_directory_uri();
+    $editor = current_user_can('unfiltered_html')
+        ? wp_enqueue_code_editor(array('type' => 'text/html', 'codemirror' => array('lint' => false)))
+        : false;
     wp_enqueue_style('zen-admin', $uri . '/assets/css/admin.css', array(), filemtime($dir . '/assets/css/admin.css'));
-    wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', array(), filemtime($dir . '/assets/js/admin.js'), true);
+    wp_enqueue_script('zen-admin', $uri . '/assets/js/admin.js', $editor ? array('code-editor') : array(), filemtime($dir . '/assets/js/admin.js'), true);
+    wp_localize_script('zen-admin', 'zenAdmin', array('codeEditor' => $editor));
 }
 add_action('admin_enqueue_scripts', 'zen_options_admin_assets');
 

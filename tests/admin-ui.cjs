@@ -174,6 +174,119 @@ for (const outcome of ['confirmed', 'declined', 'canceled later']) {
     });
 }
 
+test('ordinary settings groups remember disclosure without storing raw code or dirty values', async () => {
+    const key = 'zen-options-groups';
+    const dom = boot(window => {
+        window.sessionStorage.setItem(key, JSON.stringify({ 'zen-reading': false, 'zen-footer': false, 'zen-code': true }));
+    });
+    const { document } = dom.window;
+    assert.equal(document.getElementById('zen-reading').open, false);
+    assert.equal(document.getElementById('zen-footer').open, false);
+    assert.equal(document.getElementById('zen-code').open, false, 'advanced code keeps its existing default');
+    edit(dom, 'zen_code_head', '<script>privateValue()</script>');
+    const footer = document.getElementById('zen-footer');
+    footer.open = true;
+    footer.dispatchEvent(new dom.window.Event('toggle'));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const saved = JSON.parse(dom.window.sessionStorage.getItem(key));
+    assert.equal(saved['zen-footer'], true);
+    assert.equal(saved['zen-reading'], false);
+    assert.equal(Object.hasOwn(saved, 'zen-code'), false);
+    assert.ok(Object.values(saved).every(value => typeof value === 'boolean'));
+    assert.equal(unloading(dom), true, 'disclosure persistence must not mark edits saved');
+    dom.window.close();
+});
+
+for (const state of ['invalid JSON', 'storage denied']) {
+    test(`settings still work with ${state}`, () => {
+        const dom = boot(window => {
+            if (state === 'storage denied') {
+                Object.defineProperty(window, 'sessionStorage', { get() { throw new Error('denied'); } });
+            } else {
+                window.sessionStorage.setItem('zen-options-groups', '{');
+            }
+        });
+        edit(dom, 'zen_footer_text', 'unsaved');
+        assert.equal(unloading(dom), true);
+        const footer = dom.window.document.getElementById('zen-footer');
+        footer.open = false;
+        assert.doesNotThrow(() => footer.dispatchEvent(new dom.window.Event('toggle')));
+        dom.window.close();
+    });
+}
+
+test('Ctrl or Command S uses the native validated settings submit without catching unrelated shortcuts', () => {
+    const dom = boot();
+    const { document, KeyboardEvent } = dom.window;
+    const form = document.getElementById('zen-options-form');
+    const save = document.getElementById('zen_save_top');
+    const submissions = [];
+    form.requestSubmit = button => submissions.push(button);
+    for (const modifier of ['ctrlKey', 'metaKey']) {
+        const event = new KeyboardEvent('keydown', { key: 's', [modifier]: true, bubbles: true, cancelable: true });
+        document.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, true);
+    }
+    assert.deepEqual(submissions, [save, save]);
+    for (const options of [{key:'s'}, {key:'p',ctrlKey:true}, {key:'s',ctrlKey:true,shiftKey:true}, {key:'s',metaKey:true,altKey:true}]) {
+        const event = new KeyboardEvent('keydown', {...options,bubbles:true,cancelable:true});
+        document.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, false);
+    }
+    const repeat = new KeyboardEvent('keydown', { key:'s',ctrlKey:true,repeat:true,bubbles:true,cancelable:true });
+    document.dispatchEvent(repeat);
+    assert.equal(repeat.defaultPrevented, true);
+    const canceled = new KeyboardEvent('keydown', { key:'s',ctrlKey:true,bubbles:true,cancelable:true });
+    canceled.preventDefault();
+    document.dispatchEvent(canceled);
+    assert.equal(submissions.length, 2);
+    dom.window.close();
+});
+
+test('native code editors initialize on disclosure once, sync raw text and dirty state, and retain keyboard exits', () => {
+    const instances = [];
+    const dom = boot(window => {
+        window.zenAdmin = { codeEditor: { codemirror: { mode: 'htmlmixed' } } };
+        window.wp = { codeEditor: { initialize(textarea, settings) {
+            const callbacks = {};
+            const cm = { value: textarea.value, refreshes: 0,
+                on(event, callback) { callbacks[event] = callback; },
+                save() { textarea.value = cm.value; },
+                refresh() { cm.refreshes++; },
+                focus() { cm.focused = true; }
+            };
+            instances.push({textarea,settings,cm,callbacks});
+            return { codemirror: cm };
+        } } };
+    });
+    const { document, Event } = dom.window;
+    assert.equal(instances.length, 0, 'collapsed code fields stay plain until opened');
+    const section = document.getElementById('zen-code');
+    section.open = true;
+    section.dispatchEvent(new Event('toggle'));
+    assert.equal(instances.length, 3);
+    assert.equal(unloading(dom), false);
+    const editor = instances[0];
+    assert.equal(editor.settings.codemirror.screenReaderLabel, '头部代码');
+    editor.cm.value = '<script>window.raw = "C:\\\\fixture";</script>';
+    editor.callbacks.change();
+    assert.equal(editor.textarea.value, editor.cm.value);
+    assert.equal(new dom.window.FormData(document.getElementById('zen-options-form')).get('zen_code_head'), editor.cm.value);
+    assert.equal(unloading(dom), true);
+    editor.settings.onTabNext();
+    assert.equal(instances[1].cm.focused, true);
+    instances[2].settings.onTabNext();
+    assert.equal(document.activeElement.id, 'submit');
+    editor.settings.onTabPrevious();
+    assert.equal(document.activeElement.tagName, 'SUMMARY');
+    section.open = false;
+    section.dispatchEvent(new Event('toggle'));
+    section.open = true;
+    section.dispatchEvent(new Event('toggle'));
+    assert.equal(instances.length, 3, 'reopening must not create duplicate editors');
+    dom.window.close();
+});
+
 test('settings initialization does not check for updates', async () => {
     let requests = 0;
     const dom = boot(window => {
@@ -194,6 +307,8 @@ test('responsive admin CSS scopes controls and respects native adminbar offsets'
     assert.match(css, /782px[\s\S]*--zen-adminbar-offset:\s*46px/);
     assert.match(css, /600px[\s\S]*--zen-adminbar-offset:\s*0px/);
     assert.match(css, /textarea[^}]*width:\s*100%[^}]*max-width:\s*800px/);
+    assert.match(css, /\.zen-save-bar\s+\[form="zen-reset-form"\][^}]*margin-inline-start:\s*auto/);
+    assert.match(css, /600px[\s\S]*#zen-save-state[^}]*order:\s*1[^}]*flex-basis:\s*100%/);
     assert.doesNotMatch(css, /zen-category-choices/);
     assert.doesNotMatch(css, /zen-options-subgroup/);
 });

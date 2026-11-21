@@ -47,7 +47,11 @@ function get_template_directory() { return ABSPATH; }
 function get_template_directory_uri() { return 'https://example.test/theme'; }
 function wp_enqueue_style(...$args) { $GLOBALS['assets'][] = $args; }
 function wp_enqueue_script(...$args) { $GLOBALS['assets'][] = $args; }
-function wp_localize_script(...$args) {}
+function wp_localize_script(...$args) { $GLOBALS['localized'][] = $args; }
+function wp_enqueue_code_editor($args) {
+    $GLOBALS['code_editor_args'][] = $args;
+    return $GLOBALS['code_editor_result'] ?? array('codemirror' => array('mode' => 'htmlmixed', 'lint' => false));
+}
 require ABSPATH . 'inc/options.php';
 $failed = 0; $total = 0;
 function test($name, $callback) { global $failed, $total; $total++; try { $callback(); echo "PASS $name\n"; } catch (Throwable $e) { $failed++; echo "FAIL $name: {$e->getMessage()}\n"; } }
@@ -156,6 +160,19 @@ test('admin assets are isolated to the existing top-level hook', function () {
     zen_options_admin_assets('toplevel_page_zen-options');
     expect(count($GLOBALS['assets']) === 2, 'admin stylesheet and script missing');
     expect(str_contains($GLOBALS['assets'][0][1], '/assets/css/admin.css') && str_contains($GLOBALS['assets'][1][1], '/assets/js/admin.js'), 'wrong admin assets');
+    expect(count($GLOBALS['code_editor_args'] ?? array()) === 1, 'authorized settings must enqueue the native code editor once');
+    expect($GLOBALS['code_editor_args'][0]['type'] === 'text/html' && $GLOBALS['code_editor_args'][0]['codemirror']['lint'] === false, 'snippets use HTML editing without blocking lint');
+    expect($GLOBALS['assets'][1][2] === array('code-editor'), 'native editor must load before the settings script');
+    expect($GLOBALS['localized'][0][1] === 'zenAdmin' && !empty($GLOBALS['localized'][0][2]['codeEditor']), 'editor settings must reach the page');
+    $count = count($GLOBALS['code_editor_args']);
+    $GLOBALS['caps']['unfiltered_html'] = false;
+    zen_options_admin_assets('toplevel_page_zen-options');
+    expect(count($GLOBALS['code_editor_args']) === $count && end($GLOBALS['assets'])[2] === array(), 'restricted users must not load code editing assets');
+    $GLOBALS['caps']['unfiltered_html'] = true;
+    $GLOBALS['code_editor_result'] = false;
+    zen_options_admin_assets('toplevel_page_zen-options');
+    expect(end($GLOBALS['assets'])[2] === array() && end($GLOBALS['localized'])[2]['codeEditor'] === false, 'disabled syntax highlighting keeps a plain textarea');
+    unset($GLOBALS['code_editor_result']);
 });
 
 test('impossible calendar dates retain the prior value, including year zero', function () {

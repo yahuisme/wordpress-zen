@@ -30,6 +30,10 @@ with sync_playwright() as p:
  c.route('**/*',lambda route:route.continue_() if route.request.url.startswith(o+'/') or route.request.url.startswith('data:') else route.abort())
  page.on('dialog',unexpected_dialog)
  def settings():page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen-options-form').count()==1
+ def fill_code(position,value):
+  field=page.locator('#zen_code_'+position)
+  if field.is_visible():field.fill(value)
+  else:field.evaluate('(field,value)=>field.nextElementSibling.CodeMirror.setValue(value)',value)
  def save():
   with page.expect_navigation(wait_until='networkidle'):page.locator('#zen_save_top').click()
   assert page.locator('.notice-success,.updated').count()>0,page.locator('body').inner_text()[:1500]
@@ -76,7 +80,7 @@ with sync_playwright() as p:
   assert len(results)==1 and results[0]['passed'],results
   sys.exit(0)
  def clear():
-  settings();page.locator('#zen_footer_text').fill('');page.locator('#zen-code > summary').click();page.locator('#zen_code_head').fill('');save()
+  settings();page.locator('#zen_footer_text').fill('');page.locator('#zen-code > summary').click();fill_code('head','');save()
   assert option('zen_footer_text')=='' and option('zen_category_ids')==[f['categories'][0]] and option('zen_code_head')==''
  check('explicit empty footer and authorized code clear without changing retired categories',clear)
  def invalid():
@@ -87,7 +91,7 @@ with sync_playwright() as p:
  def code():
   settings();page.locator('#zen-code > summary').click()
   values={'head':'<script>window.zenPositionHead="head\\n";</script>','body':'<span id="zen-position-body">body</span>','footer':'<script>window.zenPositionFooter="footer";</script>'}
-  for pos,value in values.items():page.locator('#zen_code_'+pos).fill(value)
+  for pos,value in values.items():fill_code(pos,value)
   save()
   for pos,value in values.items():assert option('zen_code_'+pos)==value
   anon=b.new_context();q=anon.new_page();q.goto(o+'/',wait_until='networkidle')

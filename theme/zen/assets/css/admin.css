@@ -22,6 +22,9 @@
 .zen-options #zen-save-state {
     color: #50575e;
 }
+.zen-options .zen-save-bar [form="zen-reset-form"] {
+    margin-inline-start: auto;
+}
 .zen-options .zen-reset-form {
     margin: 0;
 }
@@ -100,6 +103,18 @@
     resize: vertical;
 }
 
+.zen-options .CodeMirror {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 800px;
+    height: 240px;
+    border: 1px solid #8c8f94;
+}
+.zen-options .CodeMirror-focused {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
 @media screen and (max-width: 782px) {
     .admin-bar .zen-options {
         --zen-adminbar-offset: 46px;
@@ -135,5 +150,9 @@
     }
     .zen-options .zen-save-bar {
         gap: 8px;
+    }
+    .zen-options #zen-save-state {
+        order: 1;
+        flex-basis: 100%;
     }
 }
