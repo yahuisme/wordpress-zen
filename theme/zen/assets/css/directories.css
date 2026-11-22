@@ -205,7 +205,11 @@
     font: 400 0.8125rem/1.5 var(--zen-font-body);
     overflow-wrap: anywhere;
 }
-.zen-link-arrow { color: var(--zen-accent); }
+.zen-link-arrow {
+    flex: none;
+    align-self: center;
+    color: var(--zen-accent);
+}
 
 .zen-tags-directory {
     display: grid;

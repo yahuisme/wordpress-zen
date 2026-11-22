@@ -71,7 +71,9 @@ get_header(); ?>
                         </div>
                         <span class="zen-link-destination" aria-hidden="true">
                             <?php if ($link_host) : ?><bdi class="zen-link-host"><?php echo esc_html($link_host); ?></bdi><?php endif; ?>
-                            <span class="zen-link-arrow">↗</span>
+                            <svg class="zen-link-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                                <path d="M4 12l8-8M6 4h6v6" />
+                            </svg>
                         </span>
                     </a>
                 </li>
