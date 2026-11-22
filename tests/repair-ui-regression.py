@@ -19,7 +19,20 @@ results = []
 errors = []
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox', '--disable-dev-shm-usage'])
+    group = Path('/proc/self/cgroup').read_text()
+    control = Path('/sys/fs/cgroup') / group.strip().split('::', 1)[1].lstrip('/')
+    assert any((a / 'memory.max').is_file() and (a / 'memory.max').read_text().strip().isdigit()
+               and int((a / 'memory.max').read_text()) <= 4 * 1024**3
+               and (a / 'memory.swap.max').read_text().strip() == '0'
+               for a in (control, *control.parents))
+
+    def launch():
+        client = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
+        processes = client.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+        assert processes and all(Path(f'/proc/{x["id"]}/cgroup').read_text() == group for x in processes)
+        return client
+
+    browser = launch()
     context = browser.new_context(reduced_motion='reduce')
     context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin) else route.abort())
     page = context.new_page()
@@ -37,10 +50,8 @@ with sync_playwright() as playwright:
             print('FAIL', name, str(error), flush=True)
 
     def adminbar():
-        logged = browser.new_context(reduced_motion='reduce')
-        logged.add_cookies(json.loads((root / 'cookies.json').read_text()))
-        p = logged.new_page()
-        p.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin) else route.abort())
+        context.add_cookies(json.loads((root / 'cookies.json').read_text()))
+        p = page
         try:
             for width in (390, 600, 601, 700, 768, 782, 783, 1440):
                 p.set_viewport_size({'width': width, 'height': 900})
@@ -57,16 +68,15 @@ with sync_playwright() as playwright:
                     p.keyboard.press('Escape')
                     p.wait_for_timeout(350)
         finally:
-            logged.close()
+            context.clear_cookies()
     check('adminbar', adminbar)
 
     def toc_anchor():
         for logged_in in (False, True):
-            client = browser.new_context(reduced_motion='reduce')
+            context.clear_cookies()
             if logged_in:
-                client.add_cookies(json.loads((root / 'cookies.json').read_text()))
-            p = client.new_page()
-            p.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin) else route.abort())
+                context.add_cookies(json.loads((root / 'cookies.json').read_text()))
+            p = page
             try:
                 for width in (390, 700, 1440):
                     p.set_viewport_size({'width': width, 'height': 900})
@@ -84,7 +94,7 @@ with sync_playwright() as playwright:
                     assert target.get_attribute('href') == p.evaluate('location.hash'), (logged_in, width, target.all_text_contents(), p.evaluate('location.hash'))
                     assert p.evaluate('document.querySelector(location.hash).getBoundingClientRect().top>=document.querySelector(".zen-site-header").getBoundingClientRect().bottom-1')
             finally:
-                client.close()
+                context.clear_cookies()
     check('toc-anchor', toc_anchor)
 
     def metadata():
@@ -103,15 +113,26 @@ with sync_playwright() as playwright:
     check('metadata', metadata)
 
     def noscript():
+        global browser, context, page
+        browser.close()
+        browser = launch()
         nojs = browser.new_context(java_script_enabled=False)
         p = nojs.new_page()
+        nojs.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
         try:
             for width in (390, 639, 640, 700, 767, 768):
                 p.set_viewport_size({'width': width, 'height': 900})
                 p.goto(origin, wait_until='domcontentloaded')
-                assert p.locator('.zen-site-header nav a:visible').count() >= 3, width
+                assert p.locator('.zen-site-header nav, #mobile-menu-btn').count() == 0, width
+                assert p.locator('.zen-footer-navigation a:visible').count() >= 3, width
+                assert p.locator('#search-fallback').is_visible() and not p.locator('#search-toggle').is_visible()
         finally:
-            nojs.close()
+            browser.close()
+            browser = launch()
+            context = browser.new_context(reduced_motion='reduce')
+            context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
+            page = context.new_page()
+            page.on('pageerror', lambda error: errors.append(str(error)))
     check('noscript', noscript)
 
     def search():
@@ -146,9 +167,8 @@ with sync_playwright() as playwright:
     check('toc', toc)
 
     def required():
-        logged = browser.new_context()
-        logged.add_cookies(json.loads((root / 'cookies.json').read_text()))
-        p = logged.new_page()
+        context.add_cookies(json.loads((root / 'cookies.json').read_text()))
+        p = page
         try:
             p.goto(origin + '/wp-admin/admin.php?page=zen-options', wait_until='networkidle')
             assert p.locator('#zen-layout, #zen_content_width').count() == 0
@@ -161,7 +181,7 @@ with sync_playwright() as playwright:
                 assert control.evaluate('e=>{let p=e.parentElement;while(p){if(p.tagName==="DETAILS"&&!p.open)return false;p=p.parentElement}return true}'), key
                 control.fill(old)
         finally:
-            logged.close()
+            context.clear_cookies()
     check('required', required)
 
     def audio():
@@ -182,6 +202,9 @@ with sync_playwright() as playwright:
         page.set_viewport_size({'width': 390, 'height': 900})
         page.goto(origin + '/?p=' + str(fixture['normal']), wait_until='networkidle')
         slider = page.locator('.zen-audio-progress-container')
+        page.locator('.zen-audio-btn').click()
+        page.wait_for_function('document.querySelector("audio").readyState >= 1')
+        page.locator('audio').evaluate('e=>e.pause()')
         slider.scroll_into_view_if_needed()
         data = slider.evaluate('''e=>{let r=e.getBoundingClientRect(),bar=e.querySelector('.zen-audio-progress-bar').getBoundingClientRect();return {width:r.width,height:r.height,barHeight:bar.height}}''')
         assert data['height'] >= 32 and 4 <= data['barHeight'] <= 8, data

@@ -232,7 +232,8 @@ const zenInit = () => {
         const controls = Array.from(container.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).filter(element =>
             element.tabIndex >= 0 && !element.matches(':disabled, input[type="hidden"]') &&
             !element.closest('[hidden], [inert], [aria-hidden="true"]') &&
-            (!element.checkVisibility || element.checkVisibility({ visibilityProperty: true }))
+            (element.checkVisibility ? element.checkVisibility({ visibilityProperty: true }) :
+                element.getClientRects().length > 0 && getComputedStyle(element).visibility === 'visible')
         );
         const activeIndex = controls.indexOf(document.activeElement);
         if (activeIndex < 0 || (event.shiftKey ? activeIndex === 0 : activeIndex === controls.length - 1)) {
@@ -732,9 +733,11 @@ const zenInit = () => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'zen-audio-btn';
-        btn.setAttribute('aria-label', '播放音频');
 
+        let buttonPlaying;
         const setAudioButtonState = (playing) => {
+            if (buttonPlaying === playing) return;
+            buttonPlaying = playing;
             btn.innerHTML = `<i class="ph ph-${playing ? 'pause' : 'play'} text-lg" aria-hidden="true"></i>`;
             btn.setAttribute('aria-label', playing ? '暂停音频' : '播放音频');
         };
@@ -793,6 +796,7 @@ const zenInit = () => {
             audio.removeEventListener('loadedmetadata', updateAudioUI);
             audio.removeEventListener('durationchange', updateAudioUI);
             audio.removeEventListener('ended', onAudioEnded);
+            audio.removeEventListener('volumechange', onAudioVolumeChange);
             const restoreFocus = player.contains(document.activeElement);
             audio.style.display = '';
             player.remove();
@@ -825,6 +829,9 @@ const zenInit = () => {
             setAudioButtonState(false);
             updateAudioUI();
         };
+        const onAudioVolumeChange = () => {
+            if (audio.muted || audio.volume === 0) useNativeAudio();
+        };
 
         audio.addEventListener('play', syncAudioButton);
         audio.addEventListener('pause', onAudioPause);
@@ -833,6 +840,7 @@ const zenInit = () => {
         audio.addEventListener('loadedmetadata', updateAudioUI);
         audio.addEventListener('durationchange', updateAudioUI);
         audio.addEventListener('ended', onAudioEnded);
+        audio.addEventListener('volumechange', onAudioVolumeChange);
 
         progressContainer.addEventListener('click', (e) => {
             const rect = progressContainer.getBoundingClientRect();

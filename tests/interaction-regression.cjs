@@ -165,6 +165,15 @@ async function page(t, html, prepare = () => {}) {
         observe(target) { this.targets.push(target); }
     };
     window.matchMedia = () => ({ matches: false, addEventListener() {} });
+    // jsdom has no rendered boxes; model layout only for native focusable controls.
+    // Individual geometry/visibility cases below can override this boundary before boot.
+    window.HTMLElement.prototype.getClientRects = function () {
+        if (!this.matches('button, a[href], input, select, textarea, [tabindex]')) return [];
+        for (let node = this; node; node = node.parentElement) {
+            if (node.hidden || window.getComputedStyle(node).display === 'none') return [];
+        }
+        return [new window.DOMRect(0, 0, 100, 30)];
+    };
     prepare(window);
     window.eval(main);
     document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -458,6 +467,70 @@ test('search focuses immediately and traps Tab around usable controls only', asy
     assert.equal(press('Tab', { shiftKey: true }), false);
     assert.equal(document.activeElement.id, 'submit');
 });
+
+for (const nativeVisibility of [true, false]) {
+    test(`modal Tab ignores CSS-hidden controls with checkVisibility ${nativeVisibility ? 'available' : 'unavailable'}`, async t => {
+        const { window, document, press } = await page(t, `<style>
+            .css-hidden { display: none; } .css-invisible { visibility: hidden; }
+        </style>${searchMarkup.replace('<button id="search-close"',
+            '<div class="css-hidden"><button id="css-first">Hidden first</button></div><button id="search-close"')
+            .replace('<button>Submit</button>', '<button id="visible-submit">Submit</button><button id="css-last" class="css-invisible">Hidden last</button>')}`, window => {
+            // jsdom has no layout/checkVisibility; preserve computed CSS and native DOM key/focus delivery.
+            const hasBox = element => {
+                for (let node = element; node; node = node.parentElement) {
+                    if (node.hidden || window.getComputedStyle(node).display === 'none') return false;
+                }
+                return true;
+            };
+            for (const element of window.document.querySelectorAll('button, input')) {
+                element.getClientRects = () => hasBox(element) ? [new window.DOMRect(0, 0, 100, 30)] : [];
+            }
+            Object.defineProperty(window.Element.prototype, 'checkVisibility', { configurable: true,
+                value: nativeVisibility ? function () {
+                    return hasBox(this) && window.getComputedStyle(this).visibility === 'visible';
+                } : undefined,
+            });
+        });
+        const toggle = document.getElementById('search-toggle');
+        const close = document.getElementById('search-close');
+        const submit = document.getElementById('visible-submit');
+        toggle.focus(); toggle.click();
+        assert.equal(document.activeElement.id, 'search-input', 'normal opening still focuses the input');
+        assert.equal(window.getComputedStyle(document.getElementById('css-last')).visibility, 'hidden');
+        assert.equal(document.getElementById('css-first').getClientRects().length, 0);
+        for (let repeat = 0; repeat < 2; repeat++) {
+            close.focus();
+            assert.equal(press('Tab', { shiftKey: true }), false, 'first usable control wraps instead of tabbing to a hidden predecessor');
+            assert.equal(document.activeElement, submit);
+            assert.equal(press('Tab'), false, 'last usable control wraps instead of tabbing to a hidden successor');
+            assert.equal(document.activeElement, close);
+        }
+        assert.equal(press('Escape'), false);
+    });
+}
+
+for (const owner of ['drawer', 'lightbox']) {
+    test(`${owner} modal shares the visible-control Tab fallback and restores focus`, async t => {
+        const markup = owner === 'drawer' ? `
+            <button id="floating-toc-btn">Directory</button><div id="toc-overlay" class="hidden"></div>
+            <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><a id="modal-last" href="#chapter">Chapter</a></aside>` : `
+            <article class="entry-content"><img id="plain-image" src="/plain.jpg" alt="Plain"></article>
+            <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`;
+        const { document, press, flush } = await page(t, markup);
+        const trigger = document.getElementById(owner === 'drawer' ? 'floating-toc-btn' : 'plain-image');
+        const first = document.getElementById(owner === 'drawer' ? 'drawer-toc-close' : 'lightbox-close');
+        const last = document.getElementById('modal-last') || first;
+        trigger.focus(); trigger.click(); flush();
+        assert.equal(document.activeElement, first);
+        assert.equal(press('Tab', { shiftKey: true }), false);
+        assert.equal(document.activeElement, last);
+        assert.equal(press('Tab'), false);
+        assert.equal(document.activeElement, first);
+        press('Escape'); flush();
+        assert.equal(document.activeElement, trigger);
+        assert.equal(document.body.style.overflow, '');
+    });
+}
 
 test('Escape does not steal focus when there is no active modal', async t => {
     const { document, press } = await page(t, searchMarkup);
@@ -1143,6 +1216,86 @@ async function pendingAudioPage(t, prepare = () => {}) {
     };
 }
 
+for (const silence of ['muted', 'zero volume']) {
+    test(`audio runtime ${silence} returns the sole UI to native controls and releases listeners`, async t => {
+        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'durationchange', 'ended', 'volumechange'];
+        const listeners = new Map(types.map(type => [type, new Set()]));
+        const external = [];
+        const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t, (window, audio) => {
+            Object.defineProperty(audio, 'duration', { value: 120 });
+            const add = audio.addEventListener.bind(audio);
+            const remove = audio.removeEventListener.bind(audio);
+            audio.addEventListener = (type, callback, options) => {
+                listeners.get(type)?.add(callback);
+                add(type, callback, options);
+            };
+            audio.removeEventListener = (type, callback, options) => {
+                listeners.get(type)?.delete(callback);
+                remove(type, callback, options);
+            };
+            for (const type of types) audio.addEventListener(type, () => external.push(type));
+        });
+        const player = button.closest('.zen-audio-player');
+        button.click();
+        (silence === 'muted' ? button : player.querySelector('[role="slider"]')).focus();
+        // Audible volume changes are a control: they do not discard a working enhancement.
+        audio.volume = 0.5;
+        audio.dispatchEvent(new window.Event('volumechange'));
+        assert.equal(audio.style.display, 'none');
+        assert.equal(document.querySelectorAll('.zen-audio-player').length, 1);
+        if (silence === 'muted') audio.muted = true;
+        else audio.volume = 0;
+        audio.dispatchEvent(new window.Event('volumechange'));
+        assert.equal(document.querySelector('.zen-audio-player'), null, 'a UI without volume control must relinquish silent media');
+        assert.equal(audio.style.display, '');
+        assert.equal(audio.controls, true);
+        assert.equal(document.activeElement, audio, 'keyboard position survives native fallback');
+        const detached = player.outerHTML;
+        if (silence === 'muted') attempts[0].resolve();
+        else attempts[0].reject(new Error('obsolete play failure after volume fallback'));
+        await settle();
+        external.length = 0;
+        for (const type of types) audio.dispatchEvent(new window.Event(type));
+        assert.deepEqual(external, types, 'external media consumers retain their subscriptions');
+        for (const type of types) assert.equal(listeners.get(type).size, 1, `${type} removes only the Zen callback`);
+        assert.equal(player.outerHTML, detached, 'stale completion/events do not rewrite detached custom controls');
+        audio.muted = false; audio.volume = 1;
+        audio.dispatchEvent(new window.Event('volumechange'));
+        assert.equal(document.querySelector('.zen-audio-player'), null, 'repeated volume events cannot recreate a competing owner');
+    });
+}
+
+test('audio playback events and promise completion do not rewrite an unchanged button state', async t => {
+    const { window, audio, button, attempts, settle } = await pendingAudioPage(t);
+    const records = [];
+    const mutations = new window.MutationObserver(batch => records.push(...batch));
+    mutations.observe(button, { childList: true, attributes: true, subtree: true });
+    const drain = () => records.splice(0).concat(mutations.takeRecords());
+    button.click();
+    assert.equal(button.getAttribute('aria-label'), '暂停音频', 'play event still renders the actual state');
+    assert.ok(drain().some(record => record.type === 'childList'), 'control: entering playback renders its icon');
+    const playIcon = button.firstElementChild;
+    attempts[0].resolve(); await settle();
+    const completionWrites = drain();
+    const completedIcon = button.firstElementChild;
+    t.diagnostic(`successful play completion DOM records: ${completionWrites.length}`);
+    button.click();
+    assert.equal(audio.paused, true);
+    assert.equal(button.getAttribute('aria-label'), '播放音频');
+    const pauseWrites = drain();
+    t.diagnostic(`pause click icon replacements: ${pauseWrites.filter(record => record.type === 'childList').length}`);
+    assert.equal(completionWrites.length, 0, 'successful play completion must not repeat the event DOM writes');
+    assert.equal(completedIcon, playIcon);
+    assert.equal(pauseWrites.filter(record => record.type === 'childList').length, 1, 'pause event plus click render one icon, not two');
+    assert.equal(pauseWrites.filter(record => record.attributeName === 'aria-label').length, 1);
+    audio.dispatchEvent(new window.Event('pause'));
+    audio.dispatchEvent(new window.Event('ended'));
+    assert.equal(drain().length, 0, 'duplicate paused/ended events are inert for the button');
+    button.click();
+    assert.equal(button.getAttribute('aria-label'), '暂停音频', 'later replay is not suppressed');
+    attempts[1].resolve(); await settle();
+});
+
 test('cancelling pending audio playback keeps only the custom owner', async t => {
     const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t);
     button.click();
@@ -1223,7 +1376,7 @@ for (const failure of ['rejected play', 'media error']) {
 
 for (const failure of ['rejected play', 'media error']) {
     test(`audio ${failure} relinquishes media subscriptions and detached UI writes`, async t => {
-        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'durationchange', 'ended'];
+        const types = ['play', 'pause', 'error', 'timeupdate', 'loadedmetadata', 'durationchange', 'ended', 'volumechange'];
         const listeners = new Map(types.map(type => [type, new Set()]));
         const external = [];
         const { window, document, audio, button, attempts, settle } = await pendingAudioPage(t, (window, audio) => {

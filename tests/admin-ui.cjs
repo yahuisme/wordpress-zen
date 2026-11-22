@@ -246,7 +246,7 @@ test('Ctrl or Command S uses the native validated settings submit without catchi
 test('native code editors initialize on disclosure once, sync raw text and dirty state, and retain keyboard exits', () => {
     const instances = [];
     const dom = boot(window => {
-        window.zenAdmin = { codeEditor: { codemirror: { mode: 'htmlmixed' } } };
+        window.zenAdmin = { codeEditor: '1' }; // Native wp_localize_script scalar availability flag.
         window.wp = { codeEditor: { initialize(textarea, settings) {
             const callbacks = {};
             const cm = { value: textarea.value, refreshes: 0,
@@ -294,7 +294,7 @@ test('CodeMirror keyboard save honors repeat, composition, and the native submit
         window.Range.prototype.getBoundingClientRect = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
         window.Range.prototype.getClientRects = () => [];
         window.eval(fs.readFileSync(path.join(core, 'wp-includes/js/codemirror/codemirror.min.js'), 'utf8'));
-        window.zenAdmin = { codeEditor: { codemirror: { mode: 'htmlmixed' } } };
+        window.zenAdmin = { codeEditor: '1' }; // Native wp_localize_script scalar availability flag.
         window.wp.codeEditor = { initialize(textarea, settings) {
             return { codemirror: window.wp.CodeMirror.fromTextArea(textarea, settings.codemirror) };
         } };
@@ -333,7 +333,7 @@ test('CodeMirror keyboard save honors repeat, composition, and the native submit
 test('native code-editor opt-out and missing resources preserve plain-text saving', () => {
     for (const reason of ['localized false', 'missing API']) {
         const dom = boot(window => {
-            window.zenAdmin = { codeEditor: reason === 'localized false' ? '' : { codemirror: {} } };
+            window.zenAdmin = { codeEditor: reason === 'localized false' ? '' : '1' };
             if (reason === 'localized false') window.wp = { codeEditor: { initialize() { throw new Error('editor opt-out was ignored'); } } };
         });
         const { document, Event, KeyboardEvent } = dom.window;

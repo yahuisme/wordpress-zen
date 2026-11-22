@@ -180,7 +180,7 @@ python tests/design-boundaries-regression.py /path/to/fixture
 python tests/native-interaction-regression.py /path/to/fixture
 ```
 
-颜色测试覆盖 Cover/Group 的局部黑白文字、浅深模式、显式标题色和无脚本原生搜索；可追加 `colors` 或 `noscript`。交互测试通过延迟真实高亮库与 WAV 响应，覆盖音频取消/失败单播放器、目录 Enter 后的 Tab 顺序、Escape 焦点返回，以及高亮未到达时基础交互可用；可追加 `audio`、`toc` 或 `highlight`。这些测试要求上述 loopback fixture，浏览器串行且使用外部内存硬限，不伪造媒体状态。
+颜色测试覆盖 Cover/Group 的局部黑白文字、浅深模式、显式标题色和无脚本原生搜索；可追加 `colors` 或 `noscript`。交互测试通过延迟真实高亮库与 WAV 响应，覆盖音频取消/失败单播放器、目录 Enter 后的 Tab 顺序、Escape 焦点返回，以及高亮未到达时基础交互可用；可追加 `audio`、`toc` 或 `highlight`。`audio-volume` 验证真实音频运行中静音或零音量后恢复原生控件与焦点；`modal-visibility` 在仅禁用 `checkVisibility` API 的真实页面验证搜索、目录和灯箱的 Tab 不落到 CSS 隐藏控件。这些测试要求上述 loopback fixture，浏览器串行且使用外部内存硬限，不伪造媒体状态。
 
 列表宽度测试在固定 1000px 版面下跑15个原生保存/视口场景，检查两种模式均保留最新卡片摘要；仍断言真实文章ID与非空样本。`native-settings-regression.py --layout-only` 只验证原生设置保存及首页、分类、标签、搜索和正文的受影响展示；由调用者快照并恢复隔离数据库。逐页测试可用 `--routes=tag,article` 只补指定页面族，报告仅对应几何场景，不包含完整交互与后台验收。
 

@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 root = Path(sys.argv[1]).resolve()
 selection = sys.argv[2] if len(sys.argv) > 2 else 'all'
-assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'toc', 'toc-race', 'highlight', 'highlight-failure')
+assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'audio-volume', 'modal-visibility', 'toc', 'toc-race', 'highlight', 'highlight-failure')
 assert (root / 'runtime/wp-load.php').is_file() and (root / 'db/zen.sqlite').is_file()
 origin = 'http://127.0.0.1:18765'
 cli = ['php', '/opt/test-tools/wordpress/wp-cli.phar', '--allow-root', '--path=' + str(root / 'runtime')]
@@ -24,6 +24,11 @@ with wave.open(str(media), 'wb') as stream:
     stream.writeframes(b'\x00\x00' * 16000)
 content = '<h2 id="first">First chapter</h2><p><a href="#middle">First link</a></p>' + '<p>Native scrolling content.</p>' * 30
 content += '<h2 id="middle">Middle chapter</h2><p><a id="middle-link" href="#end">Next native focus target</a></p><pre><code class="language-js">const quiet = 42;</code></pre><audio id="native-audio" controls preload="none" src="/native-interaction.wav"></audio><h2 id="end">End</h2>'
+if selection in ('all', 'modal-visibility'):
+    attachment = int(json.loads((root / 'fixture.json').read_text())['media'][0])
+    image_url = wp('eval', f'echo wp_get_attachment_url({attachment});')
+    assert image_url.startswith(origin + '/')
+    content += '<p><img id="native-lifecycle-image" src="' + image_url + '" alt="Native modal image"></p>'
 post = wp('post', 'create', '--post_title=Native interaction regression', '--post_status=publish', '--post_content=' + content, '--porcelain')
 rows = []
 errors = []
@@ -35,11 +40,14 @@ try:
         control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
         ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
         assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
-        for case in (('audio', 'audio-ltr', 'audio-rtl', 'toc', 'toc-race', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
+        for case in (('audio', 'audio-ltr', 'audio-rtl', 'audio-volume', 'modal-visibility', 'toc', 'toc-race', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
             browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
             processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
             assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
             context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
+            if case == 'modal-visibility':
+                # Simulate only an absent legacy API; DOM layout, CSS and keyboard remain native.
+                context.add_init_script('Element.prototype.checkVisibility = undefined;')
             held = []
             def route_request(route):
                 url = route.request.url
@@ -47,7 +55,7 @@ try:
                     response = route.fetch()
                     document = re.sub(r'<html\b([^>]*)>', lambda m: '<html dir="rtl"' + re.sub(r'\sdir="[^"]*"', '', m[1]) + '>', response.text(), count=1)
                     route.fulfill(response=response, body=document)
-                elif case in ('audio-ltr', 'audio-rtl') and '/native-interaction.wav' in url:
+                elif case in ('audio-ltr', 'audio-rtl', 'audio-volume') and '/native-interaction.wav' in url:
                     payload = media.read_bytes()
                     start, end = 0, len(payload) - 1
                     requested_range = route.request.headers.get('range')
@@ -73,7 +81,50 @@ try:
             page.goto(origin + '/?p=' + post, wait_until='commit' if case == 'highlight' else 'domcontentloaded')
             page.wait_for_selector('#search-toggle')
             page.wait_for_timeout(200)
-            if case in ('audio-ltr', 'audio-rtl'):
+            if case == 'modal-visibility':
+                assert page.evaluate('typeof Element.prototype.checkVisibility') == 'undefined'
+                image = page.locator('#native-lifecycle-image')
+                image.evaluate('e=>e.decode()')
+                for owner, container, first, last in (
+                    ('search', '#search-modal', '#search-close', '.zen-search-submit'),
+                    ('drawer', '#drawer-toc', '#drawer-toc-close', '#drawer-toc-nav a:last-child'),
+                    ('lightbox', '#lightbox', '#lightbox-close', '#lightbox-close'),
+                ):
+                    if owner == 'search': page.locator('#search-toggle').click()
+                    elif owner == 'drawer': page.locator('#header-toc-btn').click()
+                    else: image.click()
+                    page.wait_for_timeout(350)
+                    page.locator(container).evaluate('''e=>{
+                        for(const value of ['display:none','visibility:hidden']){
+                            const b=document.createElement('button');b.type='button';b.style.cssText=value;b.textContent='Hidden control';e.append(b);
+                        }
+                    }''')
+                    page.locator(first).focus()
+                    page.keyboard.press('Shift+Tab')
+                    record(owner + ' legacy reverse Tab skips CSS-hidden controls', page.locator(last).evaluate('e=>e===document.activeElement'))
+                    page.keyboard.press('Tab')
+                    record(owner + ' legacy forward Tab wraps to visible first control', page.locator(first).evaluate('e=>e===document.activeElement'))
+                    page.keyboard.press('Escape')
+                    page.wait_for_timeout(350)
+            elif case == 'audio-volume':
+                for silent in ('muted', 'zero-volume'):
+                    if silent == 'zero-volume':
+                        page.reload(wait_until='domcontentloaded')
+                    audio = page.locator('#native-audio')
+                    player = page.locator('#native-audio + .zen-audio-player')
+                    player.locator('button').click()
+                    page.wait_for_function('document.querySelector("#native-audio").readyState>=1 && !document.querySelector("#native-audio").paused')
+                    audio.evaluate('e=>{e.pause();e.volume=0.5}')
+                    page.wait_for_timeout(100)
+                    record(silent + ' audible-volume positive control keeps custom owner', player.count() == 1 and audio.evaluate('e=>getComputedStyle(e).display==="none"'))
+                    player.locator('button' if silent == 'muted' else '[role="slider"]').focus()
+                    audio.evaluate('(e,silent)=>{if(silent==="muted")e.muted=true;else e.volume=0;}', silent)
+                    page.wait_for_function('getComputedStyle(document.querySelector("#native-audio")).display!=="none"')
+                    record(silent + ' restores one native control owner and focused audio', player.count() == 0 and audio.evaluate('e=>e===document.activeElement && e.controls'))
+                    audio.evaluate('e=>{e.muted=false;e.volume=1;}')
+                    page.wait_for_timeout(100)
+                    record(silent + ' later changes do not resurrect removed custom player', player.count() == 0)
+            elif case in ('audio-ltr', 'audio-rtl'):
                 player = page.locator('#native-audio + .zen-audio-player')
                 player.locator('button').click()
                 page.wait_for_function('document.querySelector("#native-audio").readyState>=1')

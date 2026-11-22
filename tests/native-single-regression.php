@@ -1,6 +1,8 @@
 <?php
 /** Native media-order and Loop contract; disposable loopback fixture only. */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1]) || empty($argv[2])) exit(2);
+$_SERVER['HTTP_HOST'] = $_SERVER['SERVER_NAME'] = '127.0.0.1';
+$_SERVER['REQUEST_URI'] = '/';
 require $argv[1];
 if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') throw new RuntimeException('Isolated Zen required');
 $zen_single_image = (int) $argv[2];

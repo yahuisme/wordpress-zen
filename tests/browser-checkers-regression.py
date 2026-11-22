@@ -78,4 +78,10 @@ for entrypoint in ('page-review-regression.py', 'native-settings-regression.py')
     page_review = (root / entrypoint).read_text()
     assert "'/?tag_id='" not in page_review, 'Tag coverage must use a native public tag route: ' + entrypoint
     assert "tag-" in page_review and 'body' in page_review, 'Tag page identity must be asserted: ' + entrypoint
-print(f'PASS browser checker: {positive} valid controls, {negative} invalid controls and tag identity contract')
+for entrypoint in ('design-browser-regression.py', 'native-boundary-regression.py', 'repair-ui-regression.py'):
+    browser_source = (root / entrypoint).read_text()
+    assert "'--single-process'" in browser_source and "'--no-zygote'" in browser_source, 'Legacy browser entrypoint must be single-process: ' + entrypoint
+    assert 'memory.max' in browser_source and 'memory.swap.max' in browser_source and 'SystemInfo.getProcessInfo' in browser_source, 'Legacy browser entrypoint must verify containment: ' + entrypoint
+assert "x['size']=='18px'" not in (root / 'design-browser-regression.py').read_text(), 'Compare native editor with the current reader, not retired typography'
+assert "page.locator('.zen-site-header nav a:visible')" not in (root / 'repair-ui-regression.py').read_text(), 'No-script navigation must use the current native footer owner'
+print(f'PASS browser checker: {positive} valid controls, {negative} invalid controls, tag identity and maintained browser-runner contracts')

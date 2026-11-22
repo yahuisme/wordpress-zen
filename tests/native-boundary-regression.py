@@ -9,9 +9,14 @@ def check(name,fn):
  try:fn();results.append({'name':name,'passed':True});print('PASS',name,flush=True)
  except Exception as x:results.append({'name':name,'passed':False,'error':str(x)});print('FAIL',name,str(x),flush=True)
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage']);c=b.new_context(viewport={'width':1440,'height':1000});q=c.new_page()
+ b=p.chromium.launch(executable_path='/usr/lib/chromium/chromium',args=['--no-sandbox','--disable-dev-shm-usage','--single-process','--no-zygote'])
+ group=Path('/proc/self/cgroup').read_text();control=Path('/sys/fs/cgroup')/group.strip().split('::',1)[1].lstrip('/')
+ assert any((a/'memory.max').is_file() and (a/'memory.max').read_text().strip().isdigit() and int((a/'memory.max').read_text())<=4*1024**3 and (a/'memory.swap.max').read_text().strip()=='0' for a in (control,*control.parents))
+ processes=b.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+ assert processes and all(Path(f'/proc/{x["id"]}/cgroup').read_text()==group for x in processes)
+ c=b.new_context(viewport={'width':1440,'height':1000});q=c.new_page()
  def branding():
-  cli('theme','mod','set','custom_logo',str(f['media'][0]));cli('post','meta','update',str(f['normal']),'_thumbnail_id',str(f['media'][1]));cli('option','update','zen_show_featured_image','1')
+  cli('theme','mod','set','custom_logo',str(f['media'][0]));cli('post','meta','update',str(f['normal']),'_thumbnail_id',str(f['media'][0]));cli('option','update','zen_show_featured_image','1')
   q.goto(o+'/?p='+str(f['normal']),wait_until='networkidle');assert q.locator('.zen-site-brand img').count()==1 and q.locator('.zen-site-brand a').count()==0
   assert q.locator('.zen-featured-image').count()==1 and q.locator('.zen-featured-image').get_attribute('srcset')
   for width in (320,390,768,1440):
@@ -41,12 +46,12 @@ with sync_playwright() as p:
   cli('post','update',str(f['split']),'--post_content='+original)
  check('native wide media stays centered and inside viewport',wide)
  def restricted():
-  cli('option','update','zen_code_head','<script>window.zenRestricted="original";</script>');rc=b.new_context();rc.add_cookies(json.loads((r/'restricted-cookies.json').read_text()));page=rc.new_page();page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen_code_head').count()==0
+  cli('option','update','zen_code_head','<script>window.zenRestricted="original";</script>');c.add_cookies(json.loads((r/'restricted-cookies.json').read_text()));page=q;page.goto(o+'/wp-admin/admin.php?page=zen-options',wait_until='networkidle');assert page.locator('#zen_code_head').count()==0
   page.locator('#zen_footer_text').fill('restricted save')
   with page.expect_navigation(wait_until='networkidle'):page.locator('#zen_save_top').click()
   assert page.locator('.notice-success,.updated').count()>0
   assert cli('option','get','zen_code_head')=='<script>window.zenRestricted="original";</script>'
-  assert cli('option','get','zen_footer_text')=='restricted save';rc.close();cli('option','delete','zen_code_head');cli('option','delete','zen_code_body');cli('option','delete','zen_footer_text')
+  assert cli('option','get','zen_footer_text')=='restricted save';c.clear_cookies();cli('option','delete','zen_code_head');cli('option','delete','zen_code_body');cli('option','delete','zen_footer_text')
  check('native restricted save retains authorized code without exposing its editor',restricted)
  b.close()
 (r/'evidence/native-boundary.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));assert all(x['passed'] for x in results),results
