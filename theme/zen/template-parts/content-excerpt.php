@@ -13,7 +13,7 @@ $zen_post_id = (int) get_the_ID();
     <h2 id="post-title-<?php echo $zen_post_id; ?>" class="zen-post-title">
         <a href="<?php the_permalink(); ?>" class="zen-post-title-link">
             <?php if (!empty($args['highlight_title'])) : ?>
-                <?php echo zen_highlight_search_terms(zen_post_title(), get_search_query(false)); ?>
+                <?php echo zen_highlight_search_title(zen_post_title()); ?>
             <?php else : echo esc_html(zen_post_title()); endif; ?>
         </a>
     </h2>

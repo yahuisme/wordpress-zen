@@ -175,7 +175,8 @@ with sync_playwright() as p:
         page.locator('.zen-code-copy').click()
         page.wait_for_timeout(100)
         assert page.evaluate('navigator.clipboard.readText()') == code.text_content()
-        assert page.locator('.zen-code-copy').get_attribute('aria-label') == '已复制'
+        assert page.locator('.zen-code-copy').get_attribute('aria-label') == '复制代码'
+        assert page.locator('.zen-code-block [role="status"]').text_content() == '代码已复制'
 
     def page_family():
         for route in ('/', '/?s=测试', '/?p=' + str(f['archives']), '/?p=' + str(f['links']), '/?p=' + str(f['page']), '/?p=2147483647'):

@@ -7,8 +7,8 @@ const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '..', 'theme', 'zen');
 const html = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html'], { encoding: 'utf8' });
 function asset(file) { const target = path.join(root, file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }
-function boot(prepare = () => {}) {
-    const dom = new JSDOM(html, { url: 'https://example.test/wp-admin/admin.php?page=zen-options', runScripts: 'outside-only' });
+function boot(prepare = () => {}, markup = html) {
+    const dom = new JSDOM(markup, { url: 'https://example.test/wp-admin/admin.php?page=zen-options', runScripts: 'outside-only' });
     prepare(dom.window);
     dom.window.eval(asset('assets/js/admin.js'));
     dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
@@ -25,6 +25,23 @@ function unloading(dom) {
     dom.window.dispatchEvent(event);
     return event.defaultPrevented;
 }
+test('saved field errors take priority over collapsed session state and support focus after recollapse', () => {
+    const errorHtml = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html', '--save-error'], { encoding: 'utf8' });
+    const dom = boot(window => {
+        window.sessionStorage.setItem('zen-options-groups', JSON.stringify({ 'zen-footer': false, 'zen-reading': false }));
+    }, errorHtml);
+    const { document } = dom.window;
+    const footer = document.getElementById('zen-footer');
+    assert.equal(footer.open, true, 'open the group flagged by the server');
+    assert.equal(document.getElementById('zen-reading').open, false, 'still honor unrelated disclosure state');
+    footer.open = false;
+    const link = document.querySelector('.zen-settings-errors a[href="#zen_site_start_date"]');
+    assert.ok(link);
+    link.click();
+    assert.equal(footer.open, true);
+    assert.equal(document.activeElement.id, 'zen_site_start_date');
+    dom.window.close();
+});
 test('dirty state reflects real form changes and restoring originals becomes clean', () => {
     const dom = boot();
     const state = dom.window.document.getElementById('zen-save-state');
@@ -169,6 +186,14 @@ for (const outcome of ['confirmed', 'declined', 'canceled later']) {
         reset.dispatchEvent(event);
         assert.equal(confirmations, 1);
         assert.equal(event.defaultPrevented, outcome !== 'confirmed');
+        const payload = new dom.window.FormData(reset);
+        assert.equal(payload.get('action'), 'zen_reset_options', 'base form stays non-destructive');
+        // jsdom does not dispatch formdata; model the payload event after all submit listeners.
+        const formdata = new dom.window.Event('formdata');
+        formdata.formData = payload;
+        reset.dispatchEvent(formdata);
+        assert.equal(payload.get('action'), outcome === 'confirmed' ? 'zen_reset_confirm' : 'zen_reset_options');
+        assert.equal(payload.get('zen_reset_nonce'), outcome === 'confirmed' ? 'fixture-nonce' : 'fixture');
         assert.equal(unloading(dom), outcome !== 'confirmed');
         dom.window.close();
     });

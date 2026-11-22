@@ -158,11 +158,17 @@
 .zen-links-directory > li { border-bottom: 1px solid var(--zen-border-soft); }
 .zen-links-directory .zen-link-card {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    padding: 20px 0;
+    border: 0;
+}
+.zen-link-copy {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) fit-content(34%);
     align-items: center;
     gap: 20px;
-    padding: 20px 0;
-    border: 0;
 }
 .zen-link-label {
     display: flex;
@@ -195,19 +201,13 @@
     font: 400 0.9rem/1.7 var(--zen-font-body);
     overflow-wrap: anywhere;
 }
-.zen-link-destination {
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-end;
-    gap: 8px;
+.zen-link-host {
     min-width: 0;
     color: var(--zen-muted);
     font: 400 0.8125rem/1.5 var(--zen-font-body);
     overflow-wrap: anywhere;
 }
 .zen-link-arrow {
-    flex: none;
-    align-self: center;
     color: var(--zen-accent);
 }
 
@@ -362,10 +362,17 @@
     .zen-archive-list { margin-inline-start: 0; }
     .zen-archives-directory .zen-archive-row { gap: 8px; }
     .zen-archive-row .zen-post-date { font-size: 0.875rem; }
-    .zen-links-directory .zen-link-card { column-gap: 12px; }
+    .zen-link-copy { column-gap: 12px; }
     :is(.zen-links-directory, .zen-tags-directory) { grid-template-columns: minmax(0, 1fr); margin-block-start: 28px; }
     .zen-search-heading--blank .zen-native-search .search-form input[type="search"] { min-height: 64px; }
     .zen-error-page { text-align: start; }
     .zen-error-copy { margin-inline: 0; font-size: 1rem; }
     .zen-error-page .zen-recovery-links { justify-content: flex-start; gap: 0 8px; }
+}
+
+@media (max-width: 420px) {
+    .zen-link-copy { display: flex; flex-wrap: wrap; row-gap: 4px; }
+    /* Keep an ordinary hostname beside the label; wrap a long one as a separate item. */
+    .zen-link-label { flex: 1 1 62%; }
+    .zen-link-host { max-inline-size: 100%; }
 }

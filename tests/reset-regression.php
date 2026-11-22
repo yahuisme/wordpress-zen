@@ -12,7 +12,7 @@ function esc_html_e($text, $domain = null) { echo esc_html__($text, $domain); }
 function esc_html($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); }
 function wp_die($message, $title = '', $args = array()) { throw new Zen_Reset_Denied((string) $args['response']); }
 function check_admin_referer($action, $name = '_wpnonce') {
-    if ($action !== 'zen_reset_options' || $name !== 'zen_reset_nonce' || !$GLOBALS['nonce_valid']) throw new Zen_Reset_Denied('nonce');
+    if ($action !== 'zen_reset_confirm' || $name !== 'zen_reset_nonce' || $_POST[$name] !== 'confirm-fixture' || !$GLOBALS['nonce_valid']) throw new Zen_Reset_Denied('nonce');
 }
 function get_option($key, $default = false) { return array_key_exists($key, $GLOBALS['options']) ? $GLOBALS['options'][$key] : $default; }
 function delete_option($key) {
@@ -27,6 +27,7 @@ function add_query_arg($query, $url) { return $url . '?' . http_build_query($que
 // Throw at the redirect boundary so the real handler's exit cannot stop the suite.
 function wp_safe_redirect($url) { throw new Zen_Reset_Redirect($url); }
 function get_admin_page_title() { return 'Zen 主题设置'; }
+function get_settings_errors() { return array(); }
 function settings_errors() {}
 function settings_fields($group) {}
 // The notice precedes the first submit button; stop rendering unrelated fields.
@@ -41,6 +42,8 @@ function zen_reset_check($condition, $label) {
     if (!$condition) $failures++;
 }
 function zen_reset_fixture($unfiltered = true) {
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    $_REQUEST = $_POST = array('zen_reset_nonce' => 'confirm-fixture');
     $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => $unfiltered);
     $GLOBALS['nonce_valid'] = true;
     $GLOBALS['options'] = array_merge(zen_get_option_defaults(), array('unrelated_option' => 'untouched', 'zen_category_ids' => array(9, 2), 'zen_content_width' => 1080));
@@ -89,6 +92,12 @@ $before = $GLOBALS['options'];
 try { zen_reset_options(); zen_reset_check(false, 'nonce denied'); }
 catch (Zen_Reset_Denied $error) { zen_reset_check($error->getMessage() === 'nonce', 'invalid nonce denied'); }
 zen_reset_check($GLOBALS['options'] === $before && !$GLOBALS['deleted'] && !$GLOBALS['transients'], 'nonce denial performs no writes');
+zen_reset_fixture();
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$before = $GLOBALS['options'];
+try { zen_reset_options(); zen_reset_check(false, 'GET denied'); }
+catch (Zen_Reset_Denied $error) { zen_reset_check($error->getMessage() === '400', 'destructive endpoint requires POST even with a valid nonce'); }
+zen_reset_check($GLOBALS['options'] === $before && !$GLOBALS['deleted'] && !$GLOBALS['transients'], 'GET denial performs no writes');
 zen_reset_fixture();
 $GLOBALS['options'] = array('unrelated_option' => 'untouched');
 $status = zen_reset_call();

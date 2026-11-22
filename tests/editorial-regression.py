@@ -86,6 +86,8 @@ with sync_playwright() as p:
         fixture_ids = json.loads((fixture / 'fixture.json').read_text())
         page.goto(origin, wait_until='load')
         latest = page.locator('.zen-latest-card').get_attribute('id')
+        recent_stat = page.locator('.zen-masthead-stats span').filter(has_text='最近发布')
+        latest_date = recent_stat.inner_text()
         post_ids = page.locator('main article[id^=post-]').evaluate_all('items => items.map(i => i.id)')
         page.context.add_cookies(json.loads((fixture / 'cookies.json').read_text()))
         settings = origin + 'wp-admin/admin.php?page=zen-options'
@@ -105,6 +107,7 @@ with sync_playwright() as p:
             assert not card_toggle.is_checked()
             page.goto(origin, wait_until='load')
             assert page.locator('.zen-latest-card').count() == 0
+            assert recent_stat.inner_text() == latest_date
             assert page.locator(f'.zen-post-list > #{latest}').count() == 1
             assert set(page.locator('main article[id^=post-]').evaluate_all('items => items.map(i => i.id)')) == set(post_ids)
             for path, date_selector, date_context in [

@@ -29,9 +29,18 @@ function zen_custom_excerpt_length($length) {
 }
 add_filter('excerpt_length', 'zen_custom_excerpt_length', 999);
 
-/**
- * Link order management.
- */
+/** Apply the frontend tie-break and zero-last policy only to the native ascending admin preview. */
+function zen_order_link_manager_bookmarks($bookmarks, $args) {
+    if (is_array($bookmarks) && empty($args['hide_invisible']) && $args['limit'] === -1
+        && strtolower($args['orderby']) === 'rating' && strtoupper($args['order']) === 'ASC') {
+        usort($bookmarks, 'zen_compare_link_order');
+    }
+    return $bookmarks;
+}
+add_action('load-link-manager.php', function () {
+    add_filter('get_bookmarks', 'zen_order_link_manager_bookmarks', 10, 2);
+});
+
 function zen_link_order_metabox() {
     add_meta_box(
         'zen_link_order_box',

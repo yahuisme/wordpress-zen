@@ -158,6 +158,50 @@ function zen_php_search() {
         zen_php_check(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'Literal &#X41; amp', 'search: uppercase hexadecimal entity-looking text stays literal for query ' . $query);
         zen_php_check(substr_count($html, '<mark ') === (int) ($query !== 'missing'), 'search: uppercase hexadecimal literal keeps intended match count for query ' . $query);
     }
+
+    $quoted = zen_php_post(array('post_title' => 'Patent Orchard & 0 -literal'));
+    zen_php_post(array('post_title' => 'Patent distant Orchard', 'post_date' => '2024-01-01 00:00:00'));
+    zen_php_post(array('post_title' => 'Patent Orchard forbidden', 'post_date' => '2024-01-01 00:00:00'));
+    $cases = array(
+        array('s' => '"Patent Orchard" -forbidden', 'marks' => array('Patent Orchard')),
+        array('s' => 'Patent Orchard', 'marks' => array('Patent', 'Orchard')),
+        array('s' => '0', 'marks' => array('0')),
+    );
+    $saved_main = $GLOBALS['wp_the_query'];
+    $saved_query = $GLOBALS['wp_query'];
+    $saved_post = $GLOBALS['post'] ?? null;
+    try {
+        $main = new WP_Query();
+        $GLOBALS['wp_query'] = $GLOBALS['wp_the_query'] = $main;
+        foreach ($cases as $case) {
+            $main->query(array('s' => $case['s'], 'posts_per_page' => 1, 'cache_results' => false));
+            zen_php_check($main->is_search() && (int) ($main->posts[0]->ID ?? 0) === $quoted, 'search: native result order and membership retained');
+            if ($case['s'] === '"Patent Orchard" -forbidden') zen_php_check((int) $main->found_posts === 1, 'search: neither separated phrase nor excluded term matches');
+            $main->the_post();
+            $html = zen_php_capture(static function () {
+                get_template_part('template-parts/content', 'excerpt', array('highlight_title' => true));
+            });
+            preg_match_all('~<mark\b[^>]*>(.*?)</mark>~s', $html, $marks);
+            zen_php_check($marks[1] === $case['marks'] && str_contains($html, '&amp;'), 'search: list title marks match parsed terms: ' . $case['s']);
+        }
+
+        $replacement = static fn($default) => __FILE__;
+        $install_replacement = static function () use ($replacement) { add_filter('search_template', $replacement); };
+        add_action('template_redirect', $install_replacement);
+        try {
+            $main->query(array('s' => '', 'posts_per_page' => 1));
+            do_action('template_redirect');
+            zen_php_check(get_search_template() === __FILE__, 'search: late plugin selects its replacement template');
+            zen_php_check($main->post_count === 1 && $main->have_posts(), 'search: late replacement template receives the native Loop');
+        } finally {
+            remove_action('template_redirect', $install_replacement);
+            remove_filter('search_template', $replacement);
+        }
+    } finally {
+        $GLOBALS['wp_the_query'] = $saved_main;
+        $GLOBALS['wp_query'] = $saved_query;
+        $GLOBALS['post'] = $saved_post;
+    }
 }
 function zen_php_links() {
     require_once ABSPATH . 'wp-admin/includes/bookmark.php';
@@ -192,6 +236,36 @@ function zen_php_links() {
         }
     } finally {
         wp_reset_query();
+        foreach ($ids as $id) wp_delete_link($id);
+    }
+}
+function zen_php_link_manager() {
+    require_once ABSPATH . 'wp-admin/includes/admin.php';
+    require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+    require_once ABSPATH . 'wp-admin/includes/class-wp-links-list-table.php';
+    $ids = array();
+    $saved_request = $_REQUEST;
+    try {
+        foreach (array('Zero' => 0, 'Link 10' => 2, 'Link 2' => 2, 'Latest' => 1) as $name => $rating) {
+            $id = wp_insert_link(array('link_name' => 'Zen Rating Fixture ' . $name, 'link_url' => 'https://example.test/' . rawurlencode($name), 'link_rating' => $rating), true);
+            if (!$id || is_wp_error($id)) throw new RuntimeException('Link-rating fixture insert failed');
+            $ids[$name] = (int) $id;
+        }
+        $table = new WP_Links_List_Table(array('screen' => 'link-manager'));
+        $ordered_ids = static function () use ($table) {
+            $table->prepare_items();
+            return array_map('intval', wp_list_pluck($table->items, 'link_id'));
+        };
+        $_REQUEST = array('orderby' => 'rating', 'order' => 'asc', 's' => 'Zen Rating Fixture');
+        zen_php_check($ordered_ids()[0] === $ids['Zero'], 'link manager: native rating sort is unchanged outside its load hook');
+        do_action('load-link-manager.php');
+        zen_php_check($ordered_ids() === array($ids['Latest'], $ids['Link 2'], $ids['Link 10'], $ids['Zero']), 'link manager: ascending rating has natural name ties and zero last');
+        $_REQUEST['order'] = 'desc';
+        $descending = $ordered_ids();
+        zen_php_check($descending[3] === $ids['Zero'] && $descending[2] === $ids['Latest'], 'link manager: descending rating remains native');
+    } finally {
+        remove_filter('get_bookmarks', 'zen_order_link_manager_bookmarks', 10);
+        $_REQUEST = $saved_request;
         foreach ($ids as $id) wp_delete_link($id);
     }
 }
@@ -273,7 +347,7 @@ function zen_php_category_cache() {
 try {
     if (in_array($zen_php_slice, array('all', 'comments'), true)) zen_php_comments();
     if (in_array($zen_php_slice, array('all', 'search'), true)) zen_php_search();
-    if (in_array($zen_php_slice, array('all', 'links'), true)) zen_php_links();
+    if (in_array($zen_php_slice, array('all', 'links'), true)) { zen_php_links(); zen_php_link_manager(); }
     if (in_array($zen_php_slice, array('all', 'category-cache'), true)) zen_php_category_cache();
 } finally {
     foreach (array_reverse($zen_php_posts) as $id) wp_delete_post($id, true);

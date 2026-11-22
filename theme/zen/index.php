@@ -5,9 +5,11 @@ global $wp_query;
 $zen_description = get_bloginfo('description');
 $zen_first_index = is_home() && !is_paged();
 $zen_masthead = $zen_first_index && zen_get_option('zen_show_site_intro') && $zen_description !== '';
-$zen_latest = $zen_first_index && zen_get_option('zen_show_latest_card')
+$zen_show_latest_card = $zen_first_index && zen_get_option('zen_show_latest_card');
+$zen_recent_post = ($zen_masthead || $zen_show_latest_card)
     ? zen_get_latest_index_post($wp_query->posts ?? array())
     : null;
+$zen_latest = $zen_show_latest_card ? $zen_recent_post : null;
 ?>
 <?php if ($zen_masthead) : ?>
 <header class="zen-masthead">
@@ -17,8 +19,8 @@ $zen_latest = $zen_first_index && zen_get_option('zen_show_latest_card')
         <span><?php echo esc_html(sprintf(__('建站 %s 天', 'zen'), number_format_i18n($zen_uptime['days']))); ?></span>
         <span class="zen-masthead-stats">
             <span><?php echo esc_html(sprintf(__('共 %s 篇文章', 'zen'), number_format_i18n((int) ($wp_query->found_posts ?? 0)))); ?></span>
-            <?php if ($zen_latest) : ?>
-                <span><?php echo esc_html(sprintf(__('最近发布 %s', 'zen'), get_the_date('Y.m.d', $zen_latest))); ?></span>
+            <?php if ($zen_recent_post) : ?>
+                <span><?php echo esc_html(sprintf(__('最近发布 %s', 'zen'), get_the_date('Y.m.d', $zen_recent_post))); ?></span>
             <?php endif; ?>
         </span>
     </div>

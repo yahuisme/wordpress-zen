@@ -15,7 +15,9 @@
         try {
             var savedGroups = JSON.parse(window.sessionStorage.getItem(groupsKey) || '{}');
             groups.forEach(function (group) {
-                if (savedGroups && typeof savedGroups[group.id] === 'boolean') group.open = savedGroups[group.id];
+                if (!group.querySelector('[aria-invalid="true"]') && savedGroups && typeof savedGroups[group.id] === 'boolean') {
+                    group.open = savedGroups[group.id];
+                }
             });
         } catch (error) {}
         groups.forEach(function (group) {
@@ -86,6 +88,11 @@
                         onTabPrevious: function () { focusCode(index - 1); }
                     });
                     editors[index] = instance.codemirror;
+                    if (field.getAttribute('aria-invalid') === 'true') {
+                        var input = editors[index].getInputField();
+                        input.setAttribute('aria-invalid', 'true');
+                        input.setAttribute('aria-describedby', field.getAttribute('aria-describedby'));
+                    }
                     editors[index].on('change', function () {
                         editors[index].save();
                         refresh();
@@ -101,19 +108,41 @@
         form.addEventListener('reset', function () {
             window.setTimeout(function () { syncPreset(); refresh(); }, 0);
         });
-        form.addEventListener('invalid', function (event) {
-            var parent = event.target.parentElement;
+        function revealField(field) {
+            var parent = field.parentElement;
             while (parent && parent !== form) {
                 if (parent.tagName === 'DETAILS') parent.open = true;
                 parent = parent.parentElement;
             }
-        }, true);
+        }
+        form.addEventListener('invalid', function (event) { revealField(event.target); }, true);
+        document.querySelectorAll('.zen-settings-errors a').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                var field = document.getElementById(link.hash.slice(1));
+                if (!field || !form.contains(field)) return;
+                revealField(field);
+                var editor = editors[codeFields.indexOf(field)];
+                if (editor) {
+                    event.preventDefault();
+                    editor.getWrapperElement().scrollIntoView({ block: 'center' });
+                    editor.focus();
+                } else {
+                    field.focus({ preventScroll: true });
+                }
+            });
+        });
         form.addEventListener('submit', function (event) { submission = event; });
         document.querySelectorAll('[data-zen-confirm]').forEach(function (button) {
             if (!button.form) return;
             button.form.addEventListener('submit', function (event) {
                 submission = event;
                 if (!window.confirm(button.dataset.zenConfirm)) event.preventDefault();
+            });
+            button.form.addEventListener('formdata', function (event) {
+                // Upgrade only the confirmed submission's payload, not the native form.
+                if (!submission || submission.target !== button.form || submission.defaultPrevented || !button.dataset.zenConfirmNonce) return;
+                event.formData.set('action', 'zen_reset_confirm');
+                event.formData.set('zen_reset_nonce', button.dataset.zenConfirmNonce);
             });
         });
         function clearSubmission() { submission = null; }

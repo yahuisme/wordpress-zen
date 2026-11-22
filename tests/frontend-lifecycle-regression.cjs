@@ -78,6 +78,8 @@ for (const outcome of ['success', 'failure', 'throw']) {
         assert.equal(document.activeElement, copy, 'Tab must continue from the copy button, not body');
         assert.deepEqual(focusOptions, [true], 'focus restoration must not scroll the article');
         assert.equal(copy.textContent, outcome === 'success' ? '已复制' : '复制失败');
+        assert.equal(copy.getAttribute('aria-label'), '复制代码');
+        assert.equal(document.querySelector('.zen-code-block [role="status"]').textContent, outcome === 'success' ? '代码已复制' : '复制失败，请手动复制');
     });
 }
 
@@ -134,6 +136,7 @@ test('rapid code copies keep the newest result and feedback timeout', async t =>
     [...timers.values()][0]();
     assert.equal(copy.textContent, '复制');
     assert.equal(copy.getAttribute('aria-label'), '复制代码');
+    assert.equal(window.document.querySelector('.zen-code-block [role="status"]').textContent, '');
 });
 
 test('paused audio reflects corrected duration without waiting for playback', async t => {
@@ -143,15 +146,43 @@ test('paused audio reflects corrected duration without waiting for playback', as
     const { document } = window;
     const audio = document.querySelector('audio');
     const time = document.querySelector('.zen-audio-time');
+    const slider = document.querySelector('.zen-audio-progress-container');
+    assert.equal(slider.tabIndex, -1);
+    assert.equal(slider.getAttribute('aria-disabled'), 'true');
     audio.duration = 120;
     audio.dispatchEvent(new window.Event('loadedmetadata'));
     assert.equal(time.innerText, '0:00 / 2:00', 'positive control reaches the existing metadata handler');
+    assert.equal(slider.tabIndex, 0);
+    assert.equal(slider.hasAttribute('aria-disabled'), false);
+    assert.equal(slider.getAttribute('aria-valuetext'), '0:00 / 2:00');
     audio.duration = 180;
     audio.dispatchEvent(new window.Event('durationchange'));
     assert.equal(time.innerText, '0:00 / 3:00', 'a paused player must not keep the old duration');
+    slider.focus();
+    assert.equal(document.activeElement, slider);
     audio.duration = Infinity;
     audio.dispatchEvent(new window.Event('durationchange'));
     assert.equal(time.innerText, '0:00 / --:--', 'live or unavailable duration must replace an obsolete finite duration');
+    assert.equal(slider.tabIndex, -1);
+    assert.equal(slider.getAttribute('aria-valuetext'), '音频暂不可定位');
+    assert.equal(document.activeElement, document.querySelector('.zen-audio-btn'));
+});
+
+for (const activation of ['click', 'touchstart']) test(`successful native cancel restores reply focus after ${activation}`, async t => {
+    const window = await page(t, `<section id="comments"><a class="comment-reply-link" data-commentid="42" href="?replytocom=42">Reply</a>
+        <a id="cancel-comment-reply-link" href="#respond">Cancel</a><input type="hidden" id="comment_parent" value="0"></section>`, w => {
+        const doc = w.document, parent = doc.getElementById('comment_parent');
+        const reply = doc.querySelector('.comment-reply-link'), cancel = doc.getElementById('cancel-comment-reply-link');
+        reply.addEventListener(activation, event => { parent.value = '42'; event.preventDefault(); });
+        cancel.addEventListener(activation, event => { if (parent.value !== '0') { parent.value = '0'; event.preventDefault(); } });
+    });
+    const doc = window.document, reply = doc.querySelector('.comment-reply-link'), cancel = doc.getElementById('cancel-comment-reply-link');
+    const activate = element => element.dispatchEvent(new window.Event(activation, { bubbles: true, cancelable: true }));
+    assert.equal(activate(reply), false);
+    cancel.focus();
+    assert.equal(activate(cancel), false);
+    assert.equal(doc.getElementById('comment_parent').value, '0');
+    assert.equal(doc.activeElement, reply);
 });
 
 for (const [label, defaultMode, storedMode, blocked, expectedMode, expectedDark] of [

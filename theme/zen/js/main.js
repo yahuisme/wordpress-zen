@@ -330,6 +330,9 @@ const zenInit = () => {
             copyLabel.textContent = '复制';
             copyBtn.appendChild(copyIcon);
             copyBtn.appendChild(copyLabel);
+            const copyStatus = document.createElement('span');
+            copyStatus.className = 'screen-reader-text';
+            copyStatus.setAttribute('role', 'status');
 
             let copyAttempt = 0;
             let copyResetTimer;
@@ -338,17 +341,18 @@ const zenInit = () => {
                 copyIcon.className = copied ? 'ph ph-check' : 'ph ph-copy';
                 copyLabel.textContent = copied ? '已复制' : '复制失败';
                 copyBtn.classList.toggle('is-copied', copied);
-                copyBtn.setAttribute('aria-label', copyLabel.textContent);
+                copyStatus.textContent = copied ? '代码已复制' : '复制失败，请手动复制';
                 copyResetTimer = setTimeout(() => {
                     copyIcon.className = 'ph ph-copy';
                     copyLabel.textContent = '复制';
                     copyBtn.classList.remove('is-copied');
-                    copyBtn.setAttribute('aria-label', '复制代码');
+                    copyStatus.textContent = '';
                 }, 1600);
             };
             copyBtn.addEventListener('click', () => {
                 const attempt = ++copyAttempt;
                 clearTimeout(copyResetTimer);
+                copyStatus.textContent = '';
                 copyTextToClipboard(code.textContent).then(
                     () => showCopyResult(true, attempt),
                     () => showCopyResult(false, attempt)
@@ -358,7 +362,7 @@ const zenInit = () => {
             const frame = document.createElement('div');
             frame.className = 'zen-code-block';
             block.before(frame);
-            frame.append(copyBtn, block);
+            frame.append(copyStatus, copyBtn, block);
         }
     });
 
@@ -733,6 +737,26 @@ const zenInit = () => {
 
     }
 
+    // WordPress moves the form natively. Restore focus only after Core cancels a reply.
+    const comments = document.getElementById('comments');
+    const replyParent = document.getElementById('comment_parent');
+    if (comments && replyParent) {
+        let replyTrigger;
+        const restoreReplyFocus = event => {
+            if (!event.defaultPrevented) return;
+            const reply = event.target.closest?.('.comment-reply-link[data-commentid]');
+            if (reply && reply.dataset.commentid === replyParent.value) {
+                replyTrigger = reply;
+            } else if (event.target.closest?.('#cancel-comment-reply-link') && replyParent.value === '0' && replyTrigger) {
+                replyTrigger.focus();
+                replyTrigger = null;
+            }
+        };
+        comments.addEventListener('click', restoreReplyFocus);
+        // Older Core versions move the form on touchstart and suppress the click.
+        comments.addEventListener('touchstart', restoreReplyFocus, { passive: true });
+    }
+
     // --- Audio Player ---
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
@@ -762,12 +786,9 @@ const zenInit = () => {
         const progressContainer = document.createElement('div');
         progressContainer.className = 'zen-audio-progress-container';
         progressContainer.setAttribute('role', 'slider');
-        progressContainer.setAttribute('tabindex', '0');
-        progressContainer.setAttribute('aria-valuenow', '0');
         progressContainer.setAttribute('aria-valuemin', '0');
         progressContainer.setAttribute('aria-valuemax', '100');
         progressContainer.setAttribute('aria-label', '音频播放进度');
-        progressContainer.setAttribute('aria-valuetext', '0%');
 
         const progressBar = document.createElement('div');
         progressBar.className = 'zen-audio-progress-bar';
@@ -794,11 +815,19 @@ const zenInit = () => {
 
         const updateAudioUI = () => {
             const hasDuration = Number.isFinite(audio.duration) && audio.duration > 0;
-            const percent = hasDuration ? (audio.currentTime / audio.duration) * 100 : 0;
+            const percent = hasDuration ? Math.min(100, Math.max(0, (audio.currentTime / audio.duration) * 100)) : 0;
+            const times = `${formatAudioTime(audio.currentTime)} / ${formatAudioTime(audio.duration)}`;
             progressBar.style.width = percent + '%';
+            const tabIndex = hasDuration ? 0 : -1;
+            if (progressContainer.tabIndex !== tabIndex) progressContainer.tabIndex = tabIndex;
+            if (hasDuration) progressContainer.removeAttribute('aria-disabled');
+            else {
+                progressContainer.setAttribute('aria-disabled', 'true');
+                if (document.activeElement === progressContainer) btn.focus({ preventScroll: true });
+            }
             progressContainer.setAttribute('aria-valuenow', Math.round(percent));
-            progressContainer.setAttribute('aria-valuetext', Math.round(percent) + '%');
-            timeDisplay.innerText = `${formatAudioTime(audio.currentTime)} / ${formatAudioTime(audio.duration)}`;
+            progressContainer.setAttribute('aria-valuetext', hasDuration ? times : '音频暂不可定位');
+            timeDisplay.innerText = times;
         };
 
         let playAttempt = 0;

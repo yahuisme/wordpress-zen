@@ -10,8 +10,17 @@
     <div class="max-w-zen mx-auto flex flex-col sm:flex-row items-center justify-between">
         <nav class="zen-footer-navigation" aria-label="<?php esc_attr_e('页脚菜单', 'zen'); ?>">
             <ul class="flex flex-wrap items-center gap-x-2">
+                <?php
+                $zen_footer_feed = zen_get_option('zen_show_footer_rss') ? esc_url(get_bloginfo('rss2_url')) : '';
+                ?>
                 <?php if (has_nav_menu('footer')) : ?>
-                    <?php wp_nav_menu(array('theme_location' => 'footer', 'container' => false, 'items_wrap' => '%3$s', 'fallback_cb' => false)); ?>
+                    <?php
+                    $zen_footer_menu = wp_nav_menu(array('theme_location' => 'footer', 'container' => false, 'items_wrap' => '%3$s', 'fallback_cb' => false, 'echo' => false));
+                    echo $zen_footer_menu;
+                    if ($zen_footer_feed !== '' && $zen_footer_menu && zen_menu_has_feed_link($zen_footer_menu, $zen_footer_feed)) {
+                        $zen_footer_feed = '';
+                    }
+                    ?>
                 <?php else : ?>
                     <li><a href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Home', 'zen'); ?></a></li>
                     <?php foreach (array('page-archives.php' => __('Archive', 'zen'), 'page-tags.php' => __('Tags', 'zen'), 'page-notes.php' => __('Notes', 'zen'), 'page-links.php' => __('Links', 'zen')) as $template => $label) : ?>
@@ -23,8 +32,8 @@
                         <li><a href="<?php echo esc_url(get_permalink($about_page)); ?>"><?php esc_html_e('About', 'zen'); ?></a></li>
                     <?php endif; ?>
                 <?php endif; ?>
-                <?php if (zen_get_option('zen_show_footer_rss')) : ?>
-                    <li><a href="<?php echo esc_url(get_bloginfo('rss2_url')); ?>" target="_blank" rel="noopener noreferrer" class="gap-1" aria-label="<?php esc_attr_e('订阅 RSS (在新窗口打开)', 'zen'); ?>"><i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS</a></li>
+                <?php if ($zen_footer_feed !== '') : ?>
+                    <li><a href="<?php echo $zen_footer_feed; ?>" target="_blank" rel="noopener noreferrer" class="gap-1" aria-label="<?php esc_attr_e('订阅 RSS (在新窗口打开)', 'zen'); ?>"><i class="ph ph-rss text-sm" aria-hidden="true"></i> RSS</a></li>
                 <?php endif; ?>
             </ul>
         </nav>

@@ -32,11 +32,22 @@
     color: #8a4b00;
     font-weight: 600;
 }
+.zen-options .zen-settings-errors ul {
+    list-style: disc;
+    padding-inline-start: 1.5em;
+}
+.zen-options .form-table .zen-field-error {
+    color: #8a2424;
+    margin-top: 8px;
+}
+.zen-options .zen-options-group,
+.zen-options [aria-invalid="true"] {
+    scroll-margin-top: calc(var(--zen-adminbar-offset) + 104px);
+}
 .zen-options .zen-options-group {
     margin-bottom: 16px;
     background: #fff;
     border: 1px solid #dcdcde;
-    scroll-margin-top: calc(var(--zen-adminbar-offset) + 104px);
 }
 .zen-options summary {
     padding: 16px 24px;
@@ -124,7 +135,8 @@
         --zen-adminbar-offset: 46px;
     }
 
-    .zen-options .zen-options-group {
+    .zen-options .zen-options-group,
+    .zen-options [aria-invalid="true"] {
         scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
     }
     .zen-options summary {

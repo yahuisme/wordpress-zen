@@ -979,7 +979,7 @@ test('audio initializes from metadata and playback already available before DOMC
         text: slider.getAttribute('aria-valuetext'),
         label: document.querySelector('.zen-audio-btn').getAttribute('aria-label'),
         playingIcon: !!document.querySelector('.zen-audio-btn .ph-pause'),
-    }, { time: '0:30 / 2:00', width: '25%', now: '25', text: '25%', label: '暂停音频', playingIcon: true });
+    }, { time: '0:30 / 2:00', width: '25%', now: '25', text: '0:30 / 2:00', label: '暂停音频', playingIcon: true });
 });
 
 test('disabled TOC preserves heading IDs without a TOC observer or disabling article interactions', async t => {

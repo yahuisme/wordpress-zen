@@ -17,11 +17,16 @@ function test($name, $callback) {
 function capture($callback) { ob_start(); try { $callback(); return ob_get_contents(); } finally { ob_end_clean(); } }
 function render($file, $args = array()) { return capture(function () use ($file, $args) { include ABSPATH . $file; }); }
 function add_action(...$args) {}
-function add_filter(...$args) {}
-function remove_filter(...$args) {}
+function add_filter($name, $callback, ...$args) {
+    if ($name === 'comment_form_default_fields') $GLOBALS['comment_fields_filter'] = $callback;
+}
+function remove_filter($name, ...$args) {
+    if ($name === 'comment_form_default_fields') unset($GLOBALS['comment_fields_filter']);
+}
+function apply_filters($name, $value) { return isset($GLOBALS['comment_fields_filter']) && $name === 'comment_form_default_fields' ? $GLOBALS['comment_fields_filter']($value) : $value; }
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function esc_attr($value) { return esc_html($value); }
-function esc_url($value) { return esc_html($value); }
+function esc_url($value) { return str_starts_with($value, 'javascript:') ? '' : esc_html($value); }
 function __($value, $domain = '') { return $value; }
 function esc_attr__($value, $domain = '') { return esc_attr($value); }
 function esc_attr_e($value, $domain = '') { echo esc_attr__($value, $domain); }
@@ -80,14 +85,14 @@ test('standard list has a linked title and bounded excerpt without duplicate con
     $GLOBALS['excerpt_calls'] = 0;
     $html = render('template-parts/content-excerpt.php');
     check(str_contains($html, 'zen-post-item') && str_contains($html, 'zen-post-excerpt'), 'list presentation contract missing');
-    check(str_contains($html, 'line-clamp-3'), 'three-line excerpt contract missing');
+    check(!str_contains($html, 'line-clamp'), 'rendered excerpt should only be bounded by the saved character limit');
     check((bool) preg_match('/<h2[^>]*>\s*<a[^>]*href="\/post\/"/', $html), 'title link missing');
     check(!str_contains($html, '阅读更多') && !str_contains($html, 'post-divider'), 'duplicate continuation/divider remains');
 });
 
 function paginate_links($args) { return array(); }
 function get_pagenum_link($number) { return '/?paged=' . $number; }
-function get_query_var($name) { return 1; }
+function get_query_var($name, $default = '') { return $name === 'search_terms' ? array('0') : 1; }
 $GLOBALS['wp_query'] = (object) array('max_num_pages' => 1, 'found_posts' => 0);
 function get_locale() { return 'zh_CN'; }
 function get_header($name = null, $args = array()) {
@@ -113,6 +118,7 @@ function get_bloginfo($key) { return array('name' => '站点名称', 'descriptio
 function home_url($path = '') { return 'https://example.test' . $path; }
 function get_option($name, $default = false) { return $GLOBALS['native_options'][$name] ?? $default; }
 function get_posts($args) { return array(); }
+function get_post($id) { return (object) array('ID' => $id, 'post_type' => 'page', 'post_status' => 'publish'); }
 function set_transient(...$args) {}
 function get_permalink($post = null) { return '/post/' . (is_object($post) ? $post->ID : $post); }
 function is_category() { return $GLOBALS['category_archive'] ?? false; }
@@ -233,6 +239,9 @@ test('latest card uses a single-line month-day only in the current year', functi
         }
         unset($GLOBALS['fixture_categories_by_post']);
         check(!str_contains(render('index.php'), 'zen-meta-category'), 'uncategorized card has no empty category link');
+        $GLOBALS['options']['zen_show_latest_card'] = 0;
+        $html = render('index.php');
+        check(str_contains($html, '最近发布 2025.11.09') && !str_contains($html, 'zen-latest-card'), 'disabling the card must not remove the masthead publication date');
     } finally {
         $GLOBALS['wp_query'] = $previous_query;
         $GLOBALS['options'] = $previous_options;
@@ -518,6 +527,29 @@ test('archive uses shared list and category navigation without changing category
     $GLOBALS['category_archive'] = false;
 });
 
+test('empty archives recover to the posts index, annual directory or static home truthfully', function () {
+    $saved_options = $GLOBALS['native_options'];
+    $saved_pages = $GLOBALS['archive_pages'];
+    $GLOBALS['tag_archive'] = true;
+    $GLOBALS['loop_left'] = 0;
+    try {
+        foreach (array(
+            array('posts', 0, 19, 'https://example.test/', '查看全部文章'),
+            array('page', 42, 19, '/post/42', '查看全部文章'),
+            array('page', 0, 19, '/post/19', '浏览归档'),
+            array('page', 0, 0, 'https://example.test/', '返回首页'),
+        ) as [$front, $posts, $directory, $url, $label]) {
+            $GLOBALS['native_options'] = array('show_on_front' => $front, 'page_for_posts' => $posts);
+            $GLOBALS['archive_pages'] = $directory ? array((object) array('ID' => $directory)) : array();
+            check(str_contains(render('archive.php'), 'href="' . $url . '" class="zen-ui-link">' . $label . '</a>'), 'wrong recovery target or label for ' . $label);
+        }
+    } finally {
+        $GLOBALS['native_options'] = $saved_options;
+        $GLOBALS['archive_pages'] = $saved_pages;
+        unset($GLOBALS['tag_archive']);
+    }
+});
+
 function post_password_required() { return $GLOBALS['locked_page'] ?? false; }
 test('guestbook renders native open comments, an explicit closed state, and no UI behind a password', function () {
     $GLOBALS['comments_open'] = true;
@@ -542,7 +574,11 @@ function wp_list_comments($args) { $GLOBALS['comment_list_args'] = $args; echo '
 function get_comment_pages_count() { return 2; }
 function previous_comments_link($text) { echo '<a href="?cpage=1">' . $text . '</a>'; }
 function next_comments_link($text) { echo '<a href="?cpage=2">' . $text . '</a>'; }
-function comment_form($args) { $GLOBALS['comment_form_args'] = $args; echo '<form id="native-comment-form">' . implode('', $args['fields']) . $args['comment_field'] . '</form>'; }
+function comment_form($args) {
+    $GLOBALS['comment_form_args'] = $args;
+    $fields = apply_filters('comment_form_default_fields', array('author' => '<input id="author">', 'email' => '<input id="email">'));
+    echo '<form id="native-comment-form">' . implode('', $args['fields'] ?? $fields) . $args['comment_field'] . '</form>';
+}
 test('existing comments precede native form while reply pagination and required semantics remain', function () {
     $GLOBALS['has_comments'] = true;
     $GLOBALS['comments_open'] = true;
@@ -594,6 +630,13 @@ test('friend links label new-window destinations and only show explicitly saved 
     $GLOBALS['loop_left'] = 1;
     $GLOBALS['bookmarks'][0]->link_image = 'https://friend.test/avatar.png';
     check(str_contains(render('page-links.php'), 'src="https://friend.test/avatar.png"'), 'saved bookmark image no longer renders');
+});
+test('friend links use an empty state when every saved URL is unrenderable', function () {
+    $GLOBALS['loop_left'] = 1;
+    $GLOBALS['bookmarks'][0]->link_url = 'javascript:example';
+    $html = render('page-links.php');
+    check(str_contains($html, '暂未添加友情链接。') && !str_contains($html, 'zen-links-entries'), 'unrenderable bookmarks must not leave an empty list');
+    unset($GLOBALS['bookmarks']);
 });
 function get_tags($args) { return $GLOBALS['directory_tags'] ?? array(); }
 function is_wp_error($value) { return false; }

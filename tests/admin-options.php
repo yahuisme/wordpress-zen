@@ -27,6 +27,7 @@ function wp_kses_post($text) {
     return $text;
 }
 function absint($value) { return abs((int) $value); }
+function get_settings_errors() { return $GLOBALS['wp_settings_errors'] ?? array(); }
 function settings_errors() {}
 function settings_fields($group) { echo '<input type="hidden" name="option_page" value="' . $group . '">'; wp_nonce_field($group . '-options'); }
 function wp_nonce_field($action, $name = '_wpnonce', $referer = true) { echo '<input type="hidden" id="' . $name . '" name="' . $name . '" value="fixture">'; }
@@ -57,7 +58,16 @@ $failed = 0; $total = 0;
 function test($name, $callback) { global $failed, $total; $total++; try { $callback(); echo "PASS $name\n"; } catch (Throwable $e) { $failed++; echo "FAIL $name: {$e->getMessage()}\n"; } }
 function expect($value, $message) { if (!$value) throw new RuntimeException($message); }
 function render() { ob_start(); zen_options_page_html(); return ob_get_clean(); }
-if (in_array('--html', $argv, true)) { echo render(); exit; }
+if (in_array('--html', $argv, true)) {
+    if (in_array('--save-error', $argv, true)) {
+        $GLOBALS['wp_settings_errors'] = array(array(
+            'setting' => 'zen_site_start_date', 'code' => 'zen_site_start_date_invalid', 'type' => 'error',
+            'message' => '请输入有效日期（YYYY-MM-DD）；已保留上次保存值。',
+        ));
+    }
+    echo render();
+    exit;
+}
 test('retired design and attribution controls are neither saved nor reset', function () {
     zen_register_options();
     $legacy = array('zen_font_family' => 'inter', 'zen_date_style' => 'classic', 'zen_show_footer_theme_by' => 1, 'zen_show_footer_wordpress' => 1, 'zen_category_ids' => array(9, 2), 'zen_content_width' => 1080);
@@ -89,15 +99,18 @@ test('registered new options sanitize values and reject invalid numbers without 
     sort($registered);
     expect($schema === $registered, 'registered fields and reset schema must match');
     expect(zen_sanitize_reading_width('800') === 800, 'valid reading width rejected');
+    expect(zen_sanitize_reading_width('800.0') === 800, 'valid integral decimal width rejected');
+    expect(zen_sanitize_reading_width('8e2') === 800, 'valid integral exponent width rejected');
+    expect(zen_sanitize_excerpt_length('60.000') === 60, 'valid integral decimal excerpt length rejected');
     $GLOBALS['options']['zen_reading_width'] = 760;
     $GLOBALS['options']['zen_site_start_date'] = '2020-01-01';
     $GLOBALS['options']['zen_excerpt_length'] = 180;
-    foreach (array('-600', '599', '961', '720.5', array(720), '') as $invalid) expect(zen_sanitize_reading_width($invalid) === 760, 'invalid reading width lost saved value');
+    foreach (array('-600', '599', '961', '720.5', array(720), '', '800.', '0x320', '1e500') as $invalid) expect(zen_sanitize_reading_width($invalid) === 760, 'invalid reading width lost saved value');
     expect(zen_sanitize_excerpt_length('0') === 180, 'invalid excerpt length must preserve prior value');
     expect(zen_sanitize_site_start_date('2024-02-30') === '2020-01-01', 'bad date lost saved value');
     expect(zen_sanitize_site_start_date(array()) === '2020-01-01', 'non-string date lost saved value');
     expect(zen_sanitize_site_start_date('') === '', 'explicit empty date cannot clear value');
-    expect(count($GLOBALS['errors']) === 9, 'invalid fields need native settings errors');
+    expect(count($GLOBALS['errors']) === 12, 'invalid fields need native settings errors');
     expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
     expect(zen_sanitize_copyright_license('bogus') === 'none', 'invalid license should not impose a license');
     $GLOBALS['caps']['unfiltered_html'] = false;

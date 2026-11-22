@@ -4,6 +4,7 @@ define('MINUTE_IN_SECONDS', 60);
 require __DIR__ . '/reading-count-storage-double.php';
 function add_action(...$args) {}
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
+require __DIR__ . '/html-api-bootstrap.php';
 require ABSPATH . 'inc/template-tags.php';
 $cache = array(); $counts = array(); $post_id = 42; $logged_in = false;
 function zen_get_option($key) { return $key === 'zen_show_reading_count' ? true : ($GLOBALS['footer_options'][$key] ?? ''); }
@@ -62,8 +63,11 @@ $cache['zen_site_uptime'] = array('year' => '2022', 'days' => 123);
 function has_nav_menu($location) { return $location === 'footer' && !empty($GLOBALS['custom_footer_menu']); }
 function wp_nav_menu($args) {
     check($args['theme_location'] === 'footer', 'assigned footer menu location');
-    printf($args['items_wrap'] ?? '<ul id="%1$s" class="%2$s">%3$s</ul>', 'fixture-menu', 'menu', '<li><a href="/custom/">Custom</a></li>');
+    $html = sprintf($args['items_wrap'] ?? '<ul id="%1$s" class="%2$s">%3$s</ul>', 'fixture-menu', 'menu', $GLOBALS['fixture_menu_html'] ?? '<li><a href="/custom/">Custom</a></li>');
+    if (false === ($args['echo'] ?? true)) return $html;
+    echo $html;
 }
+function wp_parse_url($url) { return parse_url($url); }
 define('OBJECT', 'OBJECT');
 function get_page_by_path($path, $output, $type) {
     return $path === 'about' && $type === array('page') ? ($GLOBALS['about_page'] ?? null) : null;
@@ -91,7 +95,15 @@ foreach (array(false => '>About</a>', true => '>Custom</a>') as $custom => $expe
     check(substr_count($footer_with_rss, 'href="https://example.test/feed/"') === 1, 'RSS appears exactly once');
     check((bool) preg_match('~<nav class="zen-footer-navigation".*?href="/extra/".*?class="zen-footer-meta\b~s', $footer_with_rss), 'mobile footer source and keyboard order match');
 }
-unset($GLOBALS['custom_footer_menu'], $GLOBALS['footer_options']);
+$GLOBALS['fixture_menu_html'] = '<li><a class="owned" href="/feed/">Subscribe</a></li><li><a href="/feed/?type=other">Other feed</a></li><li><a href="/last/">Last</a></li>';
+$GLOBALS['footer_options']['zen_footer_text'] = '<a href="/feed/">Extra RSS</a>';
+ob_start(); require ABSPATH . 'footer.php'; $deduped = ob_get_clean();
+check(str_contains($deduped, $GLOBALS['fixture_menu_html']) && !str_contains($deduped, 'ph-rss'), 'same native feed in assigned menu suppresses only automatic RSS');
+check(str_contains($deduped, $GLOBALS['footer_options']['zen_footer_text']), 'duplicate suppression must not alter custom footer text');
+$GLOBALS['fixture_menu_html'] = '<li><a href="/feed/?type=other">Other feed</a></li>';
+ob_start(); require ABSPATH . 'footer.php'; $other_feed = ob_get_clean();
+check(str_contains($other_feed, $GLOBALS['fixture_menu_html']) && str_contains($other_feed, 'ph-rss'), 'a different subscription URL must not suppress the built-in RSS');
+unset($GLOBALS['custom_footer_menu'], $GLOBALS['footer_options'], $GLOBALS['fixture_menu_html']);
 $GLOBALS['about_page']->post_status = 'private';
 ob_start(); require ABSPATH . 'footer.php'; $private_about = ob_get_clean();
 check(!str_contains($private_about, '>About</a>'), 'private About page must not be linked');

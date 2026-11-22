@@ -120,9 +120,10 @@ with sync_playwright() as p:
   page.wait_for_timeout(600)
   copy.focus();page.keyboard.press('Enter')
   page.wait_for_timeout(1100)
-  assert copy.inner_text()=='已复制' and copy.get_attribute('aria-label')=='已复制', 'Earlier reset must not erase newer feedback'
+  assert copy.inner_text()=='已复制' and copy.get_attribute('aria-label')=='复制代码', 'Keep the copy action name stable during feedback'
+  assert page.locator('.zen-code-block [role="status"]').first.text_content()=='代码已复制', 'Earlier reset must not erase newer feedback'
   assert copy.locator('.ph-check').count()==1 and 'is-copied' in copy.get_attribute('class')
-  page.wait_for_function('document.querySelector(".zen-code-copy").getAttribute("aria-label")==="复制代码"')
+  page.wait_for_function('document.querySelector(".zen-code-copy").textContent==="复制"')
   assert copy.locator('.ph-copy').count()==1 and 'is-copied' not in copy.get_attribute('class')
   c.clear_permissions()
  check('clipboard',clipboard)

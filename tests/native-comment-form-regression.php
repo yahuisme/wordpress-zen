@@ -66,10 +66,28 @@ try {
         $fields['fixture'] = '<p><label>Fixture <input name="fixture"></label></p>';
         return $fields;
     };
+    $default_field = static function ($fields) {
+        $fields['fixture_default'] = '<p><label>Default fixture <input name="fixture_default"></label></p>';
+        return $fields;
+    };
+    add_filter('comment_form_default_fields', $default_field);
     add_filter('comment_form_fields', $plugin_field);
     try {
-        comment_form_check(comment_form_dom(comment_form_render())->query('//input[@name="fixture"]')->length === 1, 'native final-field integrations reach the Zen form');
-    } finally { remove_filter('comment_form_fields', $plugin_field); }
+        $core = comment_form_dom(comment_form_render(true));
+        comment_form_check($core->query('//input[@name="fixture_default"]')->length === 1, 'Core shows the plugin default-field control');
+        foreach (array(false, true) as $guestbook) {
+            $surface = $guestbook ? 'Notes' : 'Article';
+            $theme = comment_form_dom(comment_form_render(false, $guestbook));
+            comment_form_check($theme->query('//form[@id="commentform"]//input[@name="fixture_default"]')->length === 1, "$surface retains the plugin default-field integration");
+            comment_form_check($theme->query('//form[@id="commentform"]//input[@name="fixture"]')->length === 1, "$surface retains the native final-field integration");
+            comment_form_check($theme->query('//input[@name="url"]')->length === 0 && $theme->query('//input[@name="wp-comment-cookies-consent" and not(@checked)]')->length === 1, "$surface still omits URL and preserves default unchecked consent");
+        }
+        $core = comment_form_dom(comment_form_render(true));
+        comment_form_check($core->query('//input[@name="url"]')->length === 1 && $core->query('//input[contains(@class,"zen-comment-input")]')->length === 0, 'Zen default-field overrides do not leak to subsequent native forms');
+    } finally {
+        remove_filter('comment_form_default_fields', $default_field);
+        remove_filter('comment_form_fields', $plugin_field);
+    }
     $_COOKIE['comment_author_' . COOKIEHASH] = 'Remembered reader';
     $_COOKIE['comment_author_email_' . COOKIEHASH] = 'reader@example.test';
     $theme = comment_form_dom(comment_form_render());

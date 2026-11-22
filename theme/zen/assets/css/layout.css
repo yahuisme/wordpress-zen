@@ -341,7 +341,6 @@ body .font-serif {
     :is(.blog .zen-post-list, .zen-post-list--editorial) > .zen-post-item { grid-template-columns: 56px minmax(0, 1fr); column-gap: 16px; }
     :is(.home.blog .zen-post-list, .zen-post-list--editorial) > .zen-post-item { grid-template-columns: 84px minmax(0, 1fr); }
     :is(.blog .zen-post-list, .zen-post-list--editorial) .zen-post-title { font-size: 1rem; }
-    .zen-post-list > article .zen-post-excerpt { -webkit-line-clamp: 2; }
 }
 .zen-category-track {
     display: flex;
@@ -516,10 +515,6 @@ body .font-serif {
 .zen-post-nav-title {
     font-size: 15px;
     line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 .zen-reading-shell #comments {
     margin-top: 48px;

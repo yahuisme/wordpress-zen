@@ -137,7 +137,8 @@ for (const enabled of [true, false]) {
             assert.equal(button.querySelector('i').getAttribute('aria-hidden'), 'true');
             button.click();
             await new Promise(resolve => setImmediate(resolve));
-            assert.equal(button.getAttribute('aria-label'), '已复制');
+            assert.equal(button.getAttribute('aria-label'), '复制代码');
+            assert.equal(block.parentElement.querySelector('[role="status"]').textContent, '代码已复制');
         }
         assert.deepEqual(copied, blocks.map(() => text));
         codes.forEach(code => {

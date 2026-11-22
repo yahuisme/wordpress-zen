@@ -23,9 +23,11 @@ function selected($a, $b) {}
 function checked($a, $b) { if ($a === $b) echo ' checked="checked"'; }
 function sanitize_text_field($text) { return strip_tags($text); }
 function absint($value) { return abs((int) $value); }
+function get_settings_errors() { return array(); }
 function settings_errors() {}
 function settings_fields($group) {}
 function wp_nonce_field($action) {}
+function wp_create_nonce($action) { return 'fixture'; }
 function submit_button($label, ...$args) {}
 function get_admin_page_title() { return 'Zen'; }
 function admin_url($path) { return 'https://example.test/' . $path; }

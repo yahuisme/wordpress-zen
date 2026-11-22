@@ -56,9 +56,39 @@ function zen_get_directory_url($template) {
     return ($assigned === '' || $assigned === false || $assigned === 'default') ? get_permalink($page) : '';
 }
 
-function zen_get_posts_url() {
+function zen_get_posts_url($fallback_to_home = true) {
+    if (get_option('show_on_front') !== 'page') {
+        return home_url('/');
+    }
     $posts_page = (int) get_option('page_for_posts');
-    return get_option('show_on_front') === 'page' && $posts_page ? get_permalink($posts_page) : home_url('/');
+    $page = $posts_page && $posts_page !== (int) get_option('page_on_front') ? get_post($posts_page) : null;
+    if ($page && $page->post_type === 'page' && $page->post_status === 'publish') {
+        return get_permalink($page);
+    }
+    return $fallback_to_home ? home_url('/') : '';
+}
+
+/** Check the final menu links without rewriting the menu or the custom footer text. */
+function zen_menu_has_feed_link($menu_html, $feed_url) {
+    $feed_url = html_entity_decode($feed_url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $home = wp_parse_url(home_url('/')) ?: array();
+    $home_scheme = $home['scheme'] ?? '';
+    $home_origin = $home_scheme !== '' && isset($home['host'])
+        ? $home_scheme . '://' . $home['host'] . (isset($home['port']) ? ':' . $home['port'] : '')
+        : '';
+    $tags = new WP_HTML_Tag_Processor($menu_html);
+    while ($tags->next_tag('A')) {
+        $href = $tags->get_attribute('href');
+        if (!is_string($href)) continue;
+        $href = trim($href);
+        if ($home_scheme !== '' && str_starts_with($href, '//')) {
+            $href = $home_scheme . ':' . $href;
+        } elseif ($home_origin !== '' && str_starts_with($href, '/')) {
+            $href = $home_origin . $href;
+        }
+        if ($href === $feed_url) return true;
+    }
+    return false;
 }
 
 function zen_category_navigation() {
@@ -76,6 +106,15 @@ function zen_category_navigation() {
         <button class="zen-category-arrow zen-category-next" type="button" aria-label="<?php esc_attr_e('下一组分类', 'zen'); ?>" hidden><span aria-hidden="true" dir="ltr">›</span></button>
     </nav>
     <?php
+}
+
+/** Numbered links first; within each rating, use natural name order. */
+function zen_compare_link_order($a, $b) {
+    $rating_a = (int) ($a->link_rating ?? 0);
+    $rating_b = (int) ($b->link_rating ?? 0);
+    return (($rating_a === 0) <=> ($rating_b === 0))
+        ?: ($rating_a <=> $rating_b)
+        ?: strnatcasecmp($a->link_name, $b->link_name);
 }
 
 function zen_get_primary_category($post = null) {
@@ -176,28 +215,33 @@ function zen_index_post_excerpt($post = null) {
         remove_filter('excerpt_length', $defer_trimming, PHP_INT_MAX);
     }
     $excerpt = zen_display_excerpt($excerpt);
-    if ($excerpt !== '') printf('<div class="zen-post-excerpt line-clamp-3">%s</div>', $excerpt);
+    if ($excerpt !== '') printf('<div class="zen-post-excerpt">%s</div>', $excerpt);
 }
 
+/** Legacy helper for callers passing a whitespace-separated string. */
 function zen_highlight_search_terms($text, $query = '') {
-    $query = trim($query);
+    return zen_mark_search_terms($text, preg_split('/\s+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY) ?: array());
+}
 
-    if ('' === $query) {
-        return esc_html($text);
+/** Follow the terms Core actually searched, including phrases and stopword rules. */
+function zen_highlight_search_title($text) {
+    $terms = get_query_var('search_terms', array());
+    if (!is_array($terms)) return esc_html($text);
+    $prefix = apply_filters('wp_query_search_exclusion_prefix', '-');
+    if ($prefix) {
+        $terms = array_filter($terms, static fn($term) => !str_starts_with($term, $prefix));
     }
+    return zen_mark_search_terms($text, $terms);
+}
 
-    $terms = preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY);
-    if (false === $terms) {
-        return esc_html($text);
-    }
+function zen_mark_search_terms($text, $terms) {
     $terms = array_unique($terms);
-
     if (empty($terms)) {
         return esc_html($text);
     }
 
     $terms = array_filter($terms, function ($term) {
-        return function_exists('mb_strlen') ? mb_strlen($term) <= 100 : strlen($term) <= 300;
+        return trim($term) !== '' && (function_exists('mb_strlen') ? mb_strlen($term) <= 100 : strlen($term) <= 300);
     });
     if (empty($terms)) {
         return esc_html($text);

@@ -8,3 +8,5 @@ if (!is_file($api . 'class-wp-html-tag-processor.php')) {
 foreach (array('class-wp-html-span.php', 'class-wp-html-attribute-token.php', 'class-wp-html-text-replacement.php', 'class-wp-html-tag-processor.php') as $file) {
     require_once $api . $file;
 }
+// Newer Core tag processors use this decoder; older Core decodes attributes inline.
+if (is_file($api . 'class-wp-html-decoder.php')) require_once $api . 'class-wp-html-decoder.php';

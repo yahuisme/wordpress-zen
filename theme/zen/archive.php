@@ -28,10 +28,19 @@ $zen_taxonomy_index = is_category() || is_tag();
     <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
         <?php get_template_part('template-parts/content', 'excerpt', array('editorial_index' => $zen_taxonomy_index)); ?>
     <?php endwhile; else : ?>
+        <?php
+        $zen_recovery_url = zen_get_posts_url(false);
+        $zen_recovery_label = __('查看全部文章', 'zen');
+        if (!$zen_recovery_url) {
+            $zen_recovery_url = zen_get_archives_url();
+            $zen_recovery_label = $zen_recovery_url ? __('浏览归档', 'zen') : __('返回首页', 'zen');
+            $zen_recovery_url = $zen_recovery_url ?: home_url('/');
+        }
+        ?>
         <div class="zen-empty-state">
             <h2 class="text-xl font-bold">暂无文章</h2>
             <p>此归档下暂时没有文章。</p>
-            <a href="<?php echo esc_url(zen_get_posts_url()); ?>" class="zen-ui-link">查看全部文章</a>
+            <a href="<?php echo esc_url($zen_recovery_url); ?>" class="zen-ui-link"><?php echo esc_html($zen_recovery_label); ?></a>
         </div>
     <?php endif; ?>
 </div>

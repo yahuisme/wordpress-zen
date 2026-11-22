@@ -43,8 +43,12 @@ function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
     $GLOBALS['zen_test_hooks'][$hook][] = $callback;
 }
 // The comments template briefly installs a Core filter around comment_form().
-function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {}
-function remove_filter($hook, $callback, $priority = 10) {}
+function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {
+    if ($hook === 'comment_form_default_fields') $GLOBALS['zen_test_comment_fields_filter'] = $callback;
+}
+function remove_filter($hook, $callback, $priority = 10) {
+    if ($hook === 'comment_form_default_fields') unset($GLOBALS['zen_test_comment_fields_filter']);
+}
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false); }
 function esc_attr($value) { return esc_html($value); }
 function esc_url($value) { return esc_html($value); }
@@ -268,7 +272,11 @@ function get_permalink() { return 'https://example.test/fixture/'; }
 function wp_logout_url($redirect) { return 'https://example.test/logout/'; }
 function wp_get_current_user() { return (object) array('display_name' => 'Fixture'); }
 function have_comments() { return false; }
-function comment_form($args) { echo implode('', $args['fields']) . $args['comment_field']; }
+function comment_form($args) {
+    $fields = array('author' => '<input id="author">', 'email' => '<input id="email">');
+    if (isset($GLOBALS['zen_test_comment_fields_filter'])) $fields = $GLOBALS['zen_test_comment_fields_filter']($fields);
+    echo implode('', $args['fields'] ?? $fields) . $args['comment_field'];
+}
 foreach (array(true, false) as $required) {
     zen_test('comment native required attributes with require_name_email=' . (int) $required, function () use ($required) {
         $GLOBALS['zen_test_comments_open'] = true;
@@ -300,6 +308,7 @@ zen_test('archive rows expose scoped wrapping classes', function () {
 function current_user_can($capability) { return true; }
 function get_admin_page_title() { return 'Zen settings'; }
 function settings_errors() {}
+function get_settings_errors() { return array(); }
 function settings_fields($group) {}
 function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="fixture">'; }
 function wp_create_nonce($action) { return 'fixture-nonce'; }

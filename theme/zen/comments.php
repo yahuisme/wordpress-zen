@@ -73,12 +73,10 @@ $zen_render_comment_list = static function () use ($zen_guestbook) {
                     '<input id="email" name="email" type="email" value="' . esc_attr($commenter['comment_author_email']) . '" ' . $aria_req . ' class="zen-comment-input px-4 py-3" autocomplete="email" maxlength="100" aria-describedby="zen-comment-email-help" />' .
                     '<small id="zen-comment-email-help">邮箱不会公开。</small>' .
                     '</p>',
-                // Core adds cookies consent according to Discussion settings.
             );
 
             $comment_label = $zen_guestbook ? __('留言内容', 'zen') : '你的想法';
             $form_args = array(
-                'fields' => $fields,
                 'comment_field' => '<p class="comment-form-comment"><label for="comment">' . esc_html($comment_label) . ' ' . $comment_required . '</label><textarea id="comment" name="comment" rows="' . ($zen_guestbook ? '3' : '2') . '" class="zen-comment-input resize-y px-4 py-3" required aria-required="true" maxlength="65525" placeholder="写点什么..."></textarea></p>',
                 'class_container' => 'comment-respond zen-comment-panel p-5 sm:p-7',
                 'class_submit' => 'zen-submit',
@@ -96,7 +94,11 @@ $zen_render_comment_list = static function () use ($zen_guestbook) {
                 'submit_field' => '<p class="form-submit">%1$s %2$s</p>',
             );
 
-            // Keep Core's consent field and plugin markup; describe only Zen's visible fields.
+            // Alter only Zen's own fields, leaving Core consent and plugin additions intact.
+            $zen_default_fields = static function ($defaults) use ($fields) {
+                unset($defaults['url']);
+                return array_replace($defaults, $fields);
+            };
             $zen_consent_label = static function ($field) {
                 return str_replace(
                     __('Save my name, email, and website in this browser for the next time I comment.'),
@@ -104,10 +106,12 @@ $zen_render_comment_list = static function () use ($zen_guestbook) {
                     $field
                 );
             };
+            add_filter('comment_form_default_fields', $zen_default_fields, PHP_INT_MAX);
             add_filter('comment_form_field_cookies', $zen_consent_label);
             try {
                 comment_form($form_args);
             } finally {
+                remove_filter('comment_form_default_fields', $zen_default_fields, PHP_INT_MAX);
                 remove_filter('comment_form_field_cookies', $zen_consent_label);
             }
             ?>
