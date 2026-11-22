@@ -83,6 +83,8 @@ with sync_playwright() as p:
                     return first.classList.contains('zen-footer-links') === desktop;
                 }''', arg=width >= 640, timeout=3000)
             assert footer.evaluate('e => document.documentElement.scrollWidth <= innerWidth')
+            assert all(item.evaluate('e => getComputedStyle(e).fontSize') == '13px'
+                       for item in [meta, *links.all()]), 'Footer metadata and links must use 13px'
             nav_box, meta_box = nav.bounding_box(), meta.bounding_box()
             boxes = [nav_box, custom.bounding_box(), meta_box] if extras else [nav_box, meta_box]
             if width < 640:

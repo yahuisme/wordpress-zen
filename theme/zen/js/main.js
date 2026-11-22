@@ -415,9 +415,7 @@ const zenInit = () => {
     const tocNav = document.getElementById('toc-nav'); // PC Nav Content
     const drawerTocNav = document.getElementById('drawer-toc-nav'); // Drawer Nav Content
     let closeDrawer;
-    const floatingTocBtn = document.getElementById('floating-toc-btn'); // Article trigger
     const headerTocBtn = document.getElementById('header-toc-btn');
-    const tocTriggers = [floatingTocBtn, headerTocBtn].filter(Boolean);
 
     const progressBar = document.getElementById('reading-progress');
     const backToTopBtn = document.getElementById('back-to-top');
@@ -469,12 +467,11 @@ const zenInit = () => {
                 tocContainer.classList.add('zen-toc-ready');
                 tocContainer.classList.remove('opacity-0');
             }
-            tocTriggers.forEach(trigger => {
-                trigger.hidden = false;
-                trigger.classList.remove('zen-toc-pending');
-                trigger.classList.add('zen-toc-ready');
-                trigger.classList.remove('hidden');
-            });
+            if (headerTocBtn) {
+                headerTocBtn.hidden = false;
+                headerTocBtn.classList.remove('hidden', 'zen-toc-pending');
+                headerTocBtn.classList.add('zen-toc-ready');
+            }
 
             const idCounts = new Map();
             document.querySelectorAll('[id]').forEach((element) => {
@@ -642,10 +639,10 @@ const zenInit = () => {
         } else {
             // 没有标题，隐藏容器
             if (tocContainer) tocContainer.style.display = 'none';
-            tocTriggers.forEach(trigger => {
-                trigger.classList.remove('zen-toc-pending');
-                trigger.style.display = 'none';
-            });
+            if (headerTocBtn) {
+                headerTocBtn.classList.remove('zen-toc-pending');
+                headerTocBtn.hidden = true;
+            }
         }
     }
 
@@ -661,20 +658,18 @@ const zenInit = () => {
     const drawerToc = document.getElementById('drawer-toc');
     const tocOverlay = document.getElementById('toc-overlay');
     const drawerClose = document.getElementById('drawer-toc-close');
-    let lastFocusBeforeDrawer;
+
     let drawerCloseTimer;
     let drawerNavigationTarget;
     let drawerOpening = 0;
 
-    if (tocTriggers.length && drawerToc && tocOverlay) {
-        const openDrawer = (event) => {
+    if (headerTocBtn && drawerToc && tocOverlay) {
+        const openDrawer = () => {
             if ((activeModal && (activeModal.container !== drawerToc || !drawerCloseTimer)) || coreLightboxOpen()) return;
             const reopening = Boolean(drawerCloseTimer);
             if (drawerCloseTimer) {
                 clearTimeout(drawerCloseTimer);
                 drawerCloseTimer = null;
-            } else {
-                lastFocusBeforeDrawer = event.currentTarget;
             }
             drawerNavigationTarget = null;
             tocOverlay.classList.remove('hidden');
@@ -685,7 +680,7 @@ const zenInit = () => {
                 drawerToc.classList.remove('translate-x-full');
             });
             // A11y
-            tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'true'));
+            headerTocBtn.setAttribute('aria-expanded', 'true');
             drawerToc.removeAttribute('inert');
             if (reopening) focusModal(drawerToc, drawerClose);
             else lockModal(drawerToc, closeDrawer, drawerClose, tocOverlay);
@@ -702,17 +697,17 @@ const zenInit = () => {
             drawerCloseTimer = setTimeout(() => {
                 tocOverlay.classList.add('hidden');
                 // A11y Cleanup
-                tocTriggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
+                headerTocBtn.setAttribute('aria-expanded', 'false');
                 drawerToc.setAttribute('inert', '');
                 drawerCloseTimer = null;
                 unlockModal();
                 if (drawerNavigationTarget) focusTocTarget(drawerNavigationTarget);
-                else restoreModalFocus(lastFocusBeforeDrawer);
+                else restoreModalFocus(headerTocBtn);
                 drawerNavigationTarget = null;
             }, 300);
         };
 
-        tocTriggers.forEach(trigger => trigger.addEventListener('click', openDrawer));
+        headerTocBtn.addEventListener('click', openDrawer);
         if (drawerClose) drawerClose.addEventListener('click', () => closeDrawer());
         tocOverlay.addEventListener('click', () => closeDrawer());
 

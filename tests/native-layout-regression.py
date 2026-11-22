@@ -89,7 +89,7 @@ try:
         browser, context = fresh_context(java_script_enabled=False, viewport={'width': 390, 'height': 900})
         page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin + '/?p=' + post, wait_until='networkidle')
-        check('no script removes unusable directory reservation', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0 and page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
+        check('no script removes unusable directory reservation', page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
         check('no script preserves content and native search', page.locator('#post-content h2').count() > 0 and page.locator('#search-fallback').is_visible())
         browser.close()
         for width in (w for w in (390, 768, 1440) if w >= startup_from):
@@ -124,7 +124,7 @@ try:
                         page.keyboard.press('Tab')
                         check('forward Tab wraps to drawer close', close.evaluate('e=>e===document.activeElement'))
                 if name == 'plain':
-                    check(f'{width}/plain no unused directory slot', page.locator('#floating-toc-btn').evaluate('e=>e.getBoundingClientRect().height') == 0)
+                    check(f'{width}/plain no unused directory slot', page.locator('#header-toc-btn').evaluate('e=>e.getBoundingClientRect().width') == 0)
                 browser.close()
         for width in (320, 390):
             browser, context = fresh_context(viewport={'width': width, 'height': 900})

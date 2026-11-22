@@ -136,7 +136,7 @@ with sync_playwright() as p:
 
     def mobile_toc():
         visit(width=375)
-        page.locator('#floating-toc-btn').click()
+        page.locator('#header-toc-btn').click()
         page.wait_for_timeout(350)
         assert page.evaluate('document.activeElement.id') == 'drawer-toc-close'
         page.locator('#drawer-toc-nav a').nth(1).click()

@@ -4,7 +4,9 @@ define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 require __DIR__ . '/html-api-bootstrap.php';
 $loops = 1;
 $GLOBALS['toc_fixture'] = '<h2>Visible heading</h2><p>Body</p>';
-function get_header($name = null, $args = array()) { $GLOBALS['header_args'] = $args; }
+function get_header($name = null, $args = array()) {
+    if (!empty($args['zen_show_toc'])) echo '<button id="header-toc-btn" class="zen-header-toc zen-ui-link hidden" hidden>目录</button>';
+}
 function get_footer() {}
 function have_posts() { return $GLOBALS['loops'] > 0; }
 function the_post() { $GLOBALS['loops']--; }
@@ -38,10 +40,11 @@ foreach (array(
     $GLOBALS['loops'] = 1;
     $GLOBALS['toc_fixture'] = $case[0];
     $GLOBALS['content_calls'] = 0;
-    $GLOBALS['header_args'] = array();
+
     ob_start(); include ABSPATH . 'single.php'; $html = ob_get_clean();
     $passed = $GLOBALS['content_calls'] === 1 && substr_count($html, $case[0]) === 1
-        && str_contains($html, 'zen-toc-pending') === $case[1];
+        && substr_count($html, 'zen-toc-pending') === (int) $case[1]
+        && str_contains($html, 'zen-header-toc zen-ui-link hidden zen-toc-pending') === $case[1];
     echo ($passed ? 'PASS ' : 'FAIL ') . $label . "\n";
     $failures += !$passed;
 }

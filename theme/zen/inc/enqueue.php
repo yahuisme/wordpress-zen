@@ -51,7 +51,7 @@ function zen_scripts() {
     $reading = zen_reading_width();
     wp_add_inline_style('zen-reading-style', zen_design_variables($reading));
     $breakpoint = max(1200, $reading + 560);
-    wp_add_inline_style('zen-layout-style', '@media(min-width:' . $breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#floating-toc-btn.zen-toc-ready,#header-toc-btn.zen-toc-ready,#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}}');
+    wp_add_inline_style('zen-layout-style', '@media(min-width:' . $breakpoint . 'px){#toc-container.zen-toc-ready{display:block!important}#header-toc-btn.zen-toc-ready,#header-toc-btn.zen-toc-pending{display:none!important}}');
     if (is_singular() && comments_open() && get_option('thread_comments') && !post_password_required()) {
         wp_enqueue_script('comment-reply');
     }

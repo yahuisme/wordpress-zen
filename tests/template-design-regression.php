@@ -36,7 +36,9 @@ function esc_html_e($value, $domain = '') { echo esc_html($value); }
 function is_search() { return $GLOBALS['is_search']; }
 function the_ID() { echo '7'; }
 function post_class($classes) { echo 'class="' . esc_attr($classes) . '"'; }
-function get_the_category() { return $GLOBALS['fixture_categories'] ?? array(); }
+function get_the_category($post = false) {
+    return $GLOBALS['fixture_categories_by_post'][$post] ?? $GLOBALS['fixture_categories'] ?? array();
+}
 function get_the_date($format = '', $post = null) { return gmdate($format ?: 'Y-m-d', strtotime($post->post_date ?? $GLOBALS['fixture_date'] ?? '2026-10-05')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
 function the_permalink() { echo '/post/'; }
@@ -88,7 +90,9 @@ function get_pagenum_link($number) { return '/?paged=' . $number; }
 function get_query_var($name) { return 1; }
 $GLOBALS['wp_query'] = (object) array('max_num_pages' => 1, 'found_posts' => 0);
 function get_locale() { return 'zh_CN'; }
-function get_header() {}
+function get_header($name = null, $args = array()) {
+    if (!empty($GLOBALS['render_fixture_header'])) echo render('header.php', $args);
+}
 function get_footer() {}
 function have_posts() { return !empty($GLOBALS['loop_left']); }
 function the_post() {
@@ -202,7 +206,7 @@ test('latest card uses a single-line month-day only in the current year', functi
     $GLOBALS['options']['zen_show_site_intro'] = 1;
     // The featured card renders before the main Loop and must use its explicit post.
     $GLOBALS['fixture_date'] = '2024-03-02T12:00:00Z';
-    $GLOBALS['fixture_categories'] = array((object) array('term_id' => 2, 'name' => '阅读记录'));
+    $GLOBALS['fixture_categories_by_post'] = array(7 => array((object) array('term_id' => 2, 'name' => '阅读 & 记录')));
     $GLOBALS['loop_left'] = 0;
     try {
         foreach (array('2026' => '11月 9日', '2025' => '2025.11.09') as $year => $display) {
@@ -218,15 +222,21 @@ test('latest card uses a single-line month-day only in the current year', functi
             check($date instanceof DOMElement, 'card date must be a time element');
             check($date->textContent === $display && $xpath->query('./*', $date)->length === 0, 'card needs a single unsplit date: ' . $year);
             check($date->getAttribute('datetime') === $year . '-11-09T12:00:00+00:00', 'card must retain its complete machine-readable date');
-            check($xpath->query('//article[@class="zen-latest-card"]//*[contains(@class,"zen-meta-category")]')->length === 0, 'card metadata must contain only the date');
+            $category = $xpath->query('../following-sibling::*[1][self::a and contains(@class,"zen-meta-category")]', $date);
+            $category_link = $category->item(0);
+            check($category->length === 1 && $category_link instanceof DOMElement
+                && $category_link->textContent === '阅读 & 记录' && $category_link->getAttribute('href') === '/category/2/',
+                'card must link the explicit featured post category after its date');
             check(str_contains(capture(static function () use ($latest) { zen_index_post_meta('full', $latest); }), 'zen-meta-category'), 'article metadata must retain its category');
             check(str_contains($html, '最近发布 ' . $year . '.11.09'), 'masthead date is independent of the card');
             check(str_contains(zen_post_date_html('full', $latest), '>' . $year . '.11.09</time>'), 'article detail dates must keep the year');
         }
+        unset($GLOBALS['fixture_categories_by_post']);
+        check(!str_contains(render('index.php'), 'zen-meta-category'), 'uncategorized card has no empty category link');
     } finally {
         $GLOBALS['wp_query'] = $previous_query;
         $GLOBALS['options'] = $previous_options;
-        unset($GLOBALS['fixture_date'], $GLOBALS['fixture_categories']);
+        unset($GLOBALS['fixture_date'], $GLOBALS['fixture_categories_by_post']);
     }
 });
 
@@ -335,13 +345,11 @@ test('single title leads metadata and uses native featured image in a shared rea
     $GLOBALS['loop_left'] = 1;
     check(!str_contains(render('single.php'), '/real.jpg'), 'disabled featured image shown');
 });
-test('table of contents keeps JS ids with local text trigger and no inline wide positioning', function () {
+test('table of contents keeps drawer and desktop IDs without a duplicate article trigger', function () {
     $html = single_fixture();
-    foreach (array('toc-container', 'toc-nav', 'floating-toc-btn', 'toc-overlay', 'drawer-toc', 'drawer-toc-title', 'drawer-toc-close', 'drawer-toc-nav', 'post-content') as $id) check(str_contains($html, 'id="' . $id . '"'), 'missing TOC contract ' . $id);
-    preg_match('/<button[^>]*id="floating-toc-btn"[^>]*>(.*?)<\/button>/s', $html, $trigger);
-    check(!str_contains($trigger[0] ?? '', 'fixed') && str_contains($trigger[1] ?? '', '目录'), 'trigger remains viewport-floating rather than inline text');
+    foreach (array('toc-container', 'toc-nav', 'toc-overlay', 'drawer-toc', 'drawer-toc-title', 'drawer-toc-close', 'drawer-toc-nav', 'post-content') as $id) check(str_contains($html, 'id="' . $id . '"'), 'missing TOC contract ' . $id);
+    check(!str_contains($html, 'id="floating-toc-btn"'), 'article header still has a duplicate TOC trigger');
     check(!str_contains($html, 'style="left:') && !str_contains($html, '--zen-content-half'), 'TOC still relies on inline global-wide offset');
-    check(strpos($html, 'id="floating-toc-btn"') < strpos($html, 'id="post-content"'), 'TOC trigger must be before content');
 });
 test('single consolidates notes hides absent author and tags and stacks adjacent labels over titles', function () {
     $GLOBALS['author'] = '';
@@ -375,7 +383,7 @@ function wp_get_attachment_image($id, $size, $icon = false, $attr = array()) {
     $GLOBALS['logo_calls'][] = array($id, $size, $attr);
     return '<img width="200" height="80" alt="' . esc_attr($attr['alt'] ?? '') . '" class="' . esc_attr($attr['class'] ?? '') . '" src="/logo.png">';
 }
-function is_singular($type = '') { return $GLOBALS['singular_post'] ?? false; }
+function is_singular($type = '') { return ($GLOBALS['singular_type'] ?? '') === $type || ($type === '' && !empty($GLOBALS['singular_type'])); }
 test('header uses native custom logo without admin Gravatar or nested home links', function () {
     $GLOBALS['logo'] = 91;
     $GLOBALS['logo_calls'] = array();
@@ -394,14 +402,29 @@ test('header uses native custom logo without admin Gravatar or nested home links
 test('header omits the assigned primary menu and retains search and article controls', function () {
     $GLOBALS['has_menu'] = true;
     $GLOBALS['menu_calls'] = array();
-    $GLOBALS['singular_post'] = true;
-    $GLOBALS['options']['zen_show_toc'] = 1;
-    $html = render('header.php');
+    $html = render('header.php', array('zen_show_toc' => true));
     check(!$GLOBALS['menu_calls'] && !str_contains($html, 'mobile-menu'), 'assigned menu still rendered');
     check(str_contains($html, 'id="search-fallback"') && str_contains($html, 'id="theme-toggle"'), 'tools disappeared with the primary menu');
     check((bool) preg_match('/<button[^>]*id="header-toc-btn"[^>]*\bhidden[^>]*>/', $html), 'prepared header TOC control missing');
-    $GLOBALS['singular_post'] = false;
-    check(!str_contains(render('header.php'), 'id="header-toc-btn"'), 'header TOC on nonpost');
+    check(!str_contains(render('header.php'), 'id="header-toc-btn"'), 'header TOC without a template drawer');
+});
+
+test('a custom post type using single.php gets the same directory control as the drawer', function () {
+    $previous_options = $GLOBALS['options'];
+    $GLOBALS['render_fixture_header'] = true;
+    $GLOBALS['singular_type'] = 'fixture_entry';
+    try {
+        $html = single_fixture();
+        check(substr_count($html, 'id="drawer-toc"') === 1, 'expected the single-template drawer');
+        check(substr_count($html, 'id="header-toc-btn"') === 1, 'missing single-template header trigger on custom post type');
+        $GLOBALS['options']['zen_show_toc'] = 0;
+        $GLOBALS['loop_left'] = 1;
+        $html = render('single.php');
+        check(!str_contains($html, 'id="header-toc-btn"') && !str_contains($html, 'id="drawer-toc"'), 'disabled TOC should emit neither trigger nor drawer');
+    } finally {
+        $GLOBALS['options'] = $previous_options;
+        unset($GLOBALS['render_fixture_header'], $GLOBALS['singular_type']);
+    }
 });
 
 function get_search_form() { echo '<form role="search" action="https://example.test/" method="get"><input type="search" name="s" value="' . esc_attr(get_search_query(false)) . '"><button>搜索</button></form>'; }

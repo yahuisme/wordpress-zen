@@ -110,7 +110,7 @@ ZEN_TEST_ISOLATED=1 php tests/native-single-regression.php /path/to/isolated/wp-
 
 ## 浏览器
 
-`python tests/editorial-regression.py /path/to/fixture` 检查标准列表、首屏最新文章卡片、分页去重及四种宽度的日期栏与摘要对齐。可追加 `--settings`，用隔离管理员 Cookie 保存并复原最新卡片开关，检查首页、搜索、文章和归档的日期格式。需要有站点简介、年度归档和至少两页文章的隔离样站。
+`python tests/editorial-regression.py /path/to/fixture` 检查标准列表、首屏最新文章卡片的日期与分类链接、分页去重及四种宽度的日期栏与摘要对齐。可追加 `--settings`，用隔离管理员 Cookie 保存并复原最新卡片开关，检查首页、搜索、文章和归档的日期格式。需要有站点简介、年度归档、至少两页文章，且最新文章已分配分类的隔离样站。
 
 ```sh
 python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
@@ -122,6 +122,7 @@ python tests/browser-regression.py http://127.0.0.1:18765 /path/to/fixture.json
 
 - `normal`：含多个 h2/h3、图片及足够滚动的长正文。
 - `split`：无 h2/h3 的短文章。
+- `custom`（可选）：含 h2/h3、使用原生 `single.php` 回退的公开自定义文章类型，用于验证手机页头目录和桌面侧栏。
 - `longtitle`：含长连续英文标题的文章。
 - `archives`：使用 Archives Template 的页面。
 - `links`：使用 Links Template，介绍中含长网址的页面。

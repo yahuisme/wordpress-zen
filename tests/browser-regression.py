@@ -66,7 +66,7 @@ with sync_playwright() as playwright:
     def empty_toc():
         for width in (375, 1279, 1280, 1300, 1359, 1360, 1440):
             visit('split', width)
-            assert not page.locator('#floating-toc-btn').is_visible(), f'Empty TOC at {width}'
+            assert not page.locator('#header-toc-btn').is_visible(), f'Empty TOC at {width}'
             assert not page.locator('#toc-container').is_visible(), f'Empty desktop TOC at {width}'
 
     def heading_offset():
@@ -78,12 +78,31 @@ with sync_playwright() as playwright:
         assert bounds['top'] >= bounds['bottom'], bounds
 
     def toc_space():
-        for width in (375, 1300, 1440, 1920, 2560):
-            visit('normal', width)
+        views = [('normal', width) for width in (375, 1300, 1359, 1360, 1440, 1920, 2560)]
+        if 'custom' in fixture:
+            views.extend(('custom', width) for width in (375, 1440))
+        for key, width in views:
+            visit(key, width)
             desktop = page.locator('#toc-container')
-            mobile = page.locator('#floating-toc-btn')
-            assert desktop.is_visible() != mobile.is_visible(), f'Exactly one TOC required at {width}'
+            mobile = page.locator('#header-toc-btn')
+            assert page.locator('button[aria-controls="drawer-toc"]').count() == 1, f'Expected one drawer trigger on {key} at {width}'
+            reading_width = page.evaluate("parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zen-reading-width'), 10)")
+            desktop_expected = width >= max(1200, reading_width + 560)
+            assert desktop.is_visible() == desktop_expected and mobile.is_visible() != desktop_expected, f'Wrong TOC at {width}'
             assert page.locator('#drawer-toc').evaluate('e => getComputedStyle(e).boxShadow === "none"'), 'Closed drawer shadow leaks into viewport'
+            if width == 375:
+                page.evaluate('scrollTo(0, 500)')
+                page.wait_for_function('scrollY > 300')
+                assert mobile.evaluate('''e => {
+                    const r = e.getBoundingClientRect();
+                    return r.width >= 44 && r.height >= 44 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+                }'''), 'The sticky header TOC must stay tappable while reading'
+                mobile.click()
+                assert mobile.get_attribute('aria-expanded') == 'true'
+                assert page.locator('#drawer-toc-close').evaluate('e => e === document.activeElement')
+                page.keyboard.press('Escape')
+                page.wait_for_function('document.activeElement.id === "header-toc-btn"')
+                assert mobile.get_attribute('aria-expanded') == 'false'
             if desktop.is_visible():
                 bounds = page.evaluate('''()=>({right:document.querySelector('#post-content').getBoundingClientRect().right,
                     toc:document.querySelector('#toc-container').getBoundingClientRect().left,

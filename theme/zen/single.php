@@ -2,7 +2,7 @@
 // Buffer only the prefix so Core still processes header/featured media before body media.
 $zen_show_toc = zen_get_option('zen_show_toc');
 if ($zen_show_toc) ob_start();
-get_header();
+get_header(null, array('zen_show_toc' => $zen_show_toc));
 ?>
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
@@ -24,9 +24,6 @@ get_header();
             <span class="zen-meta-field">预计阅读 <?php echo esc_html(zen_get_reading_time()); ?> 分钟</span>
             <?php endif; ?>
         </div>
-        <?php if ($zen_show_toc) : ?>
-        <button id="floating-toc-btn" type="button" class="zen-inline-toc-btn zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden><i class="ph ph-list-bullets" aria-hidden="true"></i><span>目录</span><span aria-hidden="true">⌄</span></button>
-        <?php endif; ?>
     </header>
 
     <?php if ($zen_show_toc) : ?>
@@ -67,8 +64,8 @@ get_header();
         while ($zen_tags->next_tag()) {
             if (in_array($zen_tags->get_tag(), array('H2', 'H3'), true)) {
                 $zen_prefix = str_replace(
-                    array('zen-header-toc zen-ui-link hidden', 'zen-inline-toc-btn zen-ui-link hidden'),
-                    array('zen-header-toc zen-ui-link hidden zen-toc-pending', 'zen-inline-toc-btn zen-ui-link hidden zen-toc-pending'),
+                    'zen-header-toc zen-ui-link hidden',
+                    'zen-header-toc zen-ui-link hidden zen-toc-pending',
                     $zen_prefix
                 );
                 break;

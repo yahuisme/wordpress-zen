@@ -22,7 +22,7 @@
         })();
     </script>
     <?php wp_head(); ?>
-    <noscript><style>#floating-toc-btn.zen-toc-pending,#header-toc-btn.zen-toc-pending{display:none!important}</style></noscript>
+    <noscript><style>#header-toc-btn.zen-toc-pending{display:none!important}</style></noscript>
 </head>
 <body <?php body_class('min-h-screen flex flex-col'); ?>>
 <?php wp_body_open(); ?>
@@ -45,7 +45,7 @@
 
         <div class="zen-header-actions">
             <div class="zen-header-tools">
-                <?php if (is_singular('post') && zen_get_option('zen_show_toc')) : ?>
+                <?php if (!empty($args['zen_show_toc'])) : ?>
                 <button id="header-toc-btn" type="button" class="zen-header-tool zen-header-toc zen-ui-link hidden" aria-label="打开目录" aria-haspopup="dialog" aria-controls="drawer-toc" aria-expanded="false" hidden>目录</button>
                 <?php endif; ?>
                 <a id="search-fallback" href="<?php echo esc_url(home_url('/?s=')); ?>" class="zen-header-tool zen-icon-btn" aria-label="搜索">

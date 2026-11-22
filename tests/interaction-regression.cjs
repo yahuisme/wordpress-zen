@@ -512,12 +512,12 @@ for (const nativeVisibility of [true, false]) {
 for (const owner of ['drawer', 'lightbox']) {
     test(`${owner} modal shares the visible-control Tab fallback and restores focus`, async t => {
         const markup = owner === 'drawer' ? `
-            <button id="floating-toc-btn">Directory</button><div id="toc-overlay" class="hidden"></div>
+            <button id="header-toc-btn">Directory</button><div id="toc-overlay" class="hidden"></div>
             <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><a id="modal-last" href="#chapter">Chapter</a></aside>` : `
             <article class="entry-content"><img id="plain-image" src="/plain.jpg" alt="Plain"></article>
             <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`;
         const { document, press, flush } = await page(t, markup);
-        const trigger = document.getElementById(owner === 'drawer' ? 'floating-toc-btn' : 'plain-image');
+        const trigger = document.getElementById(owner === 'drawer' ? 'header-toc-btn' : 'plain-image');
         const first = document.getElementById(owner === 'drawer' ? 'drawer-toc-close' : 'lightbox-close');
         const last = document.getElementById('modal-last') || first;
         trigger.focus(); trigger.click(); flush();
@@ -544,15 +544,15 @@ test('modal isolation is exclusive and restores existing inline and accessibilit
     const { document, press, flush } = await page(t, `<body style="overflow: auto !important">
         ${searchMarkup}
         <section id="existing" inert aria-hidden="false"></section><div id="empty" aria-hidden=""></div>
-        <button id="floating-toc-btn">Directory</button>
+        <button id="header-toc-btn">Directory</button>
         <div id="toc-overlay" class="hidden opacity-0"></div>
         <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>
     </body>`);
     const toggle = document.getElementById('search-toggle');
     const drawer = document.getElementById('drawer-toc');
     toggle.focus(); toggle.click(); flush();
-    document.getElementById('floating-toc-btn').click(); flush();
-    assert.equal(document.getElementById('floating-toc-btn').getAttribute('aria-expanded'), null);
+    document.getElementById('header-toc-btn').click(); flush();
+    assert.equal(document.getElementById('header-toc-btn').getAttribute('aria-expanded'), null);
     assert.ok(drawer.hasAttribute('inert'));
     assert.equal(document.activeElement.id, 'search-input');
     assert.equal(press('Escape'), false);
@@ -588,21 +588,17 @@ test('search Meta+k opens and closes without losing footer link focus', async t 
     assert.equal(document.body.style.overflow, '');
 });
 
-test('both local and header directory triggers share state and restore the activating control', async t => {
+test('the header directory trigger exposes its expanded state and regains focus', async t => {
     const { document, flush, press } = await page(t, `
         <header><button id="header-toc-btn" hidden>Directory</button></header>
-        <main><button id="floating-toc-btn" hidden>Directory</button>
-        <nav id="toc-nav"></nav><article id="post-content"><h2>One</h2></article>
+        <main><nav id="toc-nav"></nav><article id="post-content"><h2>One</h2></article>
         <div id="toc-overlay" class="hidden opacity-0"></div>
         <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><nav id="drawer-toc-nav"></nav></aside></main>`);
-    const local = document.getElementById('floating-toc-btn');
     const header = document.getElementById('header-toc-btn');
-    assert.equal(local.hidden, false);
     assert.equal(header.hidden, false);
     header.focus(); header.click(); flush();
     assert.equal(document.activeElement.id, 'drawer-toc-close');
     assert.equal(header.getAttribute('aria-expanded'), 'true');
-    assert.equal(local.getAttribute('aria-expanded'), 'true');
     press('Escape'); flush();
     assert.equal(document.activeElement, header);
     assert.equal(header.getAttribute('aria-expanded'), 'false');
@@ -612,12 +608,12 @@ test('both local and header directory triggers share state and restore the activ
 for (const dismiss of ['Escape', 'close button', 'backdrop']) {
     test(`drawer ${dismiss} before its opening frame does not steal focus after dismissal`, async t => {
         const { document, press, flush } = await page(t, `
-            <button id="floating-toc-btn">Directory</button>
+            <button id="header-toc-btn">Directory</button>
             <div id="toc-overlay" class="hidden opacity-0"></div>
             <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>
             <button id="search-toggle">Search</button>
             <div id="search-modal" class="hidden"><button id="search-close">Close</button><input id="search-input"></div>`);
-        const trigger = document.getElementById('floating-toc-btn');
+        const trigger = document.getElementById('header-toc-btn');
         const drawer = document.getElementById('drawer-toc');
         const close = document.getElementById('drawer-toc-close');
         const focusCalls = [];
@@ -648,10 +644,10 @@ for (const dismiss of ['Escape', 'close button', 'backdrop']) {
 
 test('drawer dismissal can return focus after its trigger disappears at a wider breakpoint', async t => {
     const { document, press, flush } = await page(t, `${searchMarkup}
-        <button id="floating-toc-btn">Directory</button>
+        <button id="header-toc-btn">Directory</button>
         <div id="toc-overlay" class="hidden opacity-0"></div>
         <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>`);
-    const trigger = document.getElementById('floating-toc-btn');
+    const trigger = document.getElementById('header-toc-btn');
     trigger.focus(); trigger.click(); flush();
     trigger.focus = () => {}; // A CSS-hidden button cannot take focus in a browser.
     press('Escape'); flush();
@@ -660,10 +656,10 @@ test('drawer dismissal can return focus after its trigger disappears at a wider 
 
 test('reopening a closing drawer cancels stale close and focus work', async t => {
     const { document, flush, press } = await page(t, `
-        <main><button id="floating-toc-btn">Directory</button><button id="outside">Outside</button></main>
+        <main><button id="header-toc-btn">Directory</button><button id="outside">Outside</button></main>
         <div id="toc-overlay" class="hidden opacity-0"></div>
         <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button></aside>`);
-    const trigger = document.getElementById('floating-toc-btn');
+    const trigger = document.getElementById('header-toc-btn');
     const drawer = document.getElementById('drawer-toc');
     const overlay = document.getElementById('toc-overlay');
     trigger.focus(); trigger.click();
@@ -725,11 +721,11 @@ for (const navId of ['toc-nav', 'drawer-toc-nav']) {
 
 test('successive drawer TOC activations focus the last native navigation target', async t => {
     const { document, flush } = await page(t, `
-        <button id="floating-toc-btn">Directory</button>
+        <button id="header-toc-btn">Directory</button>
         <article id="post-content"><h2 id="first">First</h2><h2 id="second">Second</h2></article>
         <div id="toc-overlay" class="hidden opacity-0"></div>
         <aside id="drawer-toc" inert class="translate-x-full"><button id="drawer-toc-close">Close</button><nav id="drawer-toc-nav"></nav></aside>`);
-    document.getElementById('floating-toc-btn').click(); flush();
+    document.getElementById('header-toc-btn').click(); flush();
     document.querySelector('#drawer-toc-nav [href="#first"]').click();
     document.querySelector('#drawer-toc-nav [href="#second"]').click();
     flush(); flush(); // Both navigation callbacks run before the close transition completes.

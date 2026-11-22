@@ -106,7 +106,7 @@ body .font-serif {
 }
 .zen-site-footer {
     color: var(--zen-muted);
-    font: 400 0.75rem/1.7 var(--zen-font-body);
+    font: 400 0.8125rem/1.7 var(--zen-font-body);
 }
 .zen-footer-navigation { min-width: 0; overflow-wrap: anywhere; margin-inline-start: auto; }
 .zen-footer-navigation ul { justify-content: flex-end; }
@@ -421,7 +421,7 @@ body .font-serif {
     font: 400 1.02rem/1.55 var(--zen-font-body);
 }
 .zen-article-header .zen-post-meta { margin-top: 24px; }
-.zen-article-header .zen-post-meta + .zen-inline-toc-btn { margin-top: 12px; }
+
 .zen-directory-intro { margin-top: 12px; }
 .zen-directory-intro > :last-child { margin-bottom: 0; }
 .zen-post-nav-next {
@@ -440,21 +440,14 @@ body .font-serif {
     max-height: calc(100dvh - 160px);
     overflow-y: auto;
 }
-#floating-toc-btn.zen-inline-toc-btn {
-    position: static;
-    display: none;
-}
+
 #header-toc-btn.zen-header-toc {
     display: none;
 }
-#floating-toc-btn.zen-toc-pending,
 #header-toc-btn.zen-toc-pending {
     display: inline-flex !important;
     visibility: hidden;
     pointer-events: none;
-}
-#floating-toc-btn.zen-toc-ready {
-    display: inline-flex;
 }
 #header-toc-btn.zen-toc-ready {
     display: inline-flex;
@@ -467,17 +460,7 @@ body .font-serif {
 #toc-nav {
     border-left: 1px solid var(--zen-border);
 }
-.zen-inline-toc-btn {
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 4px 12px;
-    margin-top: 4px;
-    border: 1px solid var(--zen-border);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--zen-muted);
-}
+
 .zen-article-title {
     font-size: clamp(1.95rem, 1.48rem + 1.75vw, 3rem);
     font-weight: 500;

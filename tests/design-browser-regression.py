@@ -12,13 +12,17 @@ with sync_playwright() as p:
  c=b.new_context(viewport={'width':390,'height':844},reduced_motion='reduce');page=c.new_page()
  page.route('**/*',lambda route:route.continue_() if route.request.url.startswith('http://127.0.0.1:18765/') else route.abort())
  page.goto('http://127.0.0.1:18765/?p='+str(f['normal']),wait_until='networkidle')
- overlaps=[]
+ trigger=page.locator('.zen-site-header #header-toc-btn')
+ assert page.locator('button[aria-controls="drawer-toc"]').count()==1 and trigger.is_visible()
+ positions=[]
  for y in (300,500,700,900,1200):
   page.evaluate('y=>scrollTo(0,y)',y);page.wait_for_timeout(50)
-  overlaps.append(page.evaluate('''()=>{let e=document.querySelector('#floating-toc-btn');let b=e.getBoundingClientRect();let covered='';let w=document.createTreeWalker(document.querySelector('#post-content'),NodeFilter.SHOW_TEXT);while(w.nextNode()){let n=w.currentNode;for(let i=0;i<n.length;i++){let r=document.createRange();r.setStart(n,i);r.setEnd(n,i+1);let t=r.getBoundingClientRect();if(t.width&&t.height&&t.left<b.right&&t.right>b.left&&t.top<b.bottom&&t.bottom>b.top)covered+=n.textContent[i];}}return {position:getComputedStyle(e).position,covered}}'''))
- result['toc']=overlaps
- if any(x['covered'] for x in overlaps):failed.append('directory trigger overlaps article glyphs')
- if any(x['position']=='fixed' for x in overlaps):failed.append('directory trigger must not float in the reading line')
+  positions.append(trigger.evaluate('''e=>{const b=e.getBoundingClientRect();
+   return {position:getComputedStyle(e).position,header:getComputedStyle(e.closest('header')).position,
+           reachable:e.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))};}'''))
+ result['toc']=positions
+ if any(x['position']=='fixed' or x['header']!='sticky' or not x['reachable'] for x in positions):
+  failed.append('directory trigger must remain usable in the sticky header, not float over the reading line')
  page.evaluate('scrollTo(0,0)')
  meta=page.evaluate('''()=>{let e=document.querySelector('.zen-article-header .zen-post-meta,main>header>div');return [...e.children].map(x=>({text:x.textContent,height:x.getBoundingClientRect().height}))}''')
  result['meta']=meta
