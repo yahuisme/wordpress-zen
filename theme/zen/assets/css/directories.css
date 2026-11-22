@@ -59,6 +59,7 @@
 .zen-notes-board #zen-comment-email-help { display: block; margin-block-start: 4px; }
 .zen-notes-stream { margin-block-start: 32px; }
 .zen-notes-stream > h2 { margin-block-end: 16px; }
+#zen-notes-entries :is(li, article)[id] { scroll-margin-block-start: 6rem; }
 
 @media (min-width: 640px) {
     .zen-notes-board .comment-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -70,8 +71,9 @@
 .zen-archives-directory { margin-block-start: 48px; }
 .zen-archive-group + .zen-archive-group { margin-block-start: 40px; }
 .zen-archive-group[hidden],
-.zen-archive-more[hidden] { display: none; }
-.zen-archive-more {
+:is(.zen-tags-directory, .zen-links-directory, #zen-notes-entries) > [hidden],
+:is(.zen-archive-more, .zen-directory-more)[hidden] { display: none; }
+:is(.zen-archive-more, .zen-directory-more) {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -85,9 +87,12 @@
     font: 400 1rem/1.5 var(--zen-font-body);
     cursor: pointer;
 }
-.zen-archive-more:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+.zen-archive-more:hover,
+.zen-directory-more:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+.zen-directory-more:focus-visible,
 .zen-archive-more:focus-visible,
-.zen-archive-year-head:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
+.zen-archive-year-head:focus-visible,
+#zen-notes-entries > li:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
 .zen-archive-year-head {
     display: flex;
     align-items: baseline;
@@ -149,11 +154,7 @@
     overflow-wrap: anywhere;
 }
 
-/* Links use one ruled list; only actual saved avatars are rendered. */
-.zen-links-directory {
-    display: block;
-    margin-block-start: 28px;
-}
+/* Link rows retain their own dividers; only saved avatars are rendered. */
 .zen-links-directory > li { border-bottom: 1px solid var(--zen-border-soft); }
 .zen-links-directory .zen-link-card {
     display: grid;
@@ -210,6 +211,7 @@
     color: var(--zen-accent);
 }
 
+.zen-links-directory,
 .zen-tags-directory {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -361,7 +363,7 @@
     .zen-archives-directory .zen-archive-row { gap: 8px; }
     .zen-archive-row .zen-post-date { font-size: 0.875rem; }
     .zen-links-directory .zen-link-card { column-gap: 12px; }
-    .zen-tags-directory { grid-template-columns: minmax(0, 1fr); margin-block-start: 28px; }
+    :is(.zen-links-directory, .zen-tags-directory) { grid-template-columns: minmax(0, 1fr); margin-block-start: 28px; }
     .zen-search-heading--blank .zen-native-search .search-form input[type="search"] { min-height: 64px; }
     .zen-error-page { text-align: start; }
     .zen-error-copy { margin-inline: 0; font-size: 1rem; }

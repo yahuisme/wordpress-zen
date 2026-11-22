@@ -75,7 +75,7 @@ while (have_posts()) : the_post();
 
     <?php if ($tags_locked) continue; ?>
     <?php if ($tag_directory) : ?>
-        <ul class="zen-tags-directory" role="list">
+        <ul id="zen-tags-entries" class="zen-tags-directory" role="list">
             <?php foreach ($tag_directory as $topic) : ?>
                 <li class="zen-tag-item">
                     <div class="zen-tag-head">
@@ -92,6 +92,10 @@ while (have_posts()) : the_post();
                 </li>
             <?php endforeach; ?>
         </ul>
+        <?php
+        $tags_batch_size = 20;
+        if (count($tag_directory) > $tags_batch_size) zen_directory_more('zen-tags-entries', $tags_batch_size, __('查看更多标签', 'zen'));
+        ?>
     <?php else : ?>
         <p class="zen-empty-state"><?php esc_html_e('暂无标签。', 'zen'); ?></p>
     <?php endif; ?>

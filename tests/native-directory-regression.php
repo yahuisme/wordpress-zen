@@ -1,7 +1,7 @@
 <?php
 /**
  * Native directory/password and public-cache regressions; no server/browser.
- * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery]
+ * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery|guestbook]
  * Use a disposable local loopback Zen installation with outbound HTTP/mail blocked.
  */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1])) exit(2);
@@ -15,19 +15,20 @@ require $argv[1];
 if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') {
     throw new RuntimeException('Disposable loopback Zen installation required');
 }
-foreach (array('page-archives.php', 'page-links.php', 'page-tags.php', 'search.php', 'inc/template-tags.php') as $zen_directory_file) {
+foreach (array('page-archives.php', 'page-links.php', 'page-tags.php', 'page-notes.php', 'comments-notes.php', 'comments.php', 'inc/comments.php', 'search.php', 'inc/template-tags.php') as $zen_directory_file) {
     if (hash_file('sha256', get_template_directory() . '/' . $zen_directory_file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/' . $zen_directory_file)) {
         throw new RuntimeException('Source mismatch: ' . $zen_directory_file);
     }
 }
 $zen_directory_slice = $argv[2] ?? 'all';
-if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery'), true)) throw new RuntimeException('Unknown slice');
+if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery', 'guestbook'), true)) throw new RuntimeException('Unknown slice');
 require_once ABSPATH . 'wp-admin/includes/bookmark.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 add_filter('pre_http_request', static function () { return new WP_Error('isolated', 'Outbound HTTP blocked'); }, 1);
 add_filter('pre_wp_mail', '__return_false');
 $zen_directory_checks = $zen_directory_failures = 0;
 $zen_directory_posts = $zen_directory_users = $zen_directory_links = $zen_directory_terms = $zen_directory_options = array();
+$zen_directory_comments = array();
 $zen_directory_old_user = get_current_user_id();
 $zen_directory_old_cookie = $_COOKIE['wp-postpass_' . COOKIEHASH] ?? null;
 function zen_directory_check($ok, $label) {
@@ -448,8 +449,56 @@ function zen_directory_secondary() {
         }
     }
 }
+function zen_directory_guestbook() {
+    $page_id = zen_directory_post(array('post_type'=>'page', 'page_template'=>'page-notes.php', 'comment_status'=>'open'));
+    zen_directory_option('page_comments', 1);
+    zen_directory_option('comments_per_page', 4);
+    zen_directory_option('thread_comments_depth', 2);
+    $insert = static function ($label, $day, $parent = 0) use ($page_id) {
+        $date = sprintf('2024-03-%02d 12:00:00', $day);
+        $comment_id = wp_insert_comment(array('comment_post_ID'=>$page_id, 'comment_content'=>$label, 'comment_author'=>'Fixture', 'comment_approved'=>1, 'comment_parent'=>$parent, 'comment_date'=>$date, 'comment_date_gmt'=>$date));
+        if (!$comment_id) throw new RuntimeException('Comment fixture failed');
+        $GLOBALS['zen_directory_comments'][] = $comment_id;
+        return $comment_id;
+    };
+    $roots = array();
+    for ($day = 1; $day <= 8; $day++) $roots[] = $insert('Root ' . $day, $day);
+    $reply = $insert('Recent reply to oldest thread', 9, $roots[0]);
+    $grandchild = $insert('Deeper historical reply', 10, $reply);
+    $before = has_filter('pre_option_page_comments');
+    foreach (array(1, 0) as $threading) {
+        zen_directory_option('thread_comments', $threading);
+        $html = zen_directory_render('page-notes.php', $page_id);
+        $dom = new DOMDocument();
+        if (!$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOERROR | LIBXML_NOWARNING)) throw new RuntimeException('Could not parse Notes');
+        $xpath = new DOMXPath($dom);
+        $visible_roots = array();
+        foreach ($xpath->query('//*[@id="zen-notes-entries"]/li') as $node) $visible_roots[] = $node->getAttribute('id');
+        $expected = array_map(static function ($id) { return 'comment-' . $id; }, array_reverse($roots));
+        zen_directory_check($visible_roots === $expected, "guestbook threading=$threading: only newest-first top-level comments are counted");
+        foreach (array($reply, $grandchild) as $child) {
+            zen_directory_check($xpath->query('//*[@id="comment-' . $roots[0] . '"]//*[@id="comment-' . $child . '"]')->length === 1, "guestbook threading=$threading: historical reply stays under its original thread");
+        }
+        zen_directory_check(str_contains($html, 'class="comment-reply-link"') === (bool) $threading, "guestbook threading=$threading: reply controls respect Discussion settings");
+        zen_directory_check(!str_contains($html, 'class="comment-pagination') && (int) get_option('page_comments') === 1 && has_filter('pre_option_page_comments') === $before, "guestbook threading=$threading: pagination is only suppressed during Notes render");
+    }
+    $stop = new RuntimeException('fixture interrupted comments query');
+    $interrupt = static function () use ($stop) { throw $stop; };
+    add_filter('comments_template_query_args', $interrupt);
+    $caught = false;
+    try {
+        zen_directory_render('page-notes.php', $page_id);
+    } catch (RuntimeException $error) {
+        if ($error !== $stop) throw $error;
+        $caught = true;
+    } finally {
+        remove_filter('comments_template_query_args', $interrupt);
+    }
+    zen_directory_check($caught && (int) get_option('page_comments') === 1 && has_filter('pre_option_page_comments') === $before, 'guestbook restores the pagination option after interrupted rendering');
+}
 try {
     wp_set_current_user(0);
+    if (in_array($zen_directory_slice, array('all', 'guestbook'), true)) zen_directory_guestbook();
     if (in_array($zen_directory_slice, array('all', 'discovery'), true)) zen_directory_discovery();
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
     if (in_array($zen_directory_slice, array('all', 'author'), true)) zen_directory_author();
@@ -461,6 +510,7 @@ try {
     if (in_array($zen_directory_slice, array('all', 'secondary'), true)) zen_directory_secondary();
 } finally {
     wp_reset_query();
+    foreach (array_reverse($zen_directory_comments) as $comment_id) wp_delete_comment($comment_id, true);
     foreach (array_reverse($zen_directory_posts) as $post_id) wp_delete_post($post_id, true);
     foreach ($zen_directory_users as $user_id) if (get_user_by('id', $user_id)) wp_delete_user($user_id);
     foreach ($zen_directory_links as $link_id) wp_delete_link($link_id);

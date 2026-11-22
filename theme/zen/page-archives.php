@@ -119,7 +119,7 @@ if (!$archive_locked) {
     <?php endif; ?>
     </div>
     <?php if (count($archive_years) > 2) : ?>
-        <button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years">
+        <button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years" data-zen-directory-batch="2">
             <span><?php esc_html_e('查看更早年份', 'zen'); ?></span>
             <span aria-hidden="true">↓</span>
         </button>

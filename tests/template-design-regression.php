@@ -553,6 +553,7 @@ test('existing comments precede native form while reply pagination and required 
     check(str_contains($html, 'zen-reading-shell'), 'comments reading width missing');
     check(str_contains($html, '?replytocom=1') && str_contains($html, '?cpage=2'), 'native reply or pagination output lost');
     check(($GLOBALS['comment_list_args']['callback'] ?? '') === 'zen_comment_callback', 'comment callback contract changed');
+    check(!isset($GLOBALS['comment_list_args']['reverse_top_level']) && !str_contains($html, 'data-zen-directory-batch'), 'article comments unexpectedly use guestbook ordering or disclosure');
     foreach (array('author', 'email', 'comment') as $id) check((bool) preg_match('/<(?:input|textarea)[^>]*id=[\'\"]' . $id . '[\'\"][^>]*\brequired\b/', $html), 'required field missing ' . $id);
     $GLOBALS['comments_open'] = false;
     $html = render('comments.php');
@@ -569,7 +570,9 @@ test('guestbook places one native form before existing comments and uses distinc
     check(($GLOBALS['comment_form_args']['title_reply'] ?? '') === '写留言', 'guestbook form title must be 写留言');
     check(($GLOBALS['comment_form_args']['label_submit'] ?? '') === '提交留言', 'guestbook button copy missing');
     check(str_contains($html, '留言内容') && str_contains($html, '邮箱不会公开'), 'guestbook field label or email privacy notice missing');
-    check(str_contains($html, '?replytocom=1') && str_contains($html, '?cpage=2'), 'guestbook must keep native replies and pagination');
+    check(str_contains($html, '?replytocom=1'), 'guestbook must keep native replies');
+    check(($GLOBALS['comment_list_args']['reverse_top_level'] ?? null) === true, 'guestbook must show newer threads first');
+    check(str_contains($html, 'id="zen-notes-entries"') && str_contains($html, 'hidden aria-controls="zen-notes-entries" data-zen-directory-batch="20"'), 'guestbook must reveal twenty threads at a time without hiding the native list in PHP');
     unset($GLOBALS['comments_open'], $GLOBALS['has_comments']);
 });
 test('native page uses same reading wrapper and split navigation', function () {
@@ -591,6 +594,29 @@ test('friend links label new-window destinations and only show explicitly saved 
     $GLOBALS['loop_left'] = 1;
     $GLOBALS['bookmarks'][0]->link_image = 'https://friend.test/avatar.png';
     check(str_contains(render('page-links.php'), 'src="https://friend.test/avatar.png"'), 'saved bookmark image no longer renders');
+});
+function get_tags($args) { return $GLOBALS['directory_tags'] ?? array(); }
+function is_wp_error($value) { return false; }
+class WP_Query {
+    public $posts = array();
+    public function __construct($args) {}
+}
+test('tags and friend links only offer more when the list exceeds twenty entries', function () {
+    foreach (array(20, 21) as $count) {
+        $GLOBALS['directory_tags'] = $GLOBALS['bookmarks'] = array();
+        for ($i = 1; $i <= $count; $i++) {
+            $GLOBALS['directory_tags'][] = (object) array('term_id' => $i, 'name' => 'Tag ' . $i, 'count' => 1);
+            $GLOBALS['bookmarks'][] = (object) array('link_name' => 'Link ' . $i, 'link_url' => 'https://example.test/' . $i, 'link_target' => '', 'link_image' => '', 'link_description' => '', 'link_rating' => 0);
+        }
+        foreach (array('tags' => 'zen-tag-item', 'links' => 'zen-link-card') as $kind => $item_class) {
+            $GLOBALS['loop_left'] = 1;
+            $html = render('page-' . $kind . '.php');
+            check(substr_count($html, 'class="' . $item_class . '"') === $count, "$kind must retain all entries in HTML");
+            check(str_contains($html, 'class="zen-directory-more"') === ($count > 20), "$kind shows the wrong threshold for $count entries");
+            if ($count > 20) check(str_contains($html, 'aria-controls="zen-' . $kind . '-entries" data-zen-directory-batch="20"'), "$kind must reveal twenty items at a time");
+        }
+    }
+    unset($GLOBALS['directory_tags'], $GLOBALS['bookmarks']);
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
 test('archive directory has one open disclosure per year and static month headings', function () {

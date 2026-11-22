@@ -188,7 +188,7 @@ function archiveMarkup(count) {
         <details class="zen-archive-group" open><summary class="zen-archive-year-head"><h2 class="zen-archive-year">${2026 - index}</h2></summary>
             <section class="zen-archive-month"><h3>10 月</h3><a href="/post/${index}">文章</a></section>
         </details>`).join('')}</div>
-        ${count > 2 ? '<button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years">查看更早年份</button>' : ''}`;
+        ${count > 2 ? '<button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years" data-zen-directory-batch="2">查看更早年份</button>' : ''}`;
 }
 
 test('archive year disclosure reveals two at a time and keeps focus on newly revealed content', async t => {
@@ -219,6 +219,55 @@ for (const count of [0, 1, 2]) {
         assert.equal(document.querySelector('.zen-archive-more'), null);
     });
 }
+
+for (const kind of ['tags', 'links']) {
+    test(`${kind} reveals twenty entries at a time and focuses the first added link`, async t => {
+        const id = `zen-${kind}-entries`;
+        const rows = Array.from({ length: 43 }, (_, i) => `<li><a href="/entry/${i}">${i}</a></li>`).join('');
+        const { document } = await page(t, `<ul id="${id}">${rows}</ul>
+            <button type="button" class="zen-directory-more" aria-controls="${id}" data-zen-directory-batch="20" hidden>查看更多</button>`);
+        const list = document.getElementById(id);
+        const more = document.querySelector('.zen-directory-more');
+        const visible = () => [...list.children].filter(item => !item.hidden).map(item => Number(item.textContent));
+        assert.deepEqual(visible(), Array.from({ length: 20 }, (_, i) => i));
+        assert.equal(more.hidden, false);
+        for (const [first, total] of [[20, 40], [40, 43]]) {
+            more.focus();
+            more.click();
+            assert.deepEqual(visible(), Array.from({ length: total }, (_, i) => i));
+            assert.equal(document.activeElement, list.children[first].querySelector('a'));
+            assert.equal(more.hidden, total === 43);
+        }
+        more.click();
+        assert.equal(visible().length, 43);
+        assert.equal(document.activeElement, list.children[40].querySelector('a'));
+    });
+}
+
+test('notes reveals twenty whole threads per click and keeps comment permalinks reachable', async t => {
+    const threads = Array.from({ length: 43 }, (_, i) => `
+        <li id="comment-${i}"><article id="div-comment-${i}">留言 ${i}</article>
+        <ol><li id="comment-${100 + i}"><article id="div-comment-${100 + i}">回复 ${i}</article></li></ol></li>`).join('');
+    const scrolledTo = [];
+    const { document, window } = await page(t, `<ol id="zen-notes-entries">${threads}</ol>
+        <button type="button" aria-controls="zen-notes-entries" data-zen-directory-batch="20" hidden>查看更早留言</button>`, window => {
+        window.HTMLElement.prototype.scrollIntoView = function () { scrolledTo.push(this.id); };
+    });
+    const rows = [...document.getElementById('zen-notes-entries').children];
+    const more = document.querySelector('[data-zen-directory-batch]');
+    const shown = () => rows.filter(row => !row.hidden).length;
+    assert.equal(shown(), 20);
+    more.click();
+    assert.equal(shown(), 40);
+    assert.equal(document.activeElement, rows[20]);
+    assert.equal(rows[20].querySelector('#comment-120').closest('[hidden]'), null);
+    window.location.hash = 'comment-142';
+    window.dispatchEvent(new window.HashChangeEvent('hashchange'));
+    assert.equal(shown(), 43);
+    assert.equal(document.getElementById('comment-142').closest('[hidden]'), null);
+    assert.equal(more.hidden, true);
+    assert.deepEqual(scrolledTo, ['comment-142']);
+});
 
 // jsdom has no layout/scroll engine: double only rail geometry and native scrolling.
 // Focus, focusin/out, shipped click handlers and hidden state remain real DOM behavior.

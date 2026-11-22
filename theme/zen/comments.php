@@ -2,11 +2,25 @@
 if (post_password_required()) return;
 
 $zen_guestbook = !empty($args['guestbook']);
-$zen_render_comment_list = static function () {
+$zen_render_comment_list = static function () use ($zen_guestbook) {
+    $list_args = array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback');
+    if ($zen_guestbook) {
+        $reply_depth = get_option('thread_comments') ? (int) get_option('thread_comments_depth') : 0;
+        $list_args['reverse_top_level'] = true;
+        // Keep saved replies inside each thread without enabling new replies past Core's limit.
+        $list_args['max_depth'] = max(2, $reply_depth);
+        if ($reply_depth < 2) {
+            $list_args['callback'] = static function ($comment, $args, $depth) use ($reply_depth) {
+                $args['max_depth'] = $reply_depth;
+                zen_comment_callback($comment, $args, $depth);
+            };
+        }
+    }
     ?>
-    <ol class="comment-list">
-        <?php wp_list_comments(array('style' => 'ol', 'avatar_size' => 48, 'callback' => 'zen_comment_callback')); ?>
+    <ol class="comment-list"<?php if ($zen_guestbook) echo ' id="zen-notes-entries"'; ?>>
+        <?php wp_list_comments($list_args); ?>
     </ol>
+    <?php if ($zen_guestbook) zen_directory_more('zen-notes-entries', 20, __('查看更早留言', 'zen')); ?>
     <?php if (get_comment_pages_count() > 1 && get_option('page_comments')) : ?>
         <nav class="comment-pagination flex justify-between gap-4" aria-label="评论分页">
             <div class="nav-previous"><?php previous_comments_link('&larr; 较早的评论'); ?></div>

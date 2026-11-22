@@ -38,8 +38,9 @@ get_header(); ?>
             }
             return $order_a <=> $order_b;
         });
+        $rendered_bookmarks = 0;
         ?>
-        <ul class="zen-links-directory" role="list">
+        <ul id="zen-links-entries" class="zen-links-directory" role="list">
             <?php foreach ($bookmarks as $bookmark) :
                 $allowed_targets = array('', '_blank', '_self', '_parent', '_top');
                 $link_target = in_array($bookmark->link_target, $allowed_targets, true) ? $bookmark->link_target : '_blank';
@@ -55,6 +56,7 @@ get_header(); ?>
                 $link_host = wp_parse_url($bookmark->link_url, PHP_URL_HOST);
                 $link_image = esc_url($bookmark->link_image);
                 if ($link_url === '') continue;
+                $rendered_bookmarks++;
                 ?>
                 <li>
                     <a href="<?php echo $link_url; ?>" target="<?php echo esc_attr($link_target); ?>" rel="<?php echo esc_attr($link_rel); ?>" class="zen-link-card"<?php if ($link_target === '_blank') : ?> aria-label="<?php echo esc_attr(sprintf(__('%s (在新窗口打开)', 'zen'), $bookmark->link_name)); ?>"<?php endif; ?>>
@@ -79,6 +81,10 @@ get_header(); ?>
                 </li>
             <?php endforeach; ?>
         </ul>
+        <?php
+        $links_batch_size = 20;
+        if ($rendered_bookmarks > $links_batch_size) zen_directory_more('zen-links-entries', $links_batch_size, __('查看更多友链', 'zen'));
+        ?>
     <?php else : ?>
         <p class="zen-empty-state"><?php esc_html_e('暂未添加友情链接。', 'zen'); ?></p>
     <?php endif; ?>

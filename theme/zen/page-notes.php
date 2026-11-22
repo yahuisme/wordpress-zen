@@ -15,7 +15,16 @@ while (have_posts()) : the_post(); ?>
     <?php if (!post_password_required()) : ?>
         <div class="zen-reading-shell zen-notes-shell">
             <?php if (comments_open() || get_comments_number()) : ?>
-                <?php comments_template('/comments-notes.php'); ?>
+                <?php
+                // Notes reveals older threads in place, independent of article comment pagination.
+                $zen_disable_comment_paging = static function () { return 0; };
+                add_filter('pre_option_page_comments', $zen_disable_comment_paging);
+                try {
+                    comments_template('/comments-notes.php');
+                } finally {
+                    remove_filter('pre_option_page_comments', $zen_disable_comment_paging);
+                }
+                ?>
             <?php else : ?>
                 <p><?php esc_html_e('目前不接受留言。', 'zen'); ?></p>
             <?php endif; ?>

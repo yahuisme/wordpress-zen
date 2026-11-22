@@ -97,25 +97,45 @@ const zenInit = () => {
         });
     });
 
-    const archiveYears = document.getElementById('zen-archive-years');
-    const archiveMore = document.querySelector('.zen-archive-more');
-    if (archiveYears && archiveMore) {
-        const years = [...archiveYears.querySelectorAll('.zen-archive-group')];
-        let shown = 2;
-        if (years.length > shown) {
-            archiveMore.addEventListener('click', () => {
-                const first = years[shown];
-                const next = Math.min(shown + 2, years.length);
-                for (; shown < next; shown++) years[shown].hidden = false;
-                const heading = first?.querySelector('.zen-archive-year-head');
-                if (heading) heading.focus({ preventScroll: true });
-                archiveMore.hidden = shown >= years.length;
-            });
-            // Hide content only after the enhancement is ready; without JS every year remains reachable.
-            years.slice(shown).forEach(year => { year.hidden = true; });
-            archiveMore.hidden = false;
+    document.querySelectorAll('button[data-zen-directory-batch]').forEach(button => {
+        const list = document.getElementById(button.getAttribute('aria-controls'));
+        const batch = Number(button.dataset.zenDirectoryBatch);
+        if (!list || !Number.isInteger(batch) || batch < 1 || list.children.length <= batch) return;
+        const items = [...list.children];
+        const notes = list.id === 'zen-notes-entries';
+        let shown = batch;
+        const reveal = count => {
+            const end = Math.min(count, items.length);
+            for (; shown < end; shown++) items[shown].hidden = false;
+            button.hidden = shown >= items.length;
+        };
+        button.addEventListener('click', () => {
+            const first = items[shown];
+            if (!first) return;
+            reveal(shown + batch);
+            const target = notes ? first : first.querySelector('summary, a[href]');
+            if (notes) first.tabIndex = -1;
+            target?.focus({ preventScroll: true });
+        });
+        if (notes) {
+            // Keep direct links to older comments and nested replies usable.
+            const revealComment = () => {
+                const hash = window.location.hash;
+                if (!/^#(?:div-)?comment-\d+$/.test(hash)) return;
+                const target = document.getElementById(hash.slice(1));
+                if (!list.contains(target)) return;
+                const index = items.findIndex(item => item.contains(target));
+                if (index < shown) return;
+                reveal(Math.ceil((index + 1) / batch) * batch);
+                target.scrollIntoView();
+            };
+            window.addEventListener('hashchange', revealComment);
+            revealComment();
         }
-    }
+        // Bind before hiding; without JavaScript every entry on the page remains reachable.
+        items.slice(shown).forEach(item => { item.hidden = true; });
+        button.hidden = shown >= items.length;
+    });
 
     const getStoredThemeMode = () => {
         try {

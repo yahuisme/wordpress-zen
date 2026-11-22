@@ -8,6 +8,15 @@ function zen_content_page_links() {
     ));
 }
 
+function zen_directory_more($list_id, $batch_size, $label) {
+    ?>
+    <button type="button" class="zen-directory-more" hidden aria-controls="<?php echo esc_attr($list_id); ?>" data-zen-directory-batch="<?php echo esc_attr($batch_size); ?>">
+        <span><?php echo esc_html($label); ?></span>
+        <span aria-hidden="true">↓</span>
+    </button>
+    <?php
+}
+
 /** Trim visible characters, keeping combining marks and emoji together. */
 function zen_trim_excerpt($text, $length, $more = '…') {
     // Keep block boundaries and line breaks when Core removes the markup.
