@@ -49,6 +49,9 @@ with sync_playwright() as p:
      cards=page.locator('main .zen-link-card')
      assert cards.count()==f['bookmarks'], 'Fixture must contain nonempty native bookmarks'
      assert cards.locator('h2').count()==cards.count(), 'Bookmark name should be a level-two heading'
+     heading_rule=page.locator('main .zen-links-heading').evaluate('e=>getComputedStyle(e).borderBottomWidth')
+     row_rules=page.locator('main .zen-links-directory > li').evaluate_all('es=>es.map(e=>{const s=getComputedStyle(e);return [s.borderTopWidth,s.borderBottomWidth]})')
+     assert heading_rule=='1px' and row_rules==[['0px','1px']]*cards.count(), ('Only the heading rule should appear above the first bookmark; keep the row dividers',width,heading_rule,row_rules)
      names_and_descriptions=cards.locator('h2, p').evaluate_all('es=>es.map(e=>({width:e.clientWidth,scroll:e.scrollWidth,wrap:getComputedStyle(e).whiteSpace}))')
      assert all(x['width']>=x['scroll'] and x['wrap']!='nowrap' for x in names_and_descriptions), (name,width,names_and_descriptions)
     if name in ('home','category','tag','search','author','date'):assert d['items'], ('Expected nonempty standard-list fixture',name)

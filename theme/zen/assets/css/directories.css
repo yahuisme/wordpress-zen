@@ -155,7 +155,6 @@
     margin-block-start: 28px;
 }
 .zen-links-directory > li { border-bottom: 1px solid var(--zen-border-soft); }
-.zen-links-directory > li:first-child { border-top: 1px solid var(--zen-border-soft); }
 .zen-links-directory .zen-link-card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) fit-content(34%);
