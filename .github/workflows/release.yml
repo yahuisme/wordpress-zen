@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_notes:
-        description: 手动发布时使用的简短中文说明
+        description: 手动发布用的中文更新说明，填写本版用户可见变化
         required: false
-        default: 更新主题功能，修复已知问题并完善稳定性。
+        default: ''
         type: string
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
           echo "主题版本：$VERSION"
-          printf '%s\n' "${RELEASE_NOTES:-更新主题功能，修复已知问题并完善稳定性。}" > release-notes.md
+          printf '%s\n' "${RELEASE_NOTES:-本版变更见 [更新记录](https://github.com/yahuisme/wordpress-zen/blob/${GITHUB_SHA}/CHANGELOG.md#${VERSION//./})。}" > release-notes.md
 
           git archive --format=zip --prefix=zen/ HEAD:theme/zen -o zen.zip
 
