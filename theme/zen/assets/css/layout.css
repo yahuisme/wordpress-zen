@@ -408,7 +408,7 @@ body .font-serif {
     border-bottom: 1px solid var(--zen-border);
     text-align: start;
 }
-.single .zen-article-header { padding: 104px 0 40px; margin-bottom: 56px; }
+.single .zen-article-header { padding: clamp(32px, 5vw, 48px) 0 40px; margin-bottom: 56px; }
 .single .zen-article-title { font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1.16; }
 .zen-article-deck {
     max-width: 672px;
