@@ -594,6 +594,18 @@ body .font-serif {
     color: var(--zen-text);
 }
 .post-password-form input[type="submit"] { margin: 8px 0; }
+.post-password-form > p:has(> label > input[type="password"]):has(> input[type="submit"]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 12px;
+}
+.post-password-form > p:has(> input[type="submit"]) > label:has(> input[type="password"]) {
+    display: grid;
+    flex: 0 1 240px;
+    min-width: 0;
+}
+.post-password-form > p:has(> label > input[type="password"]) > input[type="submit"] { margin: 0; }
 .zen-empty-state {
     color: var(--zen-muted);
     padding: 20px 0;
@@ -720,7 +732,7 @@ body .font-serif {
     .zen-latest-card .zen-post-title { font-size: 1.35rem; }
     .zen-latest-card .zen-post-excerpt { font-size: 0.875rem; margin-top: 12px; }
     .zen-latest-card .zen-post-meta { margin-top: 14px; }
-    .single .zen-article-header { padding: 51px 0 32px; margin-bottom: 42px; }
+    .single .zen-article-header { padding: 32px 0 32px; margin-bottom: 42px; }
     .single .zen-article-title { font-size: clamp(1.9rem, 10vw, 3.5rem); line-height: 1.2; }
     .zen-article-deck { font-size: 0.98rem; }
     .zen-header-tools {

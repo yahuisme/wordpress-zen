@@ -253,15 +253,12 @@
 .zen-tag-item a:is(:hover, :focus-visible) { color: var(--zen-accent); text-decoration: underline; }
 
 /* Keep Core's form, label, GET action and submit control. */
-#main-content:has(> .zen-search-heading--blank) {
-    padding-block-start: clamp(7rem, 23svh, 15rem);
-}
 .zen-search-heading:not(.zen-search-heading--blank) { margin-block-end: 24px; }
 .zen-native-search.zen-inline-search {
     position: relative;
     width: min(100%, 42rem);
     max-width: none;
-    margin: 0 auto;
+    margin: 0;
 }
 .zen-native-search .search-form {
     flex-direction: row-reverse;
@@ -279,10 +276,6 @@
     border: 0;
     background: transparent;
     font: 400 1.25rem/1.2 var(--zen-font-body);
-}
-.zen-search-heading--blank .zen-native-search .search-form input[type="search"] {
-    min-height: 80px;
-    font-size: clamp(1.35rem, 4vw, 2.25rem);
 }
 .zen-native-search input[type="search"]::placeholder { color: var(--zen-muted); opacity: 1; }
 .zen-native-search .search-form .search-submit {
@@ -358,16 +351,16 @@
 @media (max-width: 640px) {
     .zen-directory-heading { padding-block-end: 32px; }
     .zen-links-heading .zen-directory-title { font-size: 2rem; }
-    .zen-archives-directory { margin-block-start: 40px; }
+    .zen-archives-directory { margin-block-start: 28px; }
+    .zen-archive-group[open] > .zen-archive-year-head { margin-block-end: 16px; }
     .zen-archive-list { margin-inline-start: 0; }
     .zen-archives-directory .zen-archive-row { gap: 8px; }
     .zen-archive-row .zen-post-date { font-size: 0.875rem; }
     .zen-link-copy { column-gap: 12px; }
-    :is(.zen-links-directory, .zen-tags-directory) { grid-template-columns: minmax(0, 1fr); margin-block-start: 28px; }
-    .zen-search-heading--blank .zen-native-search .search-form input[type="search"] { min-height: 64px; }
+    :is(.zen-links-directory, .zen-tags-directory) { grid-template-columns: minmax(0, 1fr); margin-block-start: 16px; }
     .zen-error-page { text-align: start; }
     .zen-error-copy { margin-inline: 0; font-size: 1rem; }
-    .zen-error-page .zen-recovery-links { justify-content: flex-start; gap: 0 8px; }
+    .zen-error-page .zen-recovery-links { justify-content: flex-start; gap: 0 8px; margin-block-start: 32px; }
 }
 
 @media (max-width: 420px) {
