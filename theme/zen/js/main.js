@@ -813,21 +813,28 @@ const zenInit = () => {
             return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
         };
 
+        let displayedTime;
         const updateAudioUI = () => {
             const hasDuration = Number.isFinite(audio.duration) && audio.duration > 0;
             const percent = hasDuration ? Math.min(100, Math.max(0, (audio.currentTime / audio.duration) * 100)) : 0;
             const times = `${formatAudioTime(audio.currentTime)} / ${formatAudioTime(audio.duration)}`;
-            progressBar.style.width = percent + '%';
+            const width = percent + '%';
+            if (progressBar.style.width !== width) progressBar.style.width = width;
             const tabIndex = hasDuration ? 0 : -1;
             if (progressContainer.tabIndex !== tabIndex) progressContainer.tabIndex = tabIndex;
             if (hasDuration) progressContainer.removeAttribute('aria-disabled');
             else {
-                progressContainer.setAttribute('aria-disabled', 'true');
+                if (progressContainer.getAttribute('aria-disabled') !== 'true') progressContainer.setAttribute('aria-disabled', 'true');
                 if (document.activeElement === progressContainer) btn.focus({ preventScroll: true });
             }
-            progressContainer.setAttribute('aria-valuenow', Math.round(percent));
-            progressContainer.setAttribute('aria-valuetext', hasDuration ? times : '音频暂不可定位');
-            timeDisplay.innerText = times;
+            const value = String(Math.round(percent));
+            const valueText = hasDuration ? times : '音频暂不可定位';
+            if (progressContainer.getAttribute('aria-valuenow') !== value) progressContainer.setAttribute('aria-valuenow', value);
+            if (progressContainer.getAttribute('aria-valuetext') !== valueText) progressContainer.setAttribute('aria-valuetext', valueText);
+            if (displayedTime !== times) {
+                displayedTime = times;
+                timeDisplay.innerText = times;
+            }
         };
 
         let playAttempt = 0;

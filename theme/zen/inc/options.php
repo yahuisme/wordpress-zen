@@ -248,16 +248,18 @@ function zen_sanitize_theme_mode($value) {
     return in_array($value, array('auto', 'light', 'dark'), true) ? $value : 'auto';
 }
 
-function zen_sanitize_copyright_license($value) {
-    $licenses = array(
-        'none',
-        'all-rights-reserved',
-        'cc-by-4.0',
-        'cc-by-sa-4.0',
-        'cc-by-nc-sa-4.0',
+function zen_copyright_licenses() {
+    return array(
+        'none' => array('不显示', ''),
+        'all-rights-reserved' => array('保留所有权利', ''),
+        'cc-by-4.0' => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans'),
+        'cc-by-sa-4.0' => array('CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans'),
+        'cc-by-nc-sa-4.0' => array('CC BY-NC-SA 4.0', 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans'),
     );
+}
 
-    return in_array($value, $licenses, true) ? $value : 'none';
+function zen_sanitize_copyright_license($value) {
+    return is_string($value) && isset(zen_copyright_licenses()[$value]) ? $value : 'none';
 }
 
 function zen_sanitize_site_start_date($value) {
@@ -277,6 +279,27 @@ function zen_sanitize_site_start_date($value) {
     }
     add_settings_error('zen_site_start_date', 'zen_site_start_date_invalid', __('请输入有效日期（YYYY-MM-DD）；已保留上次保存值。', 'zen'));
     return zen_get_option('zen_site_start_date');
+}
+
+/** Hand off one parsed root between Zen's readers, never to Core. */
+function zen_parse_block_root($content, $reader) {
+    static $previous = null;
+
+    // A plugin can observe parser calls or choose a different parser on each call.
+    if (!is_string($content) || has_filter('block_parser_class') || has_filter('all')) {
+        $previous = null;
+        return parse_blocks($content);
+    }
+    if ($previous && $previous['content'] === $content && $previous['reader'] !== $reader) {
+        $blocks = $previous['blocks'];
+        // Release the shared tree before Core renders the article separately.
+        $previous = null;
+        return $blocks;
+    }
+    $previous = null;
+    $blocks = parse_blocks($content);
+    $previous = array('content' => $content, 'reader' => $reader, 'blocks' => $blocks);
+    return $blocks;
 }
 
 function zen_get_published_block_pattern($ref) {
@@ -312,7 +335,7 @@ function zen_reading_block_text($blocks, $ancestors = array()) {
 function zen_get_reading_time($post_id = 0) {
     $content = get_post_field('post_content', $post_id ? $post_id : get_the_ID());
     if (has_block('core/block', $content)) {
-        $content = zen_reading_block_text(parse_blocks($content));
+        $content = zen_reading_block_text(zen_parse_block_root($content, 'reading'));
     }
     $content = strip_shortcodes($content);
     $content = preg_replace('/<!--\s*wp:.*?-->/s', ' ', $content);
@@ -518,7 +541,7 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_reading_count', $labels['zen_show_reading_count'], __('显示文章浏览次数', 'zen'), $errors); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php echo esc_html($labels['zen_copyright_license']); ?></label></th>
                         <td><select name="zen_copyright_license" id="zen_copyright_license"<?php zen_option_description('zen_copyright_license', $errors); ?>>
-                            <?php foreach (array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0') as $value => $label) : ?>
+                            <?php foreach (zen_copyright_licenses() as $value => list($label)) : ?>
                                 <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $license); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
                         </select><p class="description"><?php esc_html_e('显示在文章底部，仅选择你明确授予的许可', 'zen'); ?></p>

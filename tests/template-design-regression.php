@@ -334,6 +334,7 @@ function number_format_i18n($value) { return number_format($value); }
 function zen_get_reading_count() { return 12; }
 function zen_show_reading_count() { return (bool) zen_get_option('zen_show_reading_count'); }
 function zen_get_reading_time() { return 3; }
+function zen_copyright_licenses() { return array('cc-by-4.0' => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans')); }
 function single_fixture() {
     $GLOBALS['options'] = array('zen_show_toc' => 1, 'zen_show_featured_image' => 1, 'zen_show_updated_date' => 1, 'zen_copyright_license' => 'cc-by-4.0', 'zen_show_tags' => 1, 'zen_show_post_navigation' => 1, 'zen_show_reading_count' => 1);
     $GLOBALS['loop_left'] = 1;

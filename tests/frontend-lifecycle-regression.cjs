@@ -139,6 +139,33 @@ test('rapid code copies keep the newest result and feedback timeout', async t =>
     assert.equal(window.document.querySelector('.zen-code-block [role="status"]').textContent, '');
 });
 
+test('audio progress does not rewrite unchanged time, percentage or availability', async t => {
+    const window = await page(t, '<audio controls></audio>', w => {
+        Object.defineProperties(w.document.querySelector('audio'), {
+            duration: { value: 120, writable: true }, currentTime: { value: 30, writable: true },
+        });
+    });
+    const { document } = window;
+    const audio = document.querySelector('audio');
+    const slider = document.querySelector('[role="slider"]');
+    const time = document.querySelector('.zen-audio-time');
+    const observer = new window.MutationObserver(() => {});
+    observer.observe(slider, { attributes: true });
+    const tick = (value, type = 'timeupdate') => {
+        audio.currentTime = value;
+        audio.dispatchEvent(new window.Event(type));
+        return observer.takeRecords().map(record => record.attributeName).sort();
+    };
+    assert.deepEqual(tick(30.05), [], 'unchanged rounded values must not rewrite ARIA');
+    assert.equal(time.innerText, '0:30 / 2:00');
+    assert.deepEqual(tick(31), ['aria-valuenow', 'aria-valuetext']);
+    assert.equal(time.innerText, '0:31 / 2:00');
+    audio.duration = Infinity;
+    assert.deepEqual(tick(31, 'durationchange'), ['aria-disabled', 'aria-valuenow', 'aria-valuetext', 'tabindex']);
+    assert.deepEqual(tick(31.1), [], 'unavailable progress keeps the same accessible state');
+    observer.disconnect();
+});
+
 test('paused audio reflects corrected duration without waiting for playback', async t => {
     const window = await page(t, '<audio controls></audio>', window => {
         Object.defineProperty(window.document.querySelector('audio'), 'duration', { value: NaN, writable: true });

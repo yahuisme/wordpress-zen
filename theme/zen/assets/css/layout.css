@@ -120,9 +120,6 @@ body .font-serif {
 .max-w-zen {
     max-width: var(--zen-content-width);
 }
-.max-w-zen-narrow {
-    max-width: var(--zen-archives-width);
-}
 .zen-reading-shell,
 .zen-reading-shell .entry-content,
 .zen-reading-shell .zen-comments-shell {
@@ -615,18 +612,7 @@ body .font-serif {
 .zen-empty-state a,
 .zen-recovery-links a { color: var(--zen-accent); min-height: 44px; }
 .zen-recovery-links { display: flex; flex-wrap: wrap; gap: 0 24px; }
-.zen-archives-directory.zen-reading-shell,
-.zen-archive-heading {
-    width: min(100%, 680px);
-}
-.zen-archives-directory .zen-archive-year {
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--zen-border);
-    color: var(--zen-accent);
-    font-size: 1.5rem;
-    font-weight: 500;
-    font-variant-numeric: lining-nums tabular-nums;
-}
+.zen-archives-directory .zen-archive-year { font-variant-numeric: lining-nums tabular-nums; }
 .zen-archive-link {
     min-width: 0;
     font-family: var(--zen-font-heading);

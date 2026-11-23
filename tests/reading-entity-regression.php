@@ -8,6 +8,7 @@ if (!is_file($core . '/wp-includes/formatting.php')) {
 define('ABSPATH', rtrim($core, '/') . '/');
 function add_action(...$args) {}
 function apply_filters($hook, $value, ...$args) { return $value; }
+function has_filter($hook) { return false; }
 function get_post_field($field, $id) { return $GLOBALS['reading_content']; }
 function get_post($id) { return $GLOBALS['reading_patterns'][$id] ?? null; }
 require ABSPATH . 'wp-includes/formatting.php';

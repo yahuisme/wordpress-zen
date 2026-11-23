@@ -7,6 +7,7 @@ $GLOBALS['inline'] = array();
 $GLOBALS['scripts'] = array();
 function add_action(...$args) {}
 function add_filter(...$args) {}
+function has_filter($hook) { return false; }
 function remove_action(...$args) {}
 function get_option($key, $default = false) {
     return $GLOBALS['asset_options'][$key] ?? $default;

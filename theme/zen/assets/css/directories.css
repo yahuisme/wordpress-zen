@@ -67,7 +67,6 @@
 }
 
 /* The archive is a date-first index; native details work without script. */
-.zen-archive-heading.zen-directory-heading { width: auto; }
 .zen-archives-directory { margin-block-start: 48px; }
 .zen-archive-group + .zen-archive-group { margin-block-start: 40px; }
 .zen-archive-group[hidden],

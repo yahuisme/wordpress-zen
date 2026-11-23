@@ -1,7 +1,7 @@
 <?php
 /**
  * Native directory/password and public-cache regressions; no server/browser.
- * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery|guestbook]
+ * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery|guestbook|queries]
  * Use a disposable local loopback Zen installation with outbound HTTP/mail blocked.
  */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1])) exit(2);
@@ -15,13 +15,13 @@ require $argv[1];
 if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') {
     throw new RuntimeException('Disposable loopback Zen installation required');
 }
-foreach (array('page-archives.php', 'page-links.php', 'page-tags.php', 'page-notes.php', 'comments-notes.php', 'comments.php', 'inc/comments.php', 'search.php', 'inc/template-tags.php') as $zen_directory_file) {
+foreach (array('footer.php', 'page-archives.php', 'page-links.php', 'page-tags.php', 'page-notes.php', 'comments-notes.php', 'comments.php', 'inc/comments.php', 'search.php', 'inc/template-tags.php') as $zen_directory_file) {
     if (hash_file('sha256', get_template_directory() . '/' . $zen_directory_file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/' . $zen_directory_file)) {
         throw new RuntimeException('Source mismatch: ' . $zen_directory_file);
     }
 }
 $zen_directory_slice = $argv[2] ?? 'all';
-if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery', 'guestbook'), true)) throw new RuntimeException('Unknown slice');
+if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery', 'guestbook', 'queries'), true)) throw new RuntimeException('Unknown slice');
 require_once ABSPATH . 'wp-admin/includes/bookmark.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 add_filter('pre_http_request', static function () { return new WP_Error('isolated', 'Outbound HTTP blocked'); }, 1);
@@ -369,6 +369,186 @@ function zen_directory_discovery() {
         }
     }
 }
+function zen_directory_footer() {
+    global $wpdb;
+    $templates = array('page-archives.php', 'page-tags.php', 'page-notes.php', 'page-links.php');
+    $locations = get_theme_mod('nav_menu_locations', array());
+    $saved = array();
+    $menu = wp_create_nav_menu('Zen directory fixture');
+    if (is_wp_error($menu)) throw new RuntimeException($menu->get_error_message());
+    set_theme_mod('nav_menu_locations', array());
+    zen_directory_option('zen_show_footer_rss', 1);
+    $render = static function ($cold = true) use ($wpdb) {
+        if ($cold) wp_cache_flush();
+        $before = count($wpdb->queries ?? array());
+        ob_start();
+        try { include get_template_directory() . '/footer.php'; $html = ob_get_contents(); }
+        finally { ob_end_clean(); }
+        preg_match('~<nav class="zen-footer-navigation"[^>]*>(.*?)</nav>~s', $html, $nav);
+        preg_match_all('~href="([^"]+)"~', $nav[1] ?? '', $links);
+        $reads = array_filter(array_slice($wpdb->queries ?? array(), $before), static function ($entry) use ($wpdb) {
+            return str_contains($entry[0], "FROM $wpdb->posts") && str_contains($entry[0], "'_wp_page_template'");
+        });
+        return array($links[1], count($reads), $nav[1] ?? '');
+    };
+    try {
+        foreach (get_pages(array('hierarchical'=>false)) as $existing) {
+            $assigned = get_post_meta($existing->ID, '_wp_page_template', true);
+            $slug_conflict = !$existing->post_parent && in_array($existing->post_name, array('archives', 'tags', 'links', 'about'), true);
+            if (in_array($assigned, $templates, true)) {
+                $saved[$existing->ID]['template'] = $assigned;
+                delete_post_meta($existing->ID, '_wp_page_template');
+            }
+            if ($slug_conflict) {
+                $saved[$existing->ID]['slug'] = $existing->post_name;
+                wp_update_post(array('ID'=>$existing->ID, 'post_name'=>'zen-footer-fixture-existing-' . $existing->ID));
+            }
+        }
+        $parent = zen_directory_post(array('post_type'=>'page', 'post_name'=>'zen-footer-parent'));
+        $archive = zen_directory_post(array('post_type'=>'page', 'post_name'=>'custom-archive', 'post_parent'=>$parent, 'page_template'=>$templates[0], 'post_title'=>'A archive'));
+        $runner_up = zen_directory_post(array('post_type'=>'page', 'post_name'=>'custom-archive-2', 'post_title'=>'Z archive'));
+        $tags = zen_directory_post(array('post_type'=>'page', 'post_name'=>'tags'));
+        $notes = zen_directory_post(array('post_type'=>'page', 'post_name'=>'custom-notes', 'page_template'=>$templates[2]));
+        $about = zen_directory_post(array('post_type'=>'page', 'post_name'=>'about'));
+        zen_directory_post(array('post_type'=>'page', 'post_name'=>'draft-notes', 'post_status'=>'draft', 'page_template'=>$templates[2], 'post_title'=>'A notes'));
+        zen_directory_post(array('post_type'=>'page', 'post_name'=>'private-links', 'post_status'=>'private', 'page_template'=>$templates[3]));
+        $rss = esc_url(get_bloginfo('rss2_url'));
+        $expected = array(esc_url(home_url('/')), esc_url(get_permalink($archive)), esc_url(get_permalink($tags)), esc_url(get_permalink($notes)), esc_url(get_permalink($about)), $rss);
+        list($links, $reads) = $render();
+        zen_directory_check($links === $expected, 'footer: nested explicit page, default slug, published only, About, stable order and RSS last');
+        if (defined('SAVEQUERIES') && SAVEQUERIES) {
+            echo 'FOOTER_COLD_TEMPLATE_READS ' . $reads . PHP_EOL;
+            wp_cache_flush();
+            zen_get_archives_url();
+            $warm = $render(false);
+            echo 'FOOTER_TEMPLATE_READS_AFTER_ARCHIVE_LOOKUP ' . $warm[1] . PHP_EOL;
+            zen_directory_check($warm[0] === $expected && $warm[1] < $reads, 'Core already reuses the identical archive lookup while keeping footer links');
+        }
+
+        $default_archive = zen_directory_post(array('post_type'=>'page', 'post_name'=>'archives'));
+        zen_directory_check($render()[0] === $expected, 'footer explicit assignment outranks a published default-slug page');
+        update_post_meta($runner_up, '_wp_page_template', $templates[0]);
+        zen_directory_check($render()[0] === $expected, 'multiple explicit candidates retain native title ordering');
+        wp_update_post(array('ID'=>$runner_up, 'post_title'=>'A archive'));
+        zen_directory_check($render()[0][1] === esc_url(zen_get_directory_url($templates[0])), 'equal titles retain the native single-template match');
+        wp_update_post(array('ID'=>$runner_up, 'post_title'=>'Z archive'));
+        $seen = array();
+        $alternate = static function ($pages, $args) use (&$seen, $runner_up, $templates) {
+            if ($args['meta_key'] !== '_wp_page_template') return $pages;
+            $seen[] = $args['meta_value'];
+            return $args['meta_value'] === $templates[0] ? array(get_post($runner_up)) : $pages;
+        };
+        add_filter('get_pages', $alternate, 10, 2);
+        try {
+            zen_directory_check($render()[0][1] === esc_url(get_permalink($runner_up)) && $seen === $templates, 'get_pages receives all original template arguments and can replace the match');
+        } finally { remove_filter('get_pages', $alternate, 10); }
+        // Polylang uses get_pages_query_args to scope these queries by language.
+        $language = static function ($args, $parsed) use ($runner_up, $templates) {
+            if ($parsed['meta_value'] === $templates[0]) $args['post__in'] = array($runner_up);
+            return $args;
+        };
+        add_filter('get_pages_query_args', $language, 10, 2);
+        try {
+            zen_directory_check($render()[0][1] === esc_url(get_permalink($runner_up)), 'get_pages_query_args language-style filter keeps per-template selection');
+        } finally { remove_filter('get_pages_query_args', $language, 10); }
+
+        $item = wp_update_nav_menu_item($menu, 0, array('menu-item-title'=>'Custom feed', 'menu-item-url'=>get_bloginfo('rss2_url'), 'menu-item-type'=>'custom', 'menu-item-status'=>'publish'));
+        if (is_wp_error($item) || !$item) throw new RuntimeException('Menu item fixture failed');
+        set_theme_mod('nav_menu_locations', array('footer'=>$menu));
+        list($links, $reads, $nav) = $render();
+        zen_directory_check($links === array($rss) && str_contains($nav, 'Custom feed') && !str_contains($nav, 'ph-rss') && $reads === 0, 'assigned footer skips discovery and suppresses duplicate RSS');
+    } finally {
+        wp_delete_nav_menu($menu);
+        set_theme_mod('nav_menu_locations', $locations);
+        // Free the fixture slugs before restoring existing pages.
+        foreach (array($tags ?? 0, $about ?? 0, $default_archive ?? 0) as $id) if ($id) wp_delete_post($id, true);
+        foreach ($saved as $id=>$state) {
+            if (isset($state['slug'])) wp_update_post(array('ID'=>$id, 'post_name'=>$state['slug']));
+            if (isset($state['template'])) update_post_meta($id, '_wp_page_template', $state['template']);
+        }
+    }
+}
+
+function zen_directory_sparse_tags() {
+    global $wpdb;
+    $page = zen_directory_post(array('post_type'=>'page', 'post_content'=>'Intro one<!--nextpage-->Intro two'));
+    $terms = array();
+    foreach (array('Batch Dominant', 'Batch Shared', 'Batch Tie', 'Batch Rare') as $name) {
+        $term = wp_insert_term($name, 'post_tag');
+        if (is_wp_error($term)) throw new RuntimeException($term->get_error_message());
+        $terms[] = (int) $term['term_id'];
+        $GLOBALS['zen_directory_terms'][] = array($term['term_id'], 'post_tag');
+    }
+    list($dominant, $shared, $tie, $rare) = $terms;
+    $make = static function ($name, $date, $tags, $status = 'publish') {
+        $id = zen_directory_post(array('post_title'=>$name, 'post_date'=>$date . ' 12:00:00', 'post_status'=>$status));
+        $result = wp_set_post_tags($id, $tags);
+        if (is_wp_error($result) || count($result) !== count($tags)) throw new RuntimeException('Post tags fixture failed');
+        return $id;
+    };
+    wp_defer_term_counting(true);
+    try {
+        $rare_post = $make('Rare first', '2020-01-01', array($rare));
+        for ($i = 0; $i < 347; ++$i) $make('Dominant older ' . $i, '2022-01-01', array($dominant));
+        $lower = $make('Equal-date lower ID', '2024-02-01', array($dominant, $shared, $tie));
+        $higher = $make('Equal-date higher ID', '2024-02-01', array($dominant, $shared));
+        $make('Draft should not win', '2025-01-01', array($rare, $shared), 'draft');
+    } finally { wp_defer_term_counting(false); }
+    $expected = array($dominant=>$higher, $shared=>$higher, $tie=>$lower, $rare=>$rare_post);
+    $extract = static function ($html) {
+        $dom = new DOMDocument();
+        if (!$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOERROR | LIBXML_NOWARNING)) throw new RuntimeException('Could not parse Tags');
+        $xpath = new DOMXPath($dom);
+        $rows = array();
+        foreach ($xpath->query('//*[@id="zen-tags-entries"]/li') as $node) {
+            $link = $xpath->query('.//h2/a', $node)->item(0);
+            $preview = $xpath->query('.//div[@class="zen-tag-recent"]/a', $node)->item(0);
+            $time = $xpath->query('.//time', $node)->item(0);
+            $rows[$link->textContent] = array($link->getAttribute('href'), $preview ? $preview->getAttribute('href') : '', $time ? $time->getAttribute('datetime') : '');
+        }
+        return $rows;
+    };
+    wp_cache_flush();
+    $before = count($wpdb->queries ?? array());
+    $html = zen_directory_render('page-tags.php', $page);
+    $batches = array();
+    foreach (array_slice($wpdb->queries ?? array(), $before) as $entry) {
+        if (str_contains($entry[0], 'term_relationships') && preg_match('/ORDER BY .*post_date DESC,.*ID DESC\s+LIMIT\s+(\d+),\s*(\d+)/s', $entry[0], $match)) {
+            // Replay the logged native SELECT against unchanged fixtures to count rows without a selection hook.
+            $batches[] = array((int) $match[1], (int) $match[2], count($wpdb->get_results($entry[0])));
+        }
+    }
+    $ordered = array();
+    foreach (get_tags(array('hide_empty'=>true, 'orderby'=>'count', 'order'=>'DESC')) as $term) {
+        if (!isset($expected[$term->term_id])) continue;
+        $id = $expected[$term->term_id];
+        $ordered[$term->name] = array(get_tag_link($term), get_permalink($id), get_the_date('Y-m-d', $id));
+    }
+    $rows = $extract($html);
+    zen_directory_check(array_intersect_key($rows, $ordered) === $ordered && count($ordered) === 4 && str_contains($html, 'datetime="2024-02-01"') && str_contains($html, 'class="zen-page-links"'), '350 posts: exact tag order, preview URLs, equal-date tiebreak, dates and content pagination');
+    if (defined('SAVEQUERIES') && SAVEQUERIES) echo 'TAGS_COLD_BATCH_SQL ' . json_encode($batches) . PHP_EOL;
+
+    $seen = array();
+    $language = static function ($query) use (&$seen, $higher) {
+        if (($query->get('tax_query')[0]['taxonomy'] ?? '') !== 'post_tag') return;
+        $seen[] = (int) $query->get('posts_per_page');
+        $query->set('post__not_in', array($higher));
+    };
+    add_action('pre_get_posts', $language);
+    try { $filtered = $extract(zen_directory_render('page-tags.php', $page)); }
+    finally { remove_action('pre_get_posts', $language); }
+    zen_directory_check(($filtered['Batch Dominant'][1] ?? '') === get_permalink($lower) && $seen === array(100, 100), 'plugin-filtered tags retain original batch arguments and honor query selection');
+
+    for ($i = 0; $i < 17; ++$i) {
+        $term = wp_insert_term('Batch extra ' . $i, 'post_tag');
+        if (is_wp_error($term)) throw new RuntimeException($term->get_error_message());
+        $GLOBALS['zen_directory_terms'][] = array($term['term_id'], 'post_tag');
+        wp_set_post_tags($higher, array((int) $term['term_id']), true);
+    }
+    $html = zen_directory_render('page-tags.php', $page);
+    zen_directory_check(count(array_filter(array_keys($extract($html)), static function ($name) { return str_starts_with($name, 'Batch '); })) === 21 && str_contains($html, 'hidden aria-controls="zen-tags-entries" data-zen-directory-batch="20"'), 'all 21 fixture tags appear in unenhanced HTML with the enhancement control hidden');
+}
+
 function zen_directory_equal_dates() {
     $page = zen_directory_post(array('post_type'=>'page'));
     $ids = array();
@@ -506,6 +686,11 @@ try {
         zen_directory_nested_link();
         zen_directory_lifecycle();
         zen_directory_equal_dates();
+    }
+    // Keep the 350-post query fixture opt-in; the ordinary suite covers directories without it.
+    if ($zen_directory_slice === 'queries') {
+        zen_directory_footer();
+        zen_directory_sparse_tags();
     }
     if (in_array($zen_directory_slice, array('all', 'secondary'), true)) zen_directory_secondary();
 } finally {

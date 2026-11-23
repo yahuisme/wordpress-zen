@@ -106,6 +106,89 @@ try {
             zen_native_check(zen_get_reading_time($post_id) === $case[1], 'entity reading ' . $kind . ': ' . $name);
         }
     }
+    // Count native parse_blocks() dispatches without registering a parser filter.
+    $long_code = '<!-- wp:code --><pre class="wp-block-code"><code>' . str_repeat('Z', 301) . '</code></pre><!-- /wp:code -->';
+    $shared_pattern = zen_fixture_post($long_code);
+    $shared_ref = '<!-- wp:block {"ref":' . $shared_pattern . '} /-->';
+    $shared_body = $shared_ref . $shared_ref;
+    $shared_post = zen_fixture_post($shared_body, array('post_type' => 'post'));
+    $GLOBALS['post'] = get_post($shared_post);
+    $before_parse = did_filter('block_parser_class');
+    $core_html = do_blocks($shared_body);
+    $core_parses = did_filter('block_parser_class') - $before_parse;
+    zen_native_check(substr_count($core_html, str_repeat('Z', 301)) === 2, 'Core renders both synced copies');
+    $before_parse = did_filter('block_parser_class');
+    zen_native_check(zen_has_code_blocks(), 'shared root detects code in refs');
+    $detector_parses = did_filter('block_parser_class') - $before_parse;
+    $before_parse = did_filter('block_parser_class');
+    zen_native_check(do_blocks($shared_body) === $core_html, 'warm Zen tree does not change native HTML');
+    $warm_core_parses = did_filter('block_parser_class') - $before_parse;
+    $before_parse = did_filter('block_parser_class');
+    zen_native_check(zen_get_reading_time($shared_post) === 3, 'shared root still counts repeated refs twice');
+    $reading_parses = did_filter('block_parser_class') - $before_parse;
+    printf("BLOCK_PARSE_DISPATCHES detector=%d reading=%d core=%d (cold core=%d)\n", $detector_parses, $reading_parses, $warm_core_parses, $core_parses);
+    // Highlighter parses only the root; reading still parses the two ref occurrences.
+    zen_native_check($detector_parses === 1 && $reading_parses === 2, 'Zen parses the shared root once');
+    zen_native_check($core_parses > 0 && $warm_core_parses === $core_parses, 'Core still parses independently of Zen');
+    $before_parse = did_filter('block_parser_class');
+    $repeat_detector = zen_has_code_blocks() && zen_has_code_blocks();
+    zen_native_check($repeat_detector && did_filter('block_parser_class') - $before_parse === 2, 'repeat detection does not consume its own tree');
+
+    // Re-read pattern state even when the root bytes are unchanged.
+    foreach (array('private', 'publish') as $status) {
+        wp_update_post(array('ID' => $shared_pattern, 'post_status' => $status));
+        zen_native_check(zen_has_code_blocks() === ('publish' === $status), "warm detector respects $status ref");
+        zen_native_check(zen_get_reading_time($shared_post) === ('publish' === $status ? 3 : 1), "warm reading time respects $status ref");
+    }
+    // Reading may see filtered post_content; never reuse a tree for different bytes.
+    $content_filter = static fn() => '<!-- wp:block {"ref":[]} /-->';
+    add_filter('post_content', $content_filter);
+    try {
+        zen_native_check(zen_get_reading_time($shared_post) === 1, 'reading uses filtered root content, not the detector tree');
+    } finally {
+        remove_filter('post_content', $content_filter);
+    }
+    zen_native_check(zen_get_reading_time($shared_post) === 3, 'removing the content filter restores both refs');
+    $changed_root = $shared_ref . '<!-- wp:block {"ref":' . $cycle . '} /-->';
+    wp_update_post(array('ID' => $shared_post, 'post_content' => $changed_root));
+    $GLOBALS['post'] = get_post($shared_post);
+    $before_parse = did_filter('block_parser_class');
+    zen_native_check(zen_get_reading_time($shared_post) === 2, 'reading first uses edited root and stops at cycle');
+    $before_detector = did_filter('block_parser_class');
+    zen_native_check(zen_has_code_blocks(), 'detector after reading finds code beside cycle');
+    zen_native_check($before_detector > $before_parse && did_filter('block_parser_class') === $before_detector, 'detector reuses tree in reverse reader order');
+
+    // A stateful plugin parser must run on each call, even over a warmed native root.
+    zen_native_check(zen_get_reading_time($shared_post) === 2, 'native reading warms the edited root for the plugin bypass test');
+    $parser = new class extends WP_Block_Parser {
+        public static $root;
+        public static $calls = 0;
+        public function parse($document) {
+            return $document === self::$root && ++self::$calls % 2 === 0 ? array() : parent::parse($document);
+        }
+    };
+    $parser::$root = $changed_root;
+    $parser_filter = static fn() => get_class($parser);
+    add_filter('block_parser_class', $parser_filter);
+    try {
+        zen_native_check(zen_has_code_blocks() && !zen_has_code_blocks() && zen_has_code_blocks() && $parser::$calls === 3, 'stateful custom parser is never memoized by the detector');
+        // The next two calls both parse the root; only the second expands its valid ref.
+        zen_native_check(zen_get_reading_time($shared_post) === 1 && zen_get_reading_time($shared_post) === 2, 'reading also honors every custom parse');
+    } finally {
+        remove_filter('block_parser_class', $parser_filter);
+    }
+    zen_native_check(zen_has_code_blocks(), 'native detector warms the root for the all-hook bypass test');
+    $all_calls = 0;
+    $all_filter = static function ($hook) use (&$all_calls) {
+        if ('block_parser_class' === $hook) ++$all_calls;
+    };
+    add_filter('all', $all_filter);
+    try {
+        zen_native_check(zen_get_reading_time($shared_post) === 2 && $all_calls === 3, 'plugin all-hook observes root and both referenced parses');
+    } finally {
+        remove_filter('all', $all_filter);
+    }
+
     $GLOBALS['post'] = get_post($post_id);
     query_posts(array('p' => $post_id));
     $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';

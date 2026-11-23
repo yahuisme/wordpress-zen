@@ -153,6 +153,20 @@ test('single settings form groups all old and new fields', function () {
     expect(str_contains($html, '恢复默认设置') && str_contains($html, 'zen_reset_options'), 'reset settings action missing');
     expect(!str_contains($html, '<style>'), 'admin style must be enqueued separately');
 });
+test('copyright choices keep their original order, labels and saved values', function () {
+    $expected = array('none' => '不显示', 'all-rights-reserved' => '保留所有权利', 'cc-by-4.0' => 'CC BY 4.0', 'cc-by-sa-4.0' => 'CC BY-SA 4.0', 'cc-by-nc-sa-4.0' => 'CC BY-NC-SA 4.0');
+    $GLOBALS['options']['zen_copyright_license'] = 'cc-by-sa-4.0';
+    try {
+        expect(preg_match('~<select[^>]*id="zen_copyright_license"[^>]*>(.*?)</select>~s', render(), $select), 'copyright select missing');
+        preg_match_all('~<option value="([^"]+)"([^>]*)>([^<]*)</option>~', $select[1], $options);
+        expect(array_combine($options[1], $options[3]) === $expected, 'copyright choice order, values or labels changed');
+        foreach ($options[1] as $i => $value) {
+            expect(zen_sanitize_copyright_license($value) === $value, "$value must stay accepted");
+            expect(str_contains($options[2][$i], 'selected') === ($value === 'cc-by-sa-4.0'), 'saved choice must remain selected');
+        }
+        foreach (array(array(), null, 0, new stdClass()) as $invalid) expect(zen_sanitize_copyright_license($invalid) === 'none', 'invalid values must not impose a license');
+    } finally { unset($GLOBALS['options']['zen_copyright_license']); }
+});
 test('limited permissions hide code editors without leaking or removing saved code', function () {
     $GLOBALS['caps']['unfiltered_html'] = false;
     $GLOBALS['options']['zen_code_head'] = 'private-code';

@@ -82,13 +82,7 @@ get_header(null, array('zen_show_toc' => $zen_show_toc));
     <?php
     $zen_author = get_the_author();
     $zen_license = zen_get_option('zen_copyright_license');
-    $zen_licenses = array(
-        'all-rights-reserved' => array('保留所有权利', ''),
-        'cc-by-4.0' => array('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/deed.zh-hans'),
-        'cc-by-sa-4.0' => array('CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans'),
-        'cc-by-nc-sa-4.0' => array('CC BY-NC-SA 4.0', 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans'),
-    );
-    $zen_license_info = isset($zen_licenses[$zen_license]) ? $zen_licenses[$zen_license] : null;
+    $zen_license_info = is_string($zen_license) && 'none' !== $zen_license ? (zen_copyright_licenses()[$zen_license] ?? null) : null;
     ?>
     <?php if (zen_get_option('zen_show_updated_date') || $zen_author !== '' || $zen_license_info) : ?>
     <aside class="zen-article-notes text-sm text-gray-600 dark:text-gray-400" aria-label="文章说明">

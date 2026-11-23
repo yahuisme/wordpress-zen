@@ -16,8 +16,7 @@ function zen_reading_width() {
 }
 
 function zen_design_variables($reading) {
-    $site = 1000;
-    return ':root{--zen-content-width:' . $site . 'px;--zen-reading-width:' . $reading . 'px;--zen-archives-width:' . min($site, $reading) . 'px}';
+    return ':root{--zen-content-width:1000px;--zen-reading-width:' . $reading . 'px}';
 }
 
 function zen_scripts() {
@@ -107,6 +106,7 @@ function zen_has_code_blocks() {
     }
     $pending = array($post->post_content);
     $seen_refs = array();
+    $is_root = true;
     while ($pending) {
         $content = array_pop($pending);
         if (has_block('core/code', $content) || zen_has_preformatted_code($content)) {
@@ -115,7 +115,8 @@ function zen_has_code_blocks() {
         if (!has_block('core/block', $content)) {
             continue;
         }
-        $blocks = parse_blocks($content);
+        $blocks = $is_root ? zen_parse_block_root($content, 'highlight') : parse_blocks($content);
+        $is_root = false;
         while ($blocks) {
             $block = array_pop($blocks);
             foreach ($block['innerBlocks'] as $inner_block) {
