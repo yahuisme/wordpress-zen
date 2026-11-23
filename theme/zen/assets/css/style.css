@@ -651,6 +651,7 @@ select:focus-visible {
     outline: 2px solid var(--zen-accent);
     outline-offset: 3px;
 }
+[data-zen-pointer-focus]:focus { outline: none; }
 .zen-icon-btn {
     display: inline-flex;
     align-items: center;
@@ -1224,8 +1225,8 @@ select:focus-visible {
 .zen-audio-btn:active {
     transform: translateY(0);
 }
-.zen-audio-btn:focus-visible,
-.zen-audio-progress-container:focus-visible {
+.zen-audio-btn:focus-visible:not([data-zen-pointer-focus]),
+.zen-audio-progress-container:focus-visible:not([data-zen-pointer-focus]) {
     outline: 2px solid color-mix(in srgb, var(--zen-text) 55%, transparent);
     outline-offset: 2px;
 }
@@ -2869,7 +2870,7 @@ select:focus-visible {
     border-color: color-mix(in srgb, var(--zen-text) 24%, var(--zen-border));
     transform: translateY(-1px);
 }
-.zen-code-copy:focus-visible {
+.zen-code-copy:focus-visible:not([data-zen-pointer-focus]) {
     outline: 2px solid var(--zen-text);
     outline-offset: 2px;
 }

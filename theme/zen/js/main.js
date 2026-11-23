@@ -17,6 +17,27 @@ const zenInit = () => {
     const reduceMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     const reduceMotion = reduceMotionQuery ? reduceMotionQuery.matches : false;
 
+    // A pointer activation need not move native focus before our programmatic handoff.
+    // Keep focus for navigation and assistive tech, but don't inherit a keyboard cue.
+    const moveFocus = (target, pointer, preventScroll = true) => {
+        if (!target) return;
+        if (!pointer) {
+            target.focus({ preventScroll });
+            return;
+        }
+        const restoreFocusCue = () => {
+            target.removeAttribute('data-zen-pointer-focus');
+            target.removeEventListener('blur', restoreFocusCue);
+            target.removeEventListener('keydown', restoreFocusCue);
+        };
+        target.setAttribute('data-zen-pointer-focus', '');
+        target.addEventListener('blur', restoreFocusCue);
+        target.addEventListener('keydown', restoreFocusCue);
+        target.focus({ preventScroll });
+        if (document.activeElement !== target) restoreFocusCue();
+    };
+    const pointerActivated = event => event.detail > 0 || event.type === 'touchstart';
+
     const footerNav = document.querySelector('.zen-site-footer .zen-footer-navigation');
     const footerLinks = footerNav?.nextElementSibling;
     if (footerLinks?.classList.contains('zen-footer-links') && window.matchMedia && !window.CSS?.supports('reading-flow', 'flex-visual')) {
@@ -41,6 +62,7 @@ const zenInit = () => {
         const direction = getComputedStyle(track).direction === 'rtl' ? -1 : 1;
         nav.classList.toggle('is-rtl', direction === -1);
         let preservingEdgeFocus = false;
+        let pointerArrow;
         const update = () => {
             const padding = nav.classList.contains('has-overflow') ? 32 : 0;
             const overflowing = track.scrollWidth - padding > track.clientWidth + 1;
@@ -53,7 +75,7 @@ const zenInit = () => {
                 const links = track.querySelectorAll('a');
                 // Continue at the reached category before its focused arrow disappears.
                 preservingEdgeFocus = true;
-                links[active === prev ? 0 : links.length - 1]?.focus({ preventScroll: true });
+                moveFocus(links[active === prev ? 0 : links.length - 1], active === pointerArrow);
                 preservingEdgeFocus = false;
             }
             prev.hidden = hidePrev;
@@ -66,20 +88,19 @@ const zenInit = () => {
             update();
         };
         [prev, next].forEach((button, index) => {
-            button.addEventListener('click', () => track.scrollBy({
-                left: direction * (index ? 1 : -1) * Math.max(64, track.clientWidth - 96),
-                behavior: reduceMotion ? 'auto' : 'smooth',
-            }));
+            const clearPointerArrow = () => { if (pointerArrow === button) pointerArrow = null; };
+            button.addEventListener('blur', clearPointerArrow);
+            button.addEventListener('keydown', clearPointerArrow);
+            button.addEventListener('click', event => {
+                pointerArrow = pointerActivated(event) ? button : null;
+                track.scrollBy({
+                    left: direction * (index ? 1 : -1) * Math.max(64, track.clientWidth - 96),
+                    behavior: reduceMotion ? 'auto' : 'smooth',
+                });
+            });
         });
         track.addEventListener('focusin', (event) => {
-            if (!event.target.matches('a')) return;
-            nav.classList.add('has-link-focus');
-            if (!preservingEdgeFocus) reveal(event.target);
-        });
-        track.addEventListener('focusout', (event) => {
-            if (!event.relatedTarget?.matches('a') || !track.contains(event.relatedTarget)) {
-                nav.classList.remove('has-link-focus');
-            }
+            if (event.target.matches('a') && !preservingEdgeFocus) reveal(event.target);
         });
         track.addEventListener('scroll', update, { passive: true });
         window.addEventListener('resize', update);
@@ -109,13 +130,14 @@ const zenInit = () => {
             for (; shown < end; shown++) items[shown].hidden = false;
             button.hidden = shown >= items.length;
         };
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
             const first = items[shown];
             if (!first) return;
             reveal(shown + batch);
             const target = notes ? first : first.querySelector('summary, a[href]');
+            if (!target) return;
             if (notes) first.tabIndex = -1;
-            target?.focus({ preventScroll: true });
+            moveFocus(target, pointerActivated(event));
         });
         if (notes) {
             // Keep direct links to older comments and nested replies usable.
@@ -202,10 +224,11 @@ const zenInit = () => {
     // One Zen modal owns focus and the background until its close finishes.
     const searchToggle = document.getElementById('search-toggle');
     let activeModal;
+    let modalKeySequence = 0;
     const coreLightboxOpen = () => document.querySelector('.wp-lightbox-overlay.active') !== null;
-    const restoreModalFocus = (trigger) => {
-        trigger?.focus({ preventScroll: true });
-        if (document.activeElement !== trigger) searchToggle?.focus({ preventScroll: true });
+    const restoreModalFocus = (trigger, pointer) => {
+        moveFocus(trigger, pointer);
+        if (document.activeElement !== trigger) moveFocus(searchToggle, pointer);
     };
     const focusModal = (container, control) => {
         control?.focus({ preventScroll: true });
@@ -264,6 +287,7 @@ const zenInit = () => {
 
     let searchShortcutHandler;
     document.addEventListener('keydown', (event) => {
+        if (activeModal && !event.isComposing) ++modalKeySequence;
         if (event.defaultPrevented || event.isComposing) return;
         if (event.key === 'Tab' && activeModal) {
             trapModalTab(event, activeModal.container);
@@ -411,16 +435,16 @@ const zenInit = () => {
             });
         });
 
-        const closeLightbox = () => {
+        const closeLightbox = (pointer = false) => {
             if (activeModal?.container !== lightbox) return;
             lightbox.classList.add('hidden');
             unlockModal();
-            restoreModalFocus(lightboxTrigger);
+            restoreModalFocus(lightboxTrigger, pointer);
         };
 
-        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+        if (closeBtn) closeBtn.addEventListener('click', event => closeLightbox(pointerActivated(event)));
         lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox) closeLightbox();
+            if (e.target === lightbox) closeLightbox(pointerActivated(e));
         });
     }
 
@@ -710,7 +734,7 @@ const zenInit = () => {
             else lockModal(drawerToc, closeDrawer, drawerClose, tocOverlay);
         };
 
-        closeDrawer = (navigationTarget = null) => {
+        closeDrawer = (navigationTarget = null, pointer = false) => {
             if (activeModal?.container !== drawerToc) return;
             if (navigationTarget) drawerNavigationTarget = navigationTarget;
             if (drawerCloseTimer) return;
@@ -718,6 +742,8 @@ const zenInit = () => {
             tocOverlay.classList.add('opacity-0');
             drawerToc.classList.add('translate-x-full');
 
+            // Keyboard input during the close transition takes precedence over the closing click.
+            const keysAtClose = modalKeySequence;
             drawerCloseTimer = setTimeout(() => {
                 tocOverlay.classList.add('hidden');
                 // A11y Cleanup
@@ -726,14 +752,14 @@ const zenInit = () => {
                 drawerCloseTimer = null;
                 unlockModal();
                 if (drawerNavigationTarget) focusTocTarget(drawerNavigationTarget);
-                else restoreModalFocus(headerTocBtn);
+                else restoreModalFocus(headerTocBtn, pointer && keysAtClose === modalKeySequence);
                 drawerNavigationTarget = null;
             }, 300);
         };
 
         headerTocBtn.addEventListener('click', openDrawer);
-        if (drawerClose) drawerClose.addEventListener('click', () => closeDrawer());
-        tocOverlay.addEventListener('click', () => closeDrawer());
+        if (drawerClose) drawerClose.addEventListener('click', event => closeDrawer(null, pointerActivated(event)));
+        tocOverlay.addEventListener('click', event => closeDrawer(null, pointerActivated(event)));
 
     }
 
@@ -748,7 +774,7 @@ const zenInit = () => {
             if (reply && reply.dataset.commentid === replyParent.value) {
                 replyTrigger = reply;
             } else if (event.target.closest?.('#cancel-comment-reply-link') && replyParent.value === '0' && replyTrigger) {
-                replyTrigger.focus();
+                moveFocus(replyTrigger, pointerActivated(event), false);
                 replyTrigger = null;
             }
         };
@@ -962,25 +988,26 @@ const zenInit = () => {
             return true;
         };
 
-        const closeSearch = () => {
+        const closeSearch = (pointer = false) => {
             if (activeModal?.container !== searchModal || searchCloseTimer) return;
             ++searchOpening;
             searchModal.classList.remove('is-open');
             searchModal.classList.add('opacity-0');
+            const keysAtClose = modalKeySequence;
             searchCloseTimer = setTimeout(() => {
                 searchModal.classList.add('hidden');
                 searchCloseTimer = null;
                 unlockModal();
-                restoreModalFocus(lastActiveElementBeforeSearch);
+                restoreModalFocus(lastActiveElementBeforeSearch, pointer && keysAtClose === modalKeySequence);
             }, 320);
             searchToggle.setAttribute('aria-expanded', 'false');
         };
 
         const searchReturnTarget = () => document.activeElement === document.body ? searchToggle : document.activeElement;
         searchToggle.addEventListener('click', (event) => openSearch(event.detail > 0 ? searchToggle : searchReturnTarget()));
-        searchClose?.addEventListener('click', closeSearch);
+        searchClose?.addEventListener('click', event => closeSearch(pointerActivated(event)));
         searchModal.addEventListener('click', (e) => {
-            if (e.target === searchModal || e.target.matches('.zen-search-shell') || e.target.closest('[data-search-dismiss="true"]')) closeSearch();
+            if (e.target === searchModal || e.target.matches('.zen-search-shell') || e.target.closest('[data-search-dismiss="true"]')) closeSearch(pointerActivated(e));
         });
 
         if (zenSearchShortcut) searchShortcutHandler = (event) => {

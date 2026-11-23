@@ -127,6 +127,7 @@ with sync_playwright() as p:
                 for arrow, step in (('next', sign), ('prev', -sign)):
                     button = nav.locator(f'.zen-category-{arrow}')
                     assert button.is_visible()
+                    assert button.evaluate('e=>getComputedStyle(e).opacity==="1" && getComputedStyle(e).pointerEvents!=="none"'), 'Pointer edge transfer must not hide the reverse arrow'
                     max_steps = track.evaluate('e => Math.ceil(e.scrollWidth / Math.max(64, e.clientWidth - 96)) + 1')
                     for _ in range(max_steps):
                         if not button.is_visible():

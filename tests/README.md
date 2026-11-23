@@ -213,6 +213,8 @@ python tests/archive-spacing-regression.py
 
 `clipboard` 在真实页面响应上施加 `clipboard-write=()` 权限策略，验证原生现代 API 拒绝后的 `execCommand` 实际剪贴板、焦点及连续复制反馈；不伪造复制结果。`native-interaction-regression.py` 可追加 `toc-race`，在关闭过渡内快速选择两个章节，要求最后一个原生 fragment、焦点与下一 Tab 一致。
 
+`native-interaction-regression.py … focus-return` 检查搜索、目录抽屉、图片灯箱和评论取消回复在点击／键盘关闭后均正确返回焦点，且只有键盘保留焦点框；需要启用线程评论及实际媒体库图片。`python tests/directory-reveal-regression.py /path/to/fixture` 检查四种目录的触屏和桌面批次、焦点框、年份折叠状态及按钮位于固定页头附近时的内容位置；fixture 的 `surfaces` 需包含对应页面，且归档至少五年、其余目录各至少 41 条（留言按主留言计）。
+
 `native-settings-regression.py` 以单进程浏览器覆盖原生保存、显式清空、错误输入及代码输出；标签归档使用 Core 生成的 URL 并确认页面身份，代码输入等待原生 CodeMirror 就绪。`native-content-regression.py` 另检查按钮、折叠标题、标签中的图片不被 Zen 灯箱接管。
 
 `native-admin-usability-regression.py` 专项检查普通分组的会话内展开状态、Ctrl／⌘+S 原生保存与校验、真实 CodeMirror 输入／缩进／撤销、长按快捷键不重复提交和 Escape 后 Tab 离开编辑区、320–1440px 保存栏左右分离，以及个人关闭语法高亮时的普通文本框回退；由调用者快照并恢复隔离数据库。高级代码不增加启停选项，保存、权限与三个原生输出位置保持不变。

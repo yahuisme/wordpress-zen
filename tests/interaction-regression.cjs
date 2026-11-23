@@ -347,7 +347,7 @@ for (const direction of ['ltr', 'rtl']) {
             const bounds = track.getBoundingClientRect();
             const rect = reached.getBoundingClientRect();
             assert.ok(rect.left >= bounds.left && rect.right <= bounds.right, 'the new focus target is visible');
-            assert.equal(track.parentElement.classList.contains('has-link-focus'), true);
+            assert.equal(reached.hasAttribute('data-zen-pointer-focus'), false, 'keyboard edge focus retains its cue');
         });
     }
 

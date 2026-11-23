@@ -59,7 +59,7 @@ with sync_playwright() as p:
     expected_font=16 if width<640 else 17
     assert all(float(x['font'].removesuffix('px'))==expected_font and abs(float(x['line'].removesuffix('px'))-expected_font*1.55)<0.1 for x in d['reading']),(name,d)
     if width in (390,1440) and not dark:
-     for image in page.locator('main img').all():image.scroll_into_view_if_needed();page.wait_for_timeout(40)
+     for image in page.locator('main img:visible').all():image.scroll_into_view_if_needed();page.wait_for_timeout(40)
      page.evaluate('scrollTo(0,0)');page.screenshot(path=str(out/(name+'-'+str(width)+'.png')),full_page=True)
     row={'page':name,'width':width,'dark':dark,'metrics':d}
     rows.append(row)

@@ -258,7 +258,7 @@ body .font-serif {
     inset: 0;
     border-radius: 8px;
 }
-.zen-latest-card .zen-post-title-link:focus-visible::after { outline: 2px solid var(--zen-accent); }
+.zen-latest-card .zen-post-title-link:focus-visible:not([data-zen-pointer-focus])::after { outline: 2px solid var(--zen-accent); }
 .zen-latest-label {
     margin-bottom: 10px;
     color: var(--zen-accent);
@@ -374,13 +374,13 @@ body .font-serif {
 }
 .zen-category-nav.is-rtl { --zen-category-shadow: -8px; }
 .zen-category-nav.is-rtl .zen-category-arrow span { display: inline-block; transform: scaleX(-1); }
-/* Give the focused link the full rail without removing the arrows from the Tab order. */
-.zen-category-nav.has-link-focus .zen-category-arrow:not(:focus) {
+/* Yield to keyboard focus only; pointer scrolling must leave the reverse arrow usable. */
+.zen-category-nav:has(.zen-category-track a:focus-visible:not([data-zen-pointer-focus])) .zen-category-arrow:not(:focus) {
     opacity: 0;
     pointer-events: none;
 }
 .zen-category-arrow[hidden] { display: none; }
-.zen-category-arrow:focus-visible {
+.zen-category-arrow:focus-visible:not([data-zen-pointer-focus]) {
     outline: 2px solid var(--zen-text);
     outline-offset: -2px;
 }
@@ -673,7 +673,7 @@ body .font-serif {
     min-height: 44px;
     padding-block: 8px;
 }
-.zen-pagination a:focus-visible {
+.zen-pagination a:focus-visible:not([data-zen-pointer-focus]) {
     outline: 2px solid var(--zen-accent);
     outline-offset: 4px;
 }

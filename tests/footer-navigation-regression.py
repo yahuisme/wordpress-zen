@@ -93,7 +93,9 @@ with sync_playwright() as p:
             else:
                 assert footer.locator('> div').evaluate('e => getComputedStyle(e).getPropertyValue("reading-flow")') == ('normal' if mode == 'fallback' else 'flex-visual')
                 desktop_boxes = boxes[::-1]
-                assert all(a['x'] + a['width'] <= b['x'] for a, b in zip(desktop_boxes, desktop_boxes[1:]))
+                # At the desktop breakpoint a long menu can wrap to the next row.
+                assert all(a['y'] + a['height'] <= b['y'] or a['x'] + a['width'] <= b['x']
+                           for a, b in zip(desktop_boxes, desktop_boxes[1:])), (width, desktop_boxes)
             assert_tab_order(page, links, mobile_order if width < 640 else desktop_order)
         if mode == 'fallback' and extras:
             for width, label, next_label in ((390, 'Extra', expected[-1]), (1440, expected[0], 'Extra')):

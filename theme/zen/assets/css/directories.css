@@ -90,8 +90,8 @@
 .zen-directory-more:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .zen-directory-more:focus-visible,
 .zen-archive-more:focus-visible,
-.zen-archive-year-head:focus-visible,
-#zen-notes-entries > li:focus-visible { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
+.zen-archive-year-head:focus-visible:not([data-zen-pointer-focus]),
+#zen-notes-entries > li:focus-visible:not([data-zen-pointer-focus]) { outline: 2px solid var(--zen-accent); outline-offset: 4px; }
 .zen-archive-year-head {
     display: flex;
     align-items: baseline;
@@ -186,7 +186,7 @@
     filter: grayscale(1);
 }
 .zen-link-label .zen-link-avatar:hover,
-.zen-link-card:focus-visible .zen-link-avatar { filter: grayscale(0); }
+.zen-link-card:focus-visible:not([data-zen-pointer-focus]) .zen-link-avatar { filter: grayscale(0); }
 @media (prefers-reduced-motion: no-preference) {
     .zen-link-label .zen-link-avatar { transition: filter 0.18s ease; }
 }
@@ -249,7 +249,7 @@
     font-family: var(--zen-font-body);
     white-space: nowrap;
 }
-.zen-tag-item a:is(:hover, :focus-visible) { color: var(--zen-accent); text-decoration: underline; }
+.zen-tag-item a:is(:hover, :focus-visible:not([data-zen-pointer-focus])) { color: var(--zen-accent); text-decoration: underline; }
 
 /* Keep Core's form, label, GET action and submit control. */
 .zen-search-heading:not(.zen-search-heading--blank) { margin-block-end: 24px; }

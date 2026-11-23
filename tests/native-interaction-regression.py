@@ -9,7 +9,8 @@ from playwright.sync_api import sync_playwright
 
 root = Path(sys.argv[1]).resolve()
 selection = sys.argv[2] if len(sys.argv) > 2 else 'all'
-assert selection in ('all', 'audio', 'audio-ltr', 'audio-rtl', 'audio-volume', 'modal-visibility', 'toc', 'toc-race', 'highlight', 'highlight-failure')
+cases = ('audio', 'audio-ltr', 'audio-rtl', 'audio-volume', 'modal-visibility', 'focus-return', 'toc', 'toc-race', 'highlight', 'highlight-failure')
+assert selection == 'all' or selection in cases
 assert (root / 'runtime/wp-load.php').is_file() and (root / 'db/zen.sqlite').is_file()
 origin = 'http://127.0.0.1:18765'
 cli = ['php', '/opt/test-tools/wordpress/wp-cli.phar', '--allow-root', '--path=' + str(root / 'runtime')]
@@ -24,7 +25,7 @@ with wave.open(str(media), 'wb') as stream:
     stream.writeframes(b'\x00\x00' * 16000)
 content = '<h2 id="first">First chapter</h2><p><a href="#middle">First link</a></p>' + '<p>Native scrolling content.</p>' * 30
 content += '<h2 id="middle">Middle chapter</h2><p><a id="middle-link" href="#end">Next native focus target</a></p><pre><code class="language-js">const quiet = 42;</code></pre><audio id="native-audio" controls preload="none" src="/native-interaction.wav"></audio><h2 id="end">End</h2>'
-if selection in ('all', 'modal-visibility'):
+if selection in ('all', 'modal-visibility', 'focus-return'):
     attachment = int(json.loads((root / 'fixture.json').read_text())['media'][0])
     image_url = wp('eval', f'echo wp_get_attachment_url({attachment});')
     assert image_url.startswith(origin + '/')
@@ -35,16 +36,22 @@ errors = []
 def record(name, passed, detail=None):
     rows.append({'name': name, 'passed': bool(passed), 'detail': detail})
 try:
+    if selection in ('all', 'focus-return'):
+        assert wp('option', 'get', 'thread_comments') == '1', 'Enable native threaded replies in the fixture'
+        wp('post', 'update', post, '--comment_status=open')
+        wp('comment', 'create', '--comment_post_ID=' + post, '--comment_author=Fixture reader',
+           '--comment_content=Fixture reply target', '--comment_approved=1', '--porcelain')
     with sync_playwright() as playwright:
         group = Path('/proc/self/cgroup').read_text()
         control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
         ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
         assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
-        for case in (('audio', 'audio-ltr', 'audio-rtl', 'audio-volume', 'modal-visibility', 'toc', 'toc-race', 'highlight', 'highlight-failure') if selection == 'all' else (selection,)):
+        for case in (cases if selection == 'all' else (selection,)):
             browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
             processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
             assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
-            context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
+            context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce',
+                                          is_mobile=case == 'focus-return', has_touch=case == 'focus-return')
             if case == 'modal-visibility':
                 # Simulate only an absent legacy API; DOM layout, CSS and keyboard remain native.
                 context.add_init_script('Element.prototype.checkVisibility = undefined;')
@@ -106,6 +113,66 @@ try:
                     record(owner + ' legacy forward Tab wraps to visible first control', page.locator(first).evaluate('e=>e===document.activeElement'))
                     page.keyboard.press('Escape')
                     page.wait_for_timeout(350)
+            elif case == 'focus-return':
+                article_url = origin + '/?p=' + post
+                page.set_default_timeout(5000)
+                for owner, trigger_selector, close_selector in (
+                    ('search', '#search-toggle', '#search-close'),
+                    ('drawer', '#header-toc-btn', '#drawer-toc-close'),
+                    ('lightbox', '#native-lifecycle-image', '#lightbox-close'),
+                    ('reply', '.comment-reply-link', '#cancel-comment-reply-link'),
+                ):
+                    response = page.goto(article_url, wait_until='domcontentloaded')
+                    assert response.status == 200, (owner, response.status, response.url, page.title())
+                    trigger = page.locator(trigger_selector)
+                    close = page.locator(close_selector)
+                    if owner == 'lightbox':
+                        trigger.evaluate('e=>e.decode()')
+                    trigger.tap()
+                    close.focus()
+                    page.keyboard.press('Shift')
+                    assert close.evaluate('e=>e.matches(":focus-visible")'), owner
+                    # Emulate a tap that does not move native focus before click.
+                    close.evaluate('e=>e.addEventListener("mousedown", event=>event.preventDefault(), {once:true})')
+                    close.tap()
+                    page.wait_for_function('s=>document.querySelector(s)===document.activeElement', arg=trigger_selector)
+                    record(owner + ' pointer close restores focus without inherited outline',
+                           trigger.evaluate('e=>getComputedStyle(e).outlineStyle==="none"'))
+                    trigger.press('Enter')
+                    if owner == 'reply':
+                        close.press('Enter')
+                    else:
+                        page.keyboard.press('Escape')
+                    page.wait_for_function('s=>document.querySelector(s)===document.activeElement', arg=trigger_selector)
+                    record(owner + ' keyboard close restores visible focus',
+                           trigger.evaluate('e=>getComputedStyle(e).outlineStyle!=="none"'))
+                    if owner in ('search', 'drawer'):
+                        trigger.tap()
+                        page.wait_for_function('s=>document.querySelector(s).getAttribute("aria-expanded")==="true"', arg=trigger_selector)
+                        close.tap()
+                        page.keyboard.press('Tab')
+                        assert trigger.evaluate('e=>e!==document.activeElement'), 'Tab must precede the delayed handoff'
+                        page.wait_for_function('s=>document.querySelector(s)===document.activeElement', arg=trigger_selector)
+                        record(owner + ' Tab during a pointer close retains the keyboard cue',
+                               trigger.evaluate('e=>getComputedStyle(e).outlineStyle!=="none"'))
+                page.goto(origin + '/', wait_until='domcontentloaded')
+                close = page.locator('#search-close')
+                for selector, pseudo in (('.zen-latest-card .zen-post-title-link', '::after'),
+                                         ('.zen-pagination a', None)):
+                    trigger = page.locator(selector).first
+                    trigger.focus()
+                    page.keyboard.press('Tab')
+                    page.keyboard.press('Shift+Tab')
+                    outline = '(e, pseudo)=>getComputedStyle(e,pseudo).outlineStyle'
+                    assert trigger.evaluate('e=>e===document.activeElement')
+                    assert trigger.evaluate(outline, pseudo) != 'none', selector
+                    page.keyboard.press('Control+k')
+                    close.focus()
+                    close.evaluate('e=>e.addEventListener("mousedown", event=>event.preventDefault(), {once:true})')
+                    close.tap()
+                    page.wait_for_function('s=>document.querySelector(s)===document.activeElement', arg=selector)
+                    record(selector + ' does not regain an outline after pointer dismissal of shortcut search',
+                           trigger.evaluate(outline, pseudo) == 'none')
             elif case == 'audio-volume':
                 for silent in ('muted', 'zero-volume'):
                     if silent == 'zero-volume':
