@@ -167,7 +167,7 @@ with sync_playwright() as p:
         visit()
         page.evaluate("document.documentElement.style.scrollBehavior='auto';scrollTo(0,document.documentElement.scrollHeight)")
         page.wait_for_timeout(150)
-        assert page.locator('#reading-progress').evaluate('(e)=>parseFloat(e.style.width)') > 99
+        assert page.locator('#reading-progress').evaluate('(e)=>new DOMMatrixReadOnly(getComputedStyle(e).transform).a') > 0.99
         code = page.locator('#post-content code')
         code.scroll_into_view_if_needed()
         page.wait_for_function("document.querySelector('#post-content code').dataset.highlighted === 'yes'")

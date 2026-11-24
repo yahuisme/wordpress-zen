@@ -63,20 +63,19 @@ function zen_directory_render($template, $page_id) {
 function zen_directory_warm($page_id) {
     zen_directory_render('page-archives.php', $page_id);
     zen_get_site_uptime();
-    $cache = array(get_transient('zen_archives_public_posts_v3'), get_transient('zen_site_uptime'));
+    $cache = array(get_transient(zen_archive_cache_key()), get_transient('zen_site_uptime'));
     if (!is_array($cache[0]) || !is_array($cache[1])) throw new RuntimeException('Warm-cache positive control failed');
     return $cache;
 }
 function zen_directory_stable($before, $label) {
-    zen_directory_check(get_transient('zen_archives_public_posts_v3') === $before[0] && get_transient('zen_site_uptime') === $before[1], $label);
+    zen_directory_check(get_transient(zen_archive_cache_key()) === $before[0] && get_transient('zen_site_uptime') === $before[1], $label);
 }
 function zen_directory_evicted($label) {
-    zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === false, $label);
+    zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === false, $label);
 }
 function zen_directory_cached_url($post_id) {
-    $cache = (array) get_transient('zen_archives_public_posts_v3');
-    $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-    foreach ($cache[$context] ?? array() as $row) if ((int) $row['id'] === $post_id) return $row['url'];
+    $cache = (array) get_transient(zen_archive_cache_key());
+    foreach ($cache as $row) if ((int) $row['id'] === $post_id) return $row['url'];
     return '';
 }
 function zen_directory_password() {
@@ -99,7 +98,7 @@ function zen_directory_password() {
         try {
             foreach (array('cold', 'warm', 'wrong-cookie') as $state) {
                 unset($_COOKIE[$cookie_key]);
-                if ($state === 'cold') delete_transient('zen_archives_public_posts_v3');
+                if ($state === 'cold') delete_transient(zen_archive_cache_key());
                 if ($state === 'warm') {
                     $_COOKIE[$cookie_key] = $hasher->HashPassword('directory-secret');
                     zen_directory_render($template, $page_id);
@@ -112,7 +111,7 @@ function zen_directory_password() {
                 zen_directory_check(substr_count($html, 'class="post-password-form"') === 1 && str_contains($html, 'action="' . esc_url(site_url('wp-login.php?action=postpass', 'login_post')) . '"'), "$template $state: one native password form");
                 zen_directory_check(!str_contains($html, $canary) && !str_contains($html, 'ZEN_DIRECTORY_PRIVATE'), "$template $state: directory and private body hidden");
                 zen_directory_check($archive_queries === 0 && $bookmark_reads === 0, "$template $state: no generated-directory queries");
-                if ($template === 'page-archives.php' && $state === 'cold') zen_directory_check(get_transient('zen_archives_public_posts_v3') === false, 'locked archives do not populate public directory cache');
+                if ($template === 'page-archives.php' && $state === 'cold') zen_directory_check(get_transient(zen_archive_cache_key()) === false, 'locked archives do not populate public directory cache');
             }
             $_COOKIE[$cookie_key] = $hasher->HashPassword('directory-secret');
             zen_directory_check(!post_password_required($page_id), "$template: native cookie unlocks page");
@@ -146,7 +145,7 @@ function zen_directory_author() {
     zen_directory_stable($before, 'author: unrelated author without public posts retains both caches');
     $updated = wp_update_user(array('ID'=>$author_id, 'user_nicename'=>'zen-directory-new-author'));
     zen_directory_check(!is_wp_error($updated) && get_permalink($post_id) !== $old_url, 'author: native nicename update changes permalink');
-    zen_directory_check(false === get_transient('zen_archives_public_posts_v3'), 'author: nicename change evicts warm archive');
+    zen_directory_check(false === get_transient(zen_archive_cache_key()), 'author: nicename change evicts warm archive');
     zen_directory_check(get_transient('zen_site_uptime') === $before[1], 'author: nicename change preserves unrelated uptime');
     $html = zen_directory_render('page-archives.php', $page_id);
     zen_directory_check(zen_directory_cached_url($post_id) === get_permalink($post_id) && str_contains($html, esc_url(get_permalink($post_id))), 'author: rebuilt archive uses current nicename URL');
@@ -154,7 +153,7 @@ function zen_directory_author() {
     $old_url = get_permalink($post_id);
     $deleted = wp_delete_user($author_id, 1);
     zen_directory_check($deleted && (int) get_post($post_id)->post_author === 1 && get_permalink($post_id) !== $old_url, 'author: native deletion reassigns post and changes permalink');
-    zen_directory_check(false === get_transient('zen_archives_public_posts_v3'), 'author: reassignment evicts warm archive');
+    zen_directory_check(false === get_transient(zen_archive_cache_key()), 'author: reassignment evicts warm archive');
     zen_directory_check(get_transient('zen_site_uptime') === $before[1], 'author: reassignment preserves unrelated uptime');
     $html = zen_directory_render('page-archives.php', $page_id);
     zen_directory_check(zen_directory_cached_url($post_id) === get_permalink($post_id) && str_contains($html, esc_url(get_permalink($post_id))), 'author: rebuilt reassigned URL matches native permalink');
@@ -228,7 +227,7 @@ function zen_directory_lifecycle() {
     foreach (array('post_title'=>'Archive headline changed', 'post_name'=>'archive-slug-changed', 'post_password'=>'archive-test-lock') as $field=>$value) {
         $before = zen_directory_warm($page_id);
         wp_update_post(array('ID'=>$post_id, $field=>$value));
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], "$field edit evicts only the archive");
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], "$field edit evicts only the archive");
         $html = zen_directory_render('page-archives.php', $page_id);
         zen_directory_check(str_contains($html, esc_html(get_the_title($post_id))) && zen_directory_cached_url($post_id) === get_permalink($post_id), "$field edit refreshes cached title and permalink");
     }
@@ -262,17 +261,17 @@ function zen_directory_lifecycle() {
     foreach (array('home'=>home_url('/directory-base'), 'permalink_structure'=>'/%postname%/') as $key=>$value) {
         $before = zen_directory_warm($page_id);
         zen_directory_option($key, $value);
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], "$key update evicts only archive links");
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], "$key update evicts only archive links");
     }
     $before = zen_directory_warm($page_id);
     zen_directory_option('zen_site_start_date', '2001-02-03');
-    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'changing explicit start date evicts only uptime');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient(zen_archive_cache_key()) === $before[0], 'changing explicit start date evicts only uptime');
     zen_directory_check(zen_get_site_uptime()['year'] === '2001', 'configured start date populates uptime cache');
     zen_directory_check(delete_option('zen_site_start_date'), 'native delete removes explicit start date');
-    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'deleting explicit start date evicts only uptime');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient(zen_archive_cache_key()) === $before[0], 'deleting explicit start date evicts only uptime');
     zen_directory_check(zen_get_site_uptime()['year'] !== '2001', 'uptime falls back after deleting start date');
     add_option('zen_site_start_date', '2002-03-04');
-    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], 'adding explicit start date evicts only uptime');
+    zen_directory_check(get_transient('zen_site_uptime') === false && get_transient(zen_archive_cache_key()) === $before[0], 'adding explicit start date evicts only uptime');
     zen_directory_option('timezone_string', 'UTC');
     foreach (array('1970-01-01', '1969-12-31') as $date) {
         zen_get_site_uptime();
@@ -292,15 +291,15 @@ function zen_directory_lifecycle() {
     try {
         $before = zen_directory_warm($page_id);
         wp_update_term($category['term_id'], 'category', array('slug'=>'zen-directory-renamed'));
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'category editing evicts only archive links');
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], 'category editing evicts only archive links');
         $before = zen_directory_warm($page_id);
         wp_delete_term($category['term_id'], 'category');
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'category deletion evicts only archive links');
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], 'category deletion evicts only archive links');
     } finally { wp_delete_term($category['term_id'], 'category'); }
     foreach (array('timezone_string'=>'Asia/Shanghai', 'gmt_offset'=>3) as $key=>$value) {
         $before = zen_directory_warm($page_id);
         zen_directory_option($key, $value);
-        zen_directory_check(get_transient('zen_site_uptime') === false && get_transient('zen_archives_public_posts_v3') === $before[0], "$key update evicts only uptime");
+        zen_directory_check(get_transient('zen_site_uptime') === false && get_transient(zen_archive_cache_key()) === $before[0], "$key update evicts only uptime");
     }
     // Native language-taxonomy events without depending on a multilingual plugin.
     $registered_here = !taxonomy_exists('language');
@@ -312,16 +311,37 @@ function zen_directory_lifecycle() {
         $post_id = zen_directory_post();
         $before = zen_directory_warm($page_id);
         wp_set_object_terms($post_id, array((int) $term['term_id']), 'language');
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'language relation evicts archive only');
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], 'language relation evicts archive only');
         $before = zen_directory_warm($page_id);
         wp_set_object_terms($post_id, array(), 'language');
-        zen_directory_check(get_transient('zen_archives_public_posts_v3') === false && get_transient('zen_site_uptime') === $before[1], 'language removal evicts archive only');
+        zen_directory_check(get_transient(zen_archive_cache_key()) === false && get_transient('zen_site_uptime') === $before[1], 'language removal evicts archive only');
     } finally {
         foreach ($GLOBALS['zen_directory_terms'] as list($term_id, $taxonomy)) wp_delete_term($term_id, $taxonomy);
         $GLOBALS['zen_directory_terms'] = array();
         if ($registered_here) unregister_taxonomy('language');
     }
 }
+function zen_directory_archive_overlap() {
+    $post = zen_directory_post(array('post_title' => 'Archive overlap fixture'));
+    $page = zen_directory_post(array('post_type' => 'page', 'page_template' => 'page-archives.php'));
+    $key = zen_archive_cache_key();
+    delete_transient($key);
+    $during_store = static function ($rows) use ($post) {
+        wp_update_post(array('ID' => $post, 'post_status' => 'draft'));
+        return $rows;
+    };
+    add_filter('pre_set_transient_' . $key, $during_store);
+    try {
+        $old = zen_directory_render('page-archives.php', $page);
+        zen_directory_check(str_contains($old, 'Archive overlap fixture') && get_post_status($post) === 'draft', 'archive test invalidates during a stale build');
+        $current = zen_directory_render('page-archives.php', $page);
+        zen_directory_check($key !== zen_archive_cache_key() && !str_contains($current, 'Archive overlap fixture'), 'late archive build cannot repopulate the current generation');
+    } finally {
+        remove_filter('pre_set_transient_' . $key, $during_store);
+        delete_transient($key);
+    }
+}
+
 function zen_directory_nested_link() {
     $existing = get_pages(array('meta_key'=>'_wp_page_template', 'meta_value'=>'page-archives.php', 'hierarchical'=>false));
     $parent = zen_directory_post(array('post_type'=>'page', 'post_title'=>'Native archive parent'));
@@ -358,7 +378,13 @@ function zen_directory_discovery() {
             $explicit = zen_directory_post(array('post_type'=>'page', 'post_name'=>'explicit-' . $slug));
             update_post_meta($explicit, '_wp_page_template', $template);
             zen_directory_check(zen_get_directory_url($template) === get_permalink($explicit), "$slug explicitly assigned template has priority");
+            zen_directory_option('show_on_front', 'page');
+            zen_directory_option('page_for_posts', $explicit);
+            zen_directory_check(zen_get_directory_url($template) === get_permalink($page), "$slug excludes the explicitly assigned posts page");
             wp_delete_post($explicit, true);
+            zen_directory_option('page_for_posts', $page);
+            zen_directory_check(zen_get_directory_url($template) === '', "$slug excludes a posts page found by slug");
+            zen_directory_option('show_on_front', 'posts');
             wp_delete_post($page, true);
         }
     } finally {
@@ -556,8 +582,7 @@ function zen_directory_equal_dates() {
         $ids[] = zen_directory_post(array('post_date'=>'2023-03-22 04:05:06', 'post_date_gmt'=>'2023-03-22 04:05:06'));
     }
     $cold = zen_directory_render('page-archives.php', $page);
-    $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-    $rows = get_transient('zen_archives_public_posts_v3')[$context];
+    $rows = get_transient(zen_archive_cache_key());
     $actual = array_values(array_intersect(array_column($rows, 'id'), $ids));
     zen_directory_check($actual === array_reverse($ids), 'equal-date posts cross a native batch boundary without duplicates or omissions');
     zen_directory_check($cold === zen_directory_render('page-archives.php', $page), 'equal-date archive has identical cold and warm HTML');
@@ -659,7 +684,8 @@ function zen_directory_guestbook() {
         foreach (array($reply, $grandchild) as $child) {
             zen_directory_check($xpath->query('//*[@id="comment-' . $roots[0] . '"]//*[@id="comment-' . $child . '"]')->length === 1, "guestbook threading=$threading: historical reply stays under its original thread");
         }
-        zen_directory_check(str_contains($html, 'class="comment-reply-link"') === (bool) $threading, "guestbook threading=$threading: reply controls respect Discussion settings");
+        $reply_controls = $xpath->query('//*[@id="zen-notes-entries"]//a[contains(concat(" ", normalize-space(@class), " "), " comment-reply-link ")]');
+        zen_directory_check(($reply_controls->length > 0) === (bool) $threading, "guestbook threading=$threading: reply controls respect Discussion settings");
         zen_directory_check(!str_contains($html, 'class="comment-pagination') && (int) get_option('page_comments') === 1 && has_filter('pre_option_page_comments') === $before, "guestbook threading=$threading: pagination is only suppressed during Notes render");
     }
     $stop = new RuntimeException('fixture interrupted comments query');
@@ -683,6 +709,7 @@ try {
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
     if (in_array($zen_directory_slice, array('all', 'author'), true)) zen_directory_author();
     if (in_array($zen_directory_slice, array('all', 'lifecycle'), true)) {
+        zen_directory_archive_overlap();
         zen_directory_nested_link();
         zen_directory_lifecycle();
         zen_directory_equal_dates();
@@ -701,7 +728,7 @@ try {
     foreach ($zen_directory_links as $link_id) wp_delete_link($link_id);
     foreach ($zen_directory_terms as list($term_id, $taxonomy)) wp_delete_term($term_id, $taxonomy);
     foreach ($zen_directory_options as $key=>$value) { if ($value === null) delete_option($key); else update_option($key, $value); }
-    delete_transient('zen_archives_public_posts_v3');
+    delete_transient(zen_archive_cache_key());
     delete_transient('zen_site_uptime');
     wp_set_current_user($zen_directory_old_user);
     if ($zen_directory_old_cookie === null) unset($_COOKIE['wp-postpass_' . COOKIEHASH]);

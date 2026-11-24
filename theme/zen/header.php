@@ -30,7 +30,7 @@
 <a href="#main-content" class="skip-link">跳至主要内容</a>
 
 <?php if (zen_get_option('zen_show_reading_progress')) : ?>
-<div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 z-50 w-0"></div>
+<div id="reading-progress" aria-hidden="true" class="fixed top-0 left-0 z-50 w-full"></div>
 <?php endif; ?>
 
 <header role="banner" class="zen-site-header w-full sticky top-0 z-40">

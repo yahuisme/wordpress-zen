@@ -206,6 +206,8 @@ test('impossible calendar dates retain the prior value, including year zero', fu
     $GLOBALS['options']['zen_site_start_date'] = '2020-01-01';
     expect(zen_sanitize_site_start_date('0000-01-01') === '2020-01-01', 'year zero is not a valid calendar start date');
     expect(zen_sanitize_site_start_date('2024-02-29') === '2024-02-29', 'valid leap date rejected');
+    expect(zen_sanitize_site_start_date('<b>2024-02-29</b>') === '2020-01-01', 'markup is not a valid date submission');
+    expect(zen_sanitize_site_start_date('<b></b>') === '2020-01-01', 'malformed date must not clear the saved date');
     $GLOBALS['options'] = array();
 });
 test('retired category settings leave no controls queries sanitizer or CSS', function () {

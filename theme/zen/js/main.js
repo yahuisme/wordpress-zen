@@ -138,6 +138,13 @@ const zenInit = () => {
             if (!target) return;
             if (notes) first.tabIndex = -1;
             moveFocus(target, pointerActivated(event));
+            // Native focus may leave the new row in the viewport but under the sticky header.
+            const headerBottom = document.querySelector('.zen-site-header')?.getBoundingClientRect().bottom ?? 0;
+            const rect = target.getBoundingClientRect();
+            if (rect.top < headerBottom || rect.top + Math.min(rect.height, 44) > window.innerHeight) {
+                // Align the start, not the midpoint: a whole comment thread can exceed the viewport.
+                window.scrollBy({ top: rect.top - headerBottom - 8, behavior: 'instant' });
+            }
         });
         if (notes) {
             // Keep direct links to older comments and nested replies usable.
@@ -309,28 +316,20 @@ const zenInit = () => {
                 return;
             } catch (error) {}
         }
-        return new Promise((resolve, reject) => {
-            const previousFocus = document.activeElement;
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.setAttribute('readonly', '');
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
+        const previousFocus = document.activeElement;
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.readOnly = true;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        try {
             textarea.select();
-            try {
-                if (document.execCommand('copy')) {
-                    resolve();
-                } else {
-                    reject(new Error('Copy command failed'));
-                }
-            } catch (error) {
-                reject(error);
-            } finally {
-                textarea.remove();
-                previousFocus?.focus({ preventScroll: true });
-            }
-        });
+            if (!document.execCommand('copy')) throw new Error('Copy command failed');
+        } finally {
+            textarea.remove();
+            previousFocus?.focus({ preventScroll: true });
+        }
     };
 
     const codeBlocks = [];
@@ -475,9 +474,9 @@ const zenInit = () => {
         if (progressBar) {
             const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-            const width = Math.min(100, Math.max(0, scrollPercent)) + '%';
-            if (progressBar.style.width !== width) progressBar.style.width = width;
+            const progress = scrollHeight > 0 ? Math.min(1, Math.max(0, scrollTop / scrollHeight)) : 0;
+            const transform = `scaleX(${progress})`;
+            if (progressBar.style.transform !== transform) progressBar.style.transform = transform;
         }
 
         if (backToTopBtn) {
@@ -521,24 +520,31 @@ const zenInit = () => {
                 headerTocBtn.classList.add('zen-toc-ready');
             }
 
-            const idCounts = new Map();
-            document.querySelectorAll('[id]').forEach((element) => {
-                idCounts.set(element.id, (idCounts.get(element.id) || 0) + 1);
-            });
-            const usedIds = new Set(idCounts.keys());
+            const headings = new Set(headers);
+            const anchorNames = new Set(Array.from(document.querySelectorAll('a[name]'), anchor => anchor.name));
+            const usedIds = new Set();
+            const preserved = new Map();
+            for (const element of document.querySelectorAll('[id]')) {
+                if (!element.id) continue;
+                if (!headings.has(element)) usedIds.add(element.id);
+                else if (!preserved.has(element.id)) preserved.set(element.id, element);
+            }
+            for (const id of preserved.keys()) {
+                if (usedIds.has(id)) preserved.delete(id);
+                else usedIds.add(id);
+            }
+            const hasLiteralAnchor = fragment => usedIds.has(fragment) || anchorNames.has(fragment);
             const tocItems = Array.from(headers).map((header, index) => {
-                const originalId = header.id;
-                const baseId = originalId || 'section-' + index;
-                let headingId = baseId;
-                let suffix = 2;
-                if (originalId && idCounts.get(originalId) === 1) {
-                    usedIds.delete(originalId);
+                if (preserved.get(header.id) !== header) {
+                    const baseId = header.id || 'section-' + index;
+                    let id = baseId;
+                    let suffix = 2;
+                    while (hasLiteralAnchor(id)) id = baseId + '-' + suffix++;
+                    header.id = id;
+                    usedIds.add(id);
                 }
-                while (usedIds.has(headingId)) headingId = baseId + '-' + suffix++;
-                header.id = headingId;
-                usedIds.add(headingId);
                 return {
-                    id: headingId,
+                    id: header.id,
                     target: header,
                     level: header.tagName.toLowerCase(),
                     text: header.textContent.trim() || `章节 ${index + 1}`,
@@ -550,8 +556,6 @@ const zenInit = () => {
                 tocItems.push({ id: 'comments', target: comments, level: 'comments', text: '评论区' });
             }
 
-            const anchorNames = new Set(Array.from(document.querySelectorAll('a[name]'), anchor => anchor.name));
-            const hasLiteralAnchor = fragment => usedIds.has(fragment) || anchorNames.has(fragment);
             let aliasCount = 0;
             const encodeTocFragment = (item) => {
                 const encoded = encodeURIComponent(item.id);

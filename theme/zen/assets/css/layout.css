@@ -41,6 +41,8 @@ body .font-serif {
 #reading-progress {
     height: 2px;
     background: var(--zen-accent);
+    transform: scaleX(0);
+    transform-origin: left center;
 }
 .zen-site-brand {
     display: flex;

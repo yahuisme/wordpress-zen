@@ -296,10 +296,10 @@ zen_test('links introduction uses existing entry-content wrapping', function () 
 });
 
 zen_test('archive rows expose scoped wrapping classes', function () {
-    $GLOBALS['zen_test_transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(array(
+    $GLOBALS['zen_test_transients'][zen_archive_cache_key()] = array(array(
         'id' => 1, 'title' => str_repeat('LongTitle', 30), 'url' => 'https://example.test/fixture/',
         'year' => '2020', 'date' => '2020-01-02',
-    )));
+    ));
     $html = zen_render_template('page-archives.php');
     zen_expect((bool) preg_match('/<li class="[^"]*\bzen-archive-row\b/', $html), 'archive row class missing');
     zen_expect((bool) preg_match('/<a\b[^>]*class="[^"]*\bzen-archive-link\b/', $html), 'archive link class missing');

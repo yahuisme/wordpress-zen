@@ -11,7 +11,9 @@ function pll_current_language(){return $GLOBALS['language'];}
 function get_transient($key){return $GLOBALS['cache'][$key]??false;}
 function set_transient($key,$value,$ttl){$GLOBALS['cache'][$key]=$value;}
 function delete_transient($key){unset($GLOBALS['cache'][$key]);}
-function get_option($key,$default=false){return $key==='permalink_structure'?'/%postname%/':$default;}
+function get_option($key,$default=false){return $key==='permalink_structure'?'/%postname%/':($GLOBALS['opts'][$key]??$default);}
+function update_option($key,$value,$autoload=null){$GLOBALS['opts'][$key]=$value;}
+function wp_generate_uuid4(){return uniqid('generation-');}
 function get_post_type($id){return 'post';}
 function get_post_status($id){return 'publish';}
 function get_the_title($post=null){return $post ? $GLOBALS['language'].' '.$GLOBALS['locale'].' title' : 'Archives';}
@@ -19,7 +21,7 @@ function get_permalink($post){return '/'.$GLOBALS['language'].'/post/'.$post->ID
 function get_the_date($format,$post){return $format==='Y'?'2026':'2026-10-19';}
 function wp_reset_postdata(){}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}
 function esc_url($value){return esc_html($value);}
-class WP_Query{public $posts;public $max_num_pages=1;function __construct($args){$GLOBALS['queries']++;$this->posts=[(object)['ID'=>7]];}}
+class WP_Query{public $posts;public $max_num_pages=1;function __construct($args){$GLOBALS['queries']++;$this->posts=$GLOBALS['archive_fixture_posts']??[(object)['ID'=>7]];if($hook=$GLOBALS['query_hook']??null){unset($GLOBALS['query_hook']);$hook();}}}
 function esc_attr($value){return esc_html($value);}
 function zen_get_option($name){return $GLOBALS['date_style']??'editorial';}
 require ABSPATH.'inc/template-tags.php';
@@ -31,6 +33,14 @@ $language='zh';$locale='zh_CN';$again=render_archive();check($again===$zh&&$quer
 $date_style='classic';$legacy=render_archive();
 check($legacy===$zh && str_contains($legacy,'datetime="2026-10-19">10月 19日</time>') && $queries===2,'retired date setting leaves the warm archive and ISO date unchanged');
 $locale='zh_TW';$translated=render_archive();check(str_contains($translated,'zh zh_TW title'),'locale-specific filtered titles have independent cache');
-zen_clear_archives_cache_on_category_relationship(7,[1],'language');check(get_transient('zen_archives_public_posts_v3')===false,'language reassignment invalidates every cached archive context');
+zen_clear_archives_cache_on_category_relationship(7,[1],'language');check(get_transient(zen_archive_cache_key())===false,'language reassignment invalidates the previous archive generation');
+$old_key=zen_archive_cache_key();
+$query_hook=static function(){
+    $GLOBALS['archive_fixture_posts']=[];
+    zen_clear_archives_cache();
+};
+$stale=render_archive();
+check(str_contains($stale,'zh zh_TW title') && is_array(get_transient($old_key)), 'late old snapshot reached the storage boundary');
+check(!str_contains(render_archive(),'zh zh_TW title'), 'late old snapshot is no longer reachable after invalidation');
 foreach(['timezone_string','gmt_offset'] as $key){$cache['zen_site_uptime']=['days'=>1];foreach($hooks['update_option_'.$key]??[] as $fn)$fn();check(!isset($cache['zen_site_uptime']),$key.' invalidates uptime');}
 exit(empty($GLOBALS['failures'])?0:1);

@@ -54,7 +54,7 @@ $layout = file_get_contents(dirname(__DIR__) . '/theme/zen/assets/css/layout.css
 check((bool) preg_match('/@media \(max-width: 639\.98px\) \{.*?\.zen-site-footer > div \{.*?align-items: center;.*?\.zen-footer-navigation ul \{.*?justify-content: center;/s', $layout), 'mobile footer sections are centered');
 $archive = file_get_contents(dirname(__DIR__) . '/theme/zen/page-archives.php');
 check(!str_contains($archive, 'preg_match'), 'archive dead date branch');
-check(str_contains($archive, 'zen_archives_public_posts_v3'), 'archive ignores old date format cache');
+
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
 function esc_url($value) { return esc_html($value); }
 function date_i18n($format) { return '2026'; }
@@ -100,6 +100,7 @@ $GLOBALS['footer_options']['zen_footer_text'] = '<a href="/feed/">Extra RSS</a>'
 ob_start(); require ABSPATH . 'footer.php'; $deduped = ob_get_clean();
 check(str_contains($deduped, $GLOBALS['fixture_menu_html']) && !str_contains($deduped, 'ph-rss'), 'same native feed in assigned menu suppresses only automatic RSS');
 check(str_contains($deduped, $GLOBALS['footer_options']['zen_footer_text']), 'duplicate suppression must not alter custom footer text');
+check(zen_menu_has_feed_link('<a href="https://EXAMPLE.test:443/feed/">Subscribe</a>', 'https://example.test/feed/'), 'equivalent host casing and default port suppress duplicate RSS');
 $GLOBALS['fixture_menu_html'] = '<li><a href="/feed/?type=other">Other feed</a></li>';
 ob_start(); require ABSPATH . 'footer.php'; $other_feed = ob_get_clean();
 check(str_contains($other_feed, $GLOBALS['fixture_menu_html']) && str_contains($other_feed, 'ph-rss'), 'a different subscription URL must not suppress the built-in RSS');
@@ -114,7 +115,7 @@ function get_footer() {}
 function __($value, $domain = '') { return $value; }
 function post_password_required() { return false; }
 function the_title() { echo 'Archive'; }
-function get_option($key) { return ''; }
+function get_option($key, $default = false) { return $default; }
 function get_the_title($post = null) { return $post ? 'Post' : 'Archive'; }
 function get_permalink($post) { return '/post/' . (is_object($post) ? $post->ID : (int) $post); }
 function get_the_date($format, $post) { return $format === 'Y' ? '2026' : '2026-10-05'; }
@@ -133,6 +134,6 @@ $cache['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; $html = ob_get_clean();
 check(str_contains($html, '>10月 5日</time>') && !str_contains($html, '2025年4月1日'), 'legacy cache safely rebuilt');
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; ob_end_clean();
-check($GLOBALS['archive_queries'] === 1, 'warm v3 cache avoids rebuild');
+check($GLOBALS['archive_queries'] === 1, 'warm archive avoids rebuild');
 
 echo "PASS audit closeout: $checks checks\n";

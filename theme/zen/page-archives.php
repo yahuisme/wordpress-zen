@@ -7,12 +7,10 @@ get_header();
 $archive_locked = post_password_required();
 $archives_posts = array();
 if (!$archive_locked) {
-    $archive_context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-    $archives_cache = get_transient('zen_archives_public_posts_v3');
-    $archives_cache = is_array($archives_cache) ? $archives_cache : array();
-    $archives_posts = $archives_cache[$archive_context] ?? false;
+    $archive_cache_key = zen_archive_cache_key();
+    $archives_posts = get_transient($archive_cache_key);
 
-    if (false === $archives_posts) {
+    if (!is_array($archives_posts)) {
         $archives_posts = array();
         $archive_page = 1;
         $archive_batch_size = 500;
@@ -45,10 +43,7 @@ if (!$archive_locked) {
             unset($archives_query);
         } while ($archive_has_more);
 
-        // Keep language variants under one invalidation boundary; discard legacy flat rows.
-        $archives_cache = array_filter($archives_cache, 'is_string', ARRAY_FILTER_USE_KEY);
-        $archives_cache[$archive_context] = $archives_posts;
-        set_transient('zen_archives_public_posts_v3', $archives_cache, HOUR_IN_SECONDS);
+        set_transient($archive_cache_key, $archives_posts, HOUR_IN_SECONDS);
     }
 }
 ?>
@@ -119,10 +114,7 @@ if (!$archive_locked) {
     <?php endif; ?>
     </div>
     <?php if (count($archive_years) > 2) : ?>
-        <button type="button" class="zen-archive-more" hidden aria-controls="zen-archive-years" data-zen-directory-batch="2">
-            <span><?php esc_html_e('查看更早年份', 'zen'); ?></span>
-            <span aria-hidden="true">↓</span>
-        </button>
+        <?php zen_directory_more('zen-archive-years', 2, __('查看更早年份', 'zen'), 'zen-archive-more'); ?>
     <?php endif; ?>
 </div>
 

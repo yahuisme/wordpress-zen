@@ -153,10 +153,10 @@ function zen_php_search() {
     }
     $html = zen_highlight_search_terms('&lt;script&gt; &amp;lt; &quot;title&quot;', '<script> &lt; title');
     zen_php_check(!str_contains($html, '<script>') && html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === '<script> &lt; "title"', 'search: encoded markup stays text and doubly encoded entities retain their visible value');
-    foreach (array('amp', '#X41;', 'missing') as $query) {
+    foreach (array('amp', '#X41;', 'missing', '') as $query) {
         $html = zen_highlight_search_terms('Literal &amp;#X41; amp', $query);
         zen_php_check(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'Literal &#X41; amp', 'search: uppercase hexadecimal entity-looking text stays literal for query ' . $query);
-        zen_php_check(substr_count($html, '<mark ') === (int) ($query !== 'missing'), 'search: uppercase hexadecimal literal keeps intended match count for query ' . $query);
+        zen_php_check(substr_count($html, '<mark ') === (int) in_array($query, array('amp', '#X41;'), true), 'search: uppercase hexadecimal literal keeps intended match count for query ' . $query);
     }
 
     $quoted = zen_php_post(array('post_title' => 'Patent Orchard & 0 -literal'));
@@ -244,6 +244,7 @@ function zen_php_link_manager() {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
     require_once ABSPATH . 'wp-admin/includes/class-wp-links-list-table.php';
     $ids = array();
+    $saved_get = $_GET;
     $saved_request = $_REQUEST;
     try {
         foreach (array('Zero' => 0, 'Link 10' => 2, 'Link 2' => 2, 'Latest' => 1) as $name => $rating) {
@@ -256,15 +257,16 @@ function zen_php_link_manager() {
             $table->prepare_items();
             return array_map('intval', wp_list_pluck($table->items, 'link_id'));
         };
-        $_REQUEST = array('orderby' => 'rating', 'order' => 'asc', 's' => 'Zen Rating Fixture');
+        $_GET = $_REQUEST = array('orderby' => 'rating', 'order' => 'asc', 's' => 'Zen Rating Fixture');
         zen_php_check($ordered_ids()[0] === $ids['Zero'], 'link manager: native rating sort is unchanged outside its load hook');
         do_action('load-link-manager.php');
         zen_php_check($ordered_ids() === array($ids['Latest'], $ids['Link 2'], $ids['Link 10'], $ids['Zero']), 'link manager: ascending rating has natural name ties and zero last');
-        $_REQUEST['order'] = 'desc';
+        $_GET['order'] = $_REQUEST['order'] = 'desc';
         $descending = $ordered_ids();
         zen_php_check($descending[3] === $ids['Zero'] && $descending[2] === $ids['Latest'], 'link manager: descending rating remains native');
     } finally {
         remove_filter('get_bookmarks', 'zen_order_link_manager_bookmarks', 10);
+        $_GET = $saved_get;
         $_REQUEST = $saved_request;
         foreach ($ids as $id) wp_delete_link($id);
     }
@@ -275,14 +277,15 @@ function zen_php_category_cache() {
     $post_id = zen_php_post(array('post_name' => 'zen-cache-fixture'));
     $page = zen_php_post(array('post_type' => 'page'));
     $render = function () use ($page) {
+        $saved_post = $GLOBALS['post'] ?? null;
         query_posts(array('page_id' => $page));
+        $GLOBALS['post'] = get_queried_object();
         try { return zen_php_capture(function () { include get_template_directory() . '/page-archives.php'; }); }
-        finally { wp_reset_query(); }
+        finally { wp_reset_query(); $GLOBALS['post'] = $saved_post; }
     };
     $cached_url = function () use ($post_id) {
-        $cache = (array) get_transient('zen_archives_public_posts_v3');
-        $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-        foreach ($cache[$context] ?? array() as $row) {
+        $cache = (array) get_transient(zen_archive_cache_key());
+        foreach ((array) $cache as $row) {
             if (isset($row['id']) && (int) $row['id'] === $post_id) return $row['url'];
         }
         return '';
@@ -302,46 +305,82 @@ function zen_php_category_cache() {
         wp_set_post_categories($post_id, array($terms[1]));
         $new = get_permalink($post_id);
         zen_php_check($old !== $new && get_post($post_id)->post_modified_gmt === $saved_modified, 'category-cache: relation-only replacement changes permalink without saving post');
-        zen_php_check(false === get_transient('zen_archives_public_posts_v3'), 'category-cache: replacing category evicts warm archive');
+        zen_php_check(false === get_transient(zen_archive_cache_key()), 'category-cache: replacing category evicts warm archive');
         $html = $render();
         zen_php_check($cached_url() === $new && str_contains($html, esc_url($new)), 'category-cache: archive regenerates current category URL');
-        wp_add_object_terms($post_id, $terms[0], 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts_v3'), 'category-cache: appending category evicts warm archive');
+        $warm_key = zen_archive_cache_key();
+        $add_seen = false;
+        $during_add = static function ($id, $term_id, $taxonomy) use ($post_id, $warm_key, &$add_seen) {
+            if ($id !== $post_id || $taxonomy !== 'category') return;
+            $add_seen = true;
+            zen_php_check(zen_archive_cache_key() === $warm_key && get_transient($warm_key) !== false, 'category-cache: incomplete append cannot expose a new generation');
+        };
+        add_action('added_term_relationship', $during_add, 20, 3);
+        try { wp_add_object_terms($post_id, $terms[0], 'category'); }
+        finally { remove_action('added_term_relationship', $during_add, 20); }
+        zen_php_check($add_seen, 'category-cache: real relationship insertion reached the observation point');
+        zen_php_check(false === get_transient(zen_archive_cache_key()), 'category-cache: appending category evicts warm archive');
         $render();
+        $warm_key = zen_archive_cache_key();
+        $terms_version = wp_cache_get_last_changed('terms');
+        do_action('shutdown');
+        zen_php_check(zen_archive_cache_key() === $warm_key && get_transient($warm_key) !== false
+            && wp_cache_get_last_changed('terms') === $terms_version, 'category-cache: completed writes do not invalidate either cache again at shutdown');
+        wp_add_object_terms($post_id, $terms[0], 'category');
+        zen_php_check(zen_archive_cache_key() === $warm_key && get_transient($warm_key) !== false, 'category-cache: repeated append does not invalidate the archive');
         wp_remove_object_terms($post_id, $terms[0], 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts_v3'), 'category-cache: direct relationship removal evicts warm archive');
+        zen_php_check(false === get_transient(zen_archive_cache_key()), 'category-cache: direct relationship removal evicts warm archive');
         $render();
         zen_php_check($cached_url() === get_permalink($post_id), 'category-cache: removal regeneration matches native permalink');
+        $warm_key = zen_archive_cache_key();
+        $old_url = $cached_url();
+        get_the_category($post_id);
+        $reject_term = static function ($term) {
+            return $term === 'Zen cache rejected' ? new WP_Error('fixture_rejected') : $term;
+        };
+        add_filter('pre_insert_term', $reject_term);
+        try { $partial = wp_add_object_terms($post_id, array($terms[0], 'Zen cache rejected'), 'category'); }
+        finally { remove_filter('pre_insert_term', $reject_term); }
+        zen_php_check(is_wp_error($partial) && $partial->get_error_code() === 'fixture_rejected'
+            && zen_archive_cache_key() === $warm_key, 'category-cache: Core returns early after a partial append');
+        do_action('shutdown');
+        zen_php_check(zen_archive_cache_key() !== $warm_key && false === get_transient(zen_archive_cache_key()), 'category-cache: shutdown invalidates an unfinished append');
+        zen_php_check(in_array((int) $terms[0], array_map('intval', wp_list_pluck(get_the_category($post_id), 'term_id')), true), 'category-cache: relationship cache is refreshed after the partial write');
+        $render();
+        zen_php_check($cached_url() === get_permalink($post_id) && $cached_url() !== $old_url, 'category-cache: archive reflects the committed part of the append');
+        $recovered_key = zen_archive_cache_key();
+        wp_add_object_terms($post_id, $terms[0], 'category');
+        zen_php_check(zen_archive_cache_key() === $recovered_key, 'category-cache: recovered partial append leaves no pending invalidation');
         wp_set_object_terms($post_id, array(), 'category');
-        zen_php_check(false === get_transient('zen_archives_public_posts_v3'), 'category-cache: removing all categories evicts warm archive');
+        zen_php_check(false === get_transient(zen_archive_cache_key()), 'category-cache: removing all categories evicts warm archive');
         $render();
         zen_php_check($cached_url() === get_permalink($post_id), 'category-cache: uncategorized archive regenerates native fallback URL');
-        $before = get_transient('zen_archives_public_posts_v3');
+        $before = get_transient(zen_archive_cache_key());
         wp_set_object_terms($post_id, array(), 'category');
-        zen_php_check(get_transient('zen_archives_public_posts_v3') === $before, 'category-cache: unchanged relationships keep populated cache');
+        zen_php_check(get_transient(zen_archive_cache_key()) === $before, 'category-cache: unchanged relationships keep populated cache');
         $tag = wp_insert_term('Zen cache tag', 'post_tag');
         if (is_wp_error($tag)) throw new RuntimeException($tag->get_error_message());
         try {
             wp_set_object_terms($post_id, array($tag['term_id']), 'post_tag');
-            zen_php_check(get_transient('zen_archives_public_posts_v3') === $before, 'category-cache: tag relationship does not evict archive');
+            zen_php_check(get_transient(zen_archive_cache_key()) === $before, 'category-cache: tag relationship does not evict archive');
         } finally { wp_delete_term($tag['term_id'], 'post_tag'); }
         register_taxonomy_for_object_type('category', 'page');
         try {
             wp_set_object_terms($page, array($terms[0]), 'category');
-            zen_php_check(get_transient('zen_archives_public_posts_v3') === $before, 'category-cache: non-post relationship does not evict archive');
+            zen_php_check(get_transient(zen_archive_cache_key()) === $before, 'category-cache: non-post relationship does not evict archive');
         } finally {
             wp_set_object_terms($page, array(), 'category');
             unregister_taxonomy_for_object_type('category', 'page');
         }
         update_option('permalink_structure', '/%postname%/');
         $render();
-        $before = get_transient('zen_archives_public_posts_v3');
+        $before = get_transient(zen_archive_cache_key());
         wp_set_post_categories($post_id, array($terms[0]));
-        zen_php_check(get_transient('zen_archives_public_posts_v3') === $before, 'category-cache: category-independent permalinks keep populated cache');
+        zen_php_check(get_transient(zen_archive_cache_key()) === $before, 'category-cache: category-independent permalinks keep populated cache');
     } finally {
         if (null === $saved_structure) delete_option('permalink_structure'); else update_option('permalink_structure', $saved_structure);
         foreach ($terms as $term) wp_delete_term($term, 'category');
-        delete_transient('zen_archives_public_posts_v3');
+        delete_transient(zen_archive_cache_key());
     }
 }
 try {

@@ -17,13 +17,14 @@ function add_action(...$args) {}
 function zen_get_option($key) { return 'editorial'; }
 define('ABSPATH', dirname(TEMPLATE_PATH) . '/');
 require ABSPATH . 'inc/template-tags.php';
+function get_option($k, $default = false) { return $default; }
 function get_transient($k) {
- if ($k !== 'zen_archives_public_posts_v3') throw new RuntimeException('Unexpected archive cache key');
+ if ($k !== zen_archive_cache_key()) throw new RuntimeException('Unexpected archive cache key');
  $rows = array();
  foreach (array('第一篇文章','第二篇文章','长标题：'.str_repeat('完整的中文与English标题',6),'最后一篇文章') as $i=>$t) {
   $rows[] = array('id'=>$i+1,'title'=>$t,'url'=>'#post-'.$i,'year'=>'2026','date'=>'2026-10-05');
  }
- return array('zh_CN:' => $rows);
+ return $rows;
 }
 include TEMPLATE_PATH;
 '''.replace('TEMPLATE_PATH', repr(str(root / 'page-archives.php')))

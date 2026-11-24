@@ -82,7 +82,7 @@ try {
         $input['zen_footer_text'] = array('unexpected');
     } elseif ($case === 'invalid-date') {
         update_option('zen_site_start_date', '2022-07-01');
-        $input['zen_site_start_date'] = '2026-02-30';
+        $input['zen_site_start_date'] = '<b>2026-02-28</b>';
     } elseif ($case === 'decimal') {
         update_option('zen_excerpt_length', 75);
         $input['zen_reading_width'] = '800.0';
@@ -143,7 +143,7 @@ try {
         list($field, $label, $group, $suffix) = $field_errors[$case];
         $code = $field . $suffix;
         if ($case === 'malformed-footer') $check(get_option($field) === 'Saved footer', 'malformed footer preserves the previous text without aborting native save');
-        if ($case === 'invalid-date') $check(get_option($field) === '2022-07-01', 'impossible date retains the previously saved date');
+        if ($case === 'invalid-date') $check(get_option($field) === '2022-07-01', 'malformed date retains the previously saved date');
         $check(in_array($code, $codes, true), 'native notices identify the unsaved field');
         $check(!in_array('settings_updated', $codes, true), 'native notices do not falsely claim success');
         // Render the settings callback without a script from the native redirect data.

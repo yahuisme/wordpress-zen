@@ -185,7 +185,7 @@ function zen_reset_options() {
         if (get_option($key, $missing) !== $missing && !delete_option($key)) $failed = true;
     }
     delete_transient('zen_site_uptime');
-    delete_transient('zen_archives_public_posts_v3');
+    zen_clear_archives_cache();
 
     wp_safe_redirect(add_query_arg(array(
         'page'      => 'zen-options',
@@ -263,17 +263,10 @@ function zen_sanitize_copyright_license($value) {
 }
 
 function zen_sanitize_site_start_date($value) {
-    if (!is_string($value)) {
-        add_settings_error('zen_site_start_date', 'zen_site_start_date_invalid', __('请输入有效日期（YYYY-MM-DD）；已保留上次保存值。', 'zen'));
-        return zen_get_option('zen_site_start_date');
-    }
-    $value = sanitize_text_field(trim($value));
-    if ($value === '') {
-        return '';
-    }
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-        $dt = DateTime::createFromFormat('Y-m-d', $value);
-        if ($dt && $dt->format('Y-m-d') === $value && checkdate((int) substr($value, 5, 2), (int) substr($value, 8, 2), (int) substr($value, 0, 4))) {
+    if (is_string($value)) {
+        $value = trim($value);
+        if ($value === '' || (preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $value, $date)
+            && checkdate((int) $date[2], (int) $date[3], (int) $date[1]))) {
             return $value;
         }
     }
@@ -342,9 +335,9 @@ function zen_get_reading_time($post_id = 0) {
     $content = trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
     if (function_exists('mb_strlen')) {
-        $length = mb_strlen($content);
+        $length = mb_strlen($content, 'UTF-8');
     } else {
-        $length = preg_match_all('/./us', $content, $matches);
+        $length = preg_match_all('/./us', $content);
     }
 
     return max(1, (int) ceil($length / 300));

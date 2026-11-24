@@ -995,7 +995,7 @@ test('disabled TOC preserves heading IDs without a TOC observer or disabling art
     }, { ids: ['', 'existing', 'existing'], observers: 0 });
     assert.ok(document.querySelector('.zen-code-copy'), 'code controls still initialize');
     assert.ok(document.querySelector('.zen-audio-player'), 'audio still initializes');
-    assert.equal(document.getElementById('reading-progress').style.width, '0%');
+    assert.equal(document.getElementById('reading-progress').style.transform, 'scaleX(0)');
     assert.equal(document.getElementById('back-to-top').disabled, true);
 });
 
@@ -1052,6 +1052,20 @@ test('both TOCs preserve heading IDs when the browser would normalize the fragme
     for (const navId of ['toc-nav', 'drawer-toc-nav']) {
         assert.deepEqual([...document.querySelectorAll(`#${navId} .toc-link`)].map(link => [link.dataset.target, link.hash]), expected);
     }
+});
+
+test('TOC keeps the first duplicate heading anchor and reserves real IDs and legacy anchors', async t => {
+    const { document } = await page(t, `
+        <nav id="toc-nav"></nav>
+        <a name="section-0"></a>
+        <div id="external"></div>
+        <article id="post-content"><h2>Automatic</h2><h2 id="intro">First</h2>
+            <h3 id="intro">Second</h3><h2 id="intro-2">Explicit</h2>
+            <h2 id="external">Reserved outside the article</h2></article>`);
+    assert.deepEqual([...document.querySelectorAll('#toc-nav a')].map(a => a.hash),
+        ['#section-0-2', '#intro', '#intro-3', '#intro-2', '#external-2']);
+    assert.equal(document.getElementById('intro').textContent, 'First');
+    assert.equal(document.getElementById('external').tagName, 'DIV');
 });
 
 test('TOC avoids literal ID and legacy anchor collisions even in encoded fallbacks', async t => {
@@ -1113,7 +1127,7 @@ test('a scroll burst queues one frame and only changes previous and next TOC ent
     for (let i = 0; i < 3; i++) window.dispatchEvent(new window.Event('scroll'));
     assert.equal(frames, 1);
     flush();
-    assert.equal(document.getElementById('reading-progress').style.width, '50%');
+    assert.equal(document.getElementById('reading-progress').style.transform, 'scaleX(0.5)');
     assert.equal(document.getElementById('back-to-top').disabled, false);
     assert.deepEqual([...document.querySelectorAll('.toc-link.active')].map(link => link.dataset.target), ['second', 'second']);
     assert.deepEqual([...new Set(mutations.takeRecords().map(record => record.target.dataset.target))], ['first', 'second']);

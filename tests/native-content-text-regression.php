@@ -113,6 +113,40 @@ try {
     } finally {
         remove_filter('the_title', $title_filter, 99);
     }
+    if (function_exists('wp_render_block_visibility_support')) {
+        $body = '<!-- wp:paragraph --><p>Before</p><!-- /wp:paragraph -->'
+            . '<!-- wp:group --><div class="wp-block-group">'
+            . '<!-- wp:paragraph {"metadata":{"blockVisibility":false}} --><p>Hidden paragraph</p><!-- /wp:paragraph -->'
+            . '<!-- wp:paragraph --><p>Visible group</p><!-- /wp:paragraph --></div><!-- /wp:group -->'
+            . '<!-- wp:group {"metadata":{"blockVisibility":false}} --><div class="wp-block-group">'
+            . '<!-- wp:paragraph --><p>Hidden subtree</p><!-- /wp:paragraph --></div><!-- /wp:group -->'
+            . '<!-- wp:paragraph --><p>After</p><!-- /wp:paragraph -->';
+        $id = content_native_post(array('post_content' => $body));
+        content_native_query($id);
+        $rendered = do_blocks($body);
+        content_native_check(!str_contains($rendered, 'Hidden') && str_contains($rendered, 'Visible group'), 'Core test fixture hides the marked blocks');
+        list($schema) = content_native_schema();
+        content_native_check(zen_meta_description() === 'Before Visible group After' && $schema['description'] === zen_meta_description(), 'meta and JSON-LD exclude hidden block subtrees and keep visible order');
+        $escaped_body = str_replace('blockVisibility', 'block\u0056isibility', $body);
+        // Save as a native editor allowed to preserve the exact block comment spelling.
+        $admins = get_users(array('role' => 'administrator', 'number' => 1));
+        $reader = get_current_user_id();
+        if (!$admins) throw new RuntimeException('Administrator fixture required');
+        wp_set_current_user($admins[0]->ID);
+        try {
+            if (!current_user_can('unfiltered_html')) throw new RuntimeException('Unfiltered editor fixture required');
+            $escaped_id = content_native_post(array('post_content' => wp_slash($escaped_body)));
+        } finally {
+            wp_set_current_user($reader);
+        }
+        content_native_query($escaped_id);
+        $saved_body = get_post()->post_content;
+        content_native_check($saved_body === $escaped_body && !str_contains(do_blocks($saved_body), 'Hidden'), 'native visibility does not depend on the stored JSON spelling');
+        list($schema) = content_native_schema();
+        content_native_check($schema['description'] === 'Before Visible group After', 'metadata respects parsed visibility attributes regardless of JSON spelling');
+        content_native_query(content_native_post(array('post_content' => $body, 'post_excerpt' => 'Manual summary')));
+        content_native_check(zen_meta_description() === 'Manual summary', 'manual description remains authoritative');
+    }
     $code = '<!-- wp:code --><pre class="wp-block-code"><code>SECRET_NATIVE_CODE</code></pre><!-- /wp:code -->';
     $id = content_native_post(array('post_password' => 'fixture-pass', 'post_content' => $code));
     content_native_query($id);

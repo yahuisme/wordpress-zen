@@ -22,6 +22,8 @@ function delete_option($key) {
     return true;
 }
 function delete_transient($key) { $GLOBALS['transients'][] = $key; return true; }
+function update_option($key, $value, $autoload = null) { $GLOBALS['options'][$key] = $value; }
+function wp_generate_uuid4() { return 'fixture-generation'; }
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function add_query_arg($query, $url) { return $url . '?' . http_build_query($query); }
 // Throw at the redirect boundary so the real handler's exit cannot stop the suite.
@@ -33,6 +35,7 @@ function settings_fields($group) {}
 // The notice precedes the first submit button; stop rendering unrelated fields.
 function submit_button(...$args) { throw new Zen_Reset_Rendered(); }
 require dirname(__DIR__) . '/theme/zen/inc/options.php';
+require dirname(__DIR__) . '/theme/zen/inc/template-tags.php';
 $total = 0;
 $failures = 0;
 function zen_reset_check($condition, $label) {
@@ -74,6 +77,7 @@ foreach (array('head', 'body', 'footer') as $position) {
 }
 zen_reset_check(!array_key_exists('zen_reading_width', $GLOBALS['options']), 'restricted reset still resets ordinary setting');
 zen_reset_check(get_option('unrelated_option') === 'untouched', 'reset leaves unrelated options alone');
+zen_reset_check(get_option('zen_archives_generation') === 'fixture-generation', 'reset advances the archive generation');
 zen_reset_check(get_option('zen_category_ids') === array(9, 2) && !in_array('zen_category_ids', $GLOBALS['deleted'], true), 'restricted reset preserves the retired category row without deleting it');
 zen_reset_check(get_option('zen_content_width') === 1080 && !in_array('zen_content_width', $GLOBALS['deleted'], true), 'restricted reset preserves the retired content width row without deleting it');
 zen_reset_check($status === 'partial', 'restricted reset reports partial status');

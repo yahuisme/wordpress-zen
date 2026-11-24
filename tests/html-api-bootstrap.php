@@ -10,3 +10,5 @@ foreach (array('class-wp-html-span.php', 'class-wp-html-attribute-token.php', 'c
 }
 // Newer Core tag processors use this decoder; older Core decodes attributes inline.
 if (is_file($api . 'class-wp-html-decoder.php')) require_once $api . 'class-wp-html-decoder.php';
+$utf8 = $api . '../utf8.php';
+if (is_file($utf8)) require_once $utf8;

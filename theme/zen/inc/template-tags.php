@@ -8,9 +8,9 @@ function zen_content_page_links() {
     ));
 }
 
-function zen_directory_more($list_id, $batch_size, $label) {
+function zen_directory_more($list_id, $batch_size, $label, $class = 'zen-directory-more') {
     ?>
-    <button type="button" class="zen-directory-more" hidden aria-controls="<?php echo esc_attr($list_id); ?>" data-zen-directory-batch="<?php echo esc_attr($batch_size); ?>">
+    <button type="button" class="<?php echo esc_attr($class); ?>" hidden aria-controls="<?php echo esc_attr($list_id); ?>" data-zen-directory-batch="<?php echo esc_attr($batch_size); ?>">
         <span><?php echo esc_html($label); ?></span>
         <span aria-hidden="true">↓</span>
     </button>
@@ -35,11 +35,13 @@ function zen_get_archives_url() {
 
 /** Use the owner's published page and its native permalink, never guess its slug. */
 function zen_get_directory_url($template) {
+    $posts_page = get_option('show_on_front') === 'page' ? (int) get_option('page_for_posts') : 0;
     $pages = get_pages(array(
         'meta_key' => '_wp_page_template',
         'meta_value' => $template,
         'post_status' => 'publish',
         'hierarchical' => false,
+        'exclude' => $posts_page ? array($posts_page) : array(),
         'number' => 1,
     ));
     if (!empty($pages)) {
@@ -49,7 +51,7 @@ function zen_get_directory_url($template) {
     // Core also selects page-{slug}.php for root pages using the default template.
     $slug = substr(basename($template), 5, -4);
     $page = get_page_by_path($slug, 'OBJECT', array('page'));
-    if (!$page || $page->post_status !== 'publish') {
+    if (!$page || (int) $page->ID === $posts_page || $page->post_status !== 'publish') {
         return '';
     }
     $assigned = get_page_template_slug($page);
@@ -71,6 +73,14 @@ function zen_get_posts_url($fallback_to_home = true) {
 /** Check the final menu links without rewriting the menu or the custom footer text. */
 function zen_menu_has_feed_link($menu_html, $feed_url) {
     $feed_url = html_entity_decode($feed_url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $identity = static function ($url) {
+        $parts = wp_parse_url($url);
+        if (!isset($parts['scheme'], $parts['host']) || isset($parts['user']) || isset($parts['pass'])) return null;
+        $scheme = strtolower($parts['scheme']);
+        $default_port = array('https' => 443, 'http' => 80)[$scheme] ?? null;
+        return array($scheme, strtolower($parts['host']), $parts['port'] ?? $default_port, $parts['path'] ?? '/', $parts['query'] ?? null);
+    };
+    $feed_identity = $identity($feed_url);
     $home = wp_parse_url(home_url('/')) ?: array();
     $home_scheme = $home['scheme'] ?? '';
     $home_origin = $home_scheme !== '' && isset($home['host'])
@@ -86,7 +96,7 @@ function zen_menu_has_feed_link($menu_html, $feed_url) {
         } elseif ($home_origin !== '' && str_starts_with($href, '/')) {
             $href = $home_origin . $href;
         }
-        if ($href === $feed_url) return true;
+        if ($href === $feed_url || ($feed_identity !== null && $identity($href) === $feed_identity)) return true;
     }
     return false;
 }
@@ -235,17 +245,13 @@ function zen_highlight_search_title($text) {
 }
 
 function zen_mark_search_terms($text, $terms) {
-    $terms = array_unique($terms);
-    if (empty($terms)) {
-        return esc_html($text);
-    }
-
-    $terms = array_filter($terms, function ($term) {
+    $plain_text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // Escape plain text without normalizing entity-like sequences meant to stay literal.
+    $escape = static fn($part) => htmlspecialchars($part, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $terms = array_filter(array_unique($terms), function ($term) {
         return trim($term) !== '' && (function_exists('mb_strlen') ? mb_strlen($term) <= 100 : strlen($term) <= 300);
     });
-    if (empty($terms)) {
-        return esc_html($text);
-    }
+    if (empty($terms)) return $escape($plain_text);
     $terms = array_slice($terms, 0, 20);
 
     usort($terms, function ($a, $b) {
@@ -259,18 +265,16 @@ function zen_mark_search_terms($text, $terms) {
     }, $terms);
 
     $pattern = '/(' . implode('|', $terms) . ')/iu';
-    $plain_text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $parts = preg_split($pattern, $plain_text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 
     if (false === $parts) {
-        return esc_html($text);
+        return $escape($plain_text);
     }
 
     $output = '';
     foreach ($parts as $part) {
         $is_match = (bool) preg_match($pattern, $part);
-        // Keep entity-like text literal after decoding exactly one input layer.
-        $escaped_part = esc_html(str_replace('&', '&amp;', $part));
+        $escaped_part = $escape($part);
         if ($is_match) {
             $output .= '<mark class="bg-yellow-200 dark:bg-yellow-800 dark:text-white rounded-sm px-0.5">' . $escaped_part . '</mark>';
         } else {
@@ -321,8 +325,16 @@ function zen_pagination() {
     echo '</nav>';
 }
 
+function zen_archive_cache_key() {
+    $locale = get_locale();
+    $language = function_exists('pll_current_language') ? pll_current_language() : '';
+    $generation = get_option('zen_archives_generation', '');
+    return 'zen_archives_v4_' . md5($locale . ':' . $language . ':' . $generation);
+}
+
 function zen_clear_archives_cache() {
-    delete_transient('zen_archives_public_posts_v3');
+    // A build already in flight can only write to its old key, which expires naturally.
+    update_option('zen_archives_generation', wp_generate_uuid4(), false);
 }
 function zen_clear_post_directory_caches() {
     zen_clear_archives_cache();
@@ -367,15 +379,43 @@ add_action('update_option_zen_site_start_date', 'zen_clear_uptime_cache');
 add_action('delete_option_zen_site_start_date', 'zen_clear_uptime_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
-function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
-    if ('post' === get_post_type($object_id)
+function zen_archive_relationship_affects_cache($object_id, $taxonomy) {
+    return 'post' === get_post_type($object_id)
         && 'publish' === get_post_status($object_id)
         && ('language' === $taxonomy || ('category' === $taxonomy
-            && str_contains((string) get_option('permalink_structure'), '%category%')))) {
+            && str_contains((string) get_option('permalink_structure'), '%category%')));
+}
+function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
+    if (zen_archive_relationship_affects_cache($object_id, $taxonomy)) {
         zen_clear_archives_cache();
     }
 }
-add_action('added_term_relationship', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
+// Core flushes relationship caches after the insertion hooks, then fires set_object_terms.
+$zen_archive_term_additions = array();
+add_action('added_term_relationship', static function ($object_id, $term_id, $taxonomy) use (&$zen_archive_term_additions) {
+    if (('category' === $taxonomy || 'language' === $taxonomy) && zen_archive_relationship_affects_cache($object_id, $taxonomy)) {
+        $zen_archive_term_additions[$taxonomy][$object_id] = true;
+    }
+}, 10, 3);
+add_action('set_object_terms', static function ($object_id, $terms, $term_ids, $taxonomy) use (&$zen_archive_term_additions) {
+    if (!isset($zen_archive_term_additions[$taxonomy][$object_id])) return;
+    unset($zen_archive_term_additions[$taxonomy][$object_id]);
+    if (!$zen_archive_term_additions[$taxonomy]) unset($zen_archive_term_additions[$taxonomy]);
+    zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy);
+}, 10, 4);
+add_action('shutdown', static function () use (&$zen_archive_term_additions) {
+    // An error after a partial write can bypass Core's cleanup and final hook.
+    if (!$zen_archive_term_additions) return;
+    foreach ($zen_archive_term_additions as $taxonomy => $objects) {
+        foreach (array_keys($objects) as $object_id) {
+            wp_cache_delete($object_id, $taxonomy . '_relationships');
+        }
+    }
+    $zen_archive_term_additions = array();
+    wp_cache_set_terms_last_changed();
+    zen_clear_archives_cache();
+}, PHP_INT_MAX);
+unset($zen_archive_term_additions);
 add_action('deleted_term_relationships', 'zen_clear_archives_cache_on_category_relationship', 10, 3);
 function zen_clear_archives_cache_on_author_profile($user_id, $old_user_data) {
     if (!str_contains((string) get_option('permalink_structure'), '%author%')) {

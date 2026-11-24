@@ -21,6 +21,18 @@ function zen_clean_description($text) {
     return $excerpt === $text ? $text : rtrim($excerpt) . '…';
 }
 
+/** Keep the saved markup order without rendering shortcodes or dynamic blocks. */
+function zen_visible_block_markup($block) {
+    if (false === ($block['attrs']['metadata']['blockVisibility'] ?? null)) return '';
+
+    $html = '';
+    $index = 0;
+    foreach ($block['innerContent'] as $part) {
+        $html .= is_string($part) ? $part : zen_visible_block_markup($block['innerBlocks'][$index++]);
+    }
+    return $html;
+}
+
 function zen_meta_description() {
     if (is_singular()) {
         static $last_post, $description;
@@ -31,7 +43,11 @@ function zen_meta_description() {
         if ($last_post !== $post) {
             $description = zen_clean_description($post->post_excerpt);
             if ('' === $description) {
-                $description = zen_clean_description($post->post_content);
+                $content = $post->post_content;
+                if (function_exists('wp_render_block_visibility_support') && str_contains($content, '<!--')) {
+                    $content = implode('', array_map('zen_visible_block_markup', parse_blocks($content)));
+                }
+                $description = zen_clean_description($content);
             }
             $last_post = $post;
         }

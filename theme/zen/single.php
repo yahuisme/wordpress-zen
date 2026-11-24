@@ -63,11 +63,13 @@ get_header(null, array('zen_show_toc' => $zen_show_toc));
         $zen_tags = new WP_HTML_Tag_Processor($zen_content);
         while ($zen_tags->next_tag()) {
             if (in_array($zen_tags->get_tag(), array('H2', 'H3'), true)) {
-                $zen_prefix = str_replace(
-                    'zen-header-toc zen-ui-link hidden',
-                    'zen-header-toc zen-ui-link hidden zen-toc-pending',
-                    $zen_prefix
-                );
+                $zen_header_tags = new WP_HTML_Tag_Processor($zen_prefix);
+                while ($zen_header_tags->next_tag('BUTTON')) {
+                    if ('header-toc-btn' !== $zen_header_tags->get_attribute('id')) continue;
+                    $zen_header_tags->add_class('zen-toc-pending');
+                    $zen_prefix = $zen_header_tags->get_updated_html();
+                    break;
+                }
                 break;
             }
         }

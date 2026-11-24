@@ -36,9 +36,8 @@ function zen_cache_policy_warm($page_id, $post_id) {
     ob_start();
     try { include get_template_directory() . '/page-archives.php'; }
     finally { ob_end_clean(); wp_reset_query(); }
-    $cache = get_transient('zen_archives_public_posts_v3');
-    $context = get_locale() . ':' . (function_exists('pll_current_language') ? pll_current_language() : '');
-    foreach ($cache[$context] ?? array() as $row) {
+    $cache = get_transient(zen_archive_cache_key());
+    foreach ((array) $cache as $row) {
         if ((int) $row['id'] === $post_id) return $row['url'];
     }
     throw new RuntimeException('Native archive positive control did not contain fixture post');
@@ -66,17 +65,17 @@ try {
     update_option('default_category', $zen_cache_policy_terms[1]);
     $new_url = get_permalink($zen_cache_policy_post);
     zen_cache_policy_check($old_url !== $new_url, 'changing the default category changes native uncategorized permalink without saving the post');
-    zen_cache_policy_check(false === get_transient('zen_archives_public_posts_v3'), 'default category change evicts cached category-based archive URLs');
+    zen_cache_policy_check(false === get_transient(zen_archive_cache_key()), 'default category change evicts cached category-based archive URLs');
     zen_cache_policy_check(get_transient('zen_site_uptime') === $old_uptime, 'default category change preserves unrelated uptime');
     zen_cache_policy_check(zen_cache_policy_warm($zen_cache_policy_page, $zen_cache_policy_post) === $new_url, 'rewarmed archive follows native new fallback category');
-    $stable = get_transient('zen_archives_public_posts_v3');
+    $stable = get_transient(zen_archive_cache_key());
     update_option('default_category', $zen_cache_policy_terms[1]);
-    zen_cache_policy_check(get_transient('zen_archives_public_posts_v3') === $stable, 'unchanged default category does not evict populated archive');
+    zen_cache_policy_check(get_transient(zen_archive_cache_key()) === $stable, 'unchanged default category does not evict populated archive');
     update_option('permalink_structure', '/%postname%/');
     zen_cache_policy_warm($zen_cache_policy_page, $zen_cache_policy_post);
-    $stable = get_transient('zen_archives_public_posts_v3');
+    $stable = get_transient(zen_archive_cache_key());
     update_option('default_category', $zen_cache_policy_terms[0]);
-    zen_cache_policy_check(get_transient('zen_archives_public_posts_v3') === $stable, 'category-independent permalinks keep archive warm when the default changes');
+    zen_cache_policy_check(get_transient(zen_archive_cache_key()) === $stable, 'category-independent permalinks keep archive warm when the default changes');
 } finally {
     foreach ($zen_cache_policy_old as $zen_cache_policy_key => $zen_cache_policy_value) {
         if ($zen_cache_policy_value === null) delete_option($zen_cache_policy_key);
@@ -84,7 +83,7 @@ try {
     }
     foreach (array_reverse($zen_cache_policy_posts) as $zen_cache_policy_post_id) wp_delete_post($zen_cache_policy_post_id, true);
     foreach ($zen_cache_policy_terms as $zen_cache_policy_term_id) wp_delete_term($zen_cache_policy_term_id, 'category');
-    delete_transient('zen_archives_public_posts_v3');
+    delete_transient(zen_archive_cache_key());
     delete_transient('zen_site_uptime');
 }
 $zen_cache_policy_complete = true;

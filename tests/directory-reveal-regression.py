@@ -109,6 +109,38 @@ with sync_playwright() as playwright:
                     const header = document.querySelector('.zen-site-header').getBoundingClientRect();
                     return r.top >= header.bottom - 1 && r.top + Math.min(r.height, 44) <= innerHeight;
                 }'''), scenario, 'revealed content starts behind the sticky header or outside the viewport')
+                if name == 'notes':
+                    # A long thread must show its start, not its vertical midpoint.
+                    for activation in ('pointer', 'keyboard'):
+                        assert page.goto(url).status == 200
+                        # Exercise browsers without scroll anchoring, with enough room to position the button.
+                        page.add_style_tag(content='html { overflow-anchor: none } body { padding-bottom: 100vh }')
+                        target.locator('.zen-comment-text').first.evaluate('''e => {
+                            for (let i = 0; i < 50; i++) {
+                                const paragraph = document.createElement('p');
+                                paragraph.textContent = '一段需要完整展示的长留言。';
+                                e.append(paragraph);
+                            }
+                        }''')
+                        more.focus()
+                        assert more.evaluate('''e => {
+                            const header = document.querySelector('.zen-site-header').getBoundingClientRect();
+                            scrollBy({top: e.getBoundingClientRect().top - header.bottom + 18, behavior: 'instant'});
+                            const rect = e.getBoundingClientRect();
+                            return rect.top < header.bottom && e.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+                        }'''), scenario
+                        if activation == 'keyboard':
+                            more.press('Space')
+                        elif touch:
+                            more.tap()
+                        else:
+                            more.click()
+                        assert target.evaluate('e => e === document.activeElement && e.offsetHeight > innerHeight')
+                        check(target.evaluate('''e => {
+                            const top = e.getBoundingClientRect().top;
+                            const header = document.querySelector('.zen-site-header').getBoundingClientRect();
+                            return top >= header.bottom - 1 && top + 44 <= innerHeight;
+                        }'''), scenario, f'tall thread start is not visible after {activation} reveal')
                 print(scenario, [symptom for case, symptom in failures if case == scenario], flush=True)
         assert not errors, errors
         browser.close()

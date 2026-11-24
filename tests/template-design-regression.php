@@ -664,14 +664,14 @@ test('tags and friend links only offer more when the list exceeds twenty entries
 });
 function get_transient($key) { return $GLOBALS['transients'][$key] ?? false; }
 test('archive directory has one open disclosure per year and static month headings', function () {
-    $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array(
+    $GLOBALS['transients'][zen_archive_cache_key()] = array(
         array('id' => 8, 'url' => '/post/8', 'title' => '同月的另一篇文章', 'year' => '2026', 'date' => '2026-10-19'),
         array('id' => 7, 'url' => '/post/7', 'title' => '归档文章', 'year' => '2026', 'date' => '2026-10-05'),
         array('id' => 6, 'url' => '/post/6', 'title' => '其他月份的文章', 'year' => '2026', 'date' => '2026-09-20'),
         array('id' => 5, 'url' => '/post/5', 'title' => '上一年的文章', 'year' => '2025', 'date' => '2025-12-31'),
         array('id' => 4, 'url' => '/post/4', 'title' => '更早月份的文章', 'year' => '2025', 'date' => '2025-10-01'),
         array('id' => 3, 'url' => '/post/3', 'title' => '更早一年的文章', 'year' => '2024', 'date' => '2024-11-01'),
-    ));
+    );
     $html = render('page-archives.php');
     check(str_contains($html, 'zen-post-list') && str_contains($html, 'zen-post-item'), 'archive directory list contract missing');
     check(str_contains($html, '>10月 5日</time>'), 'cached archive dates are not unified');
@@ -690,7 +690,7 @@ test('archive directory keeps short and empty archives intact', function () {
         array('id' => 6, 'url' => '/post/6', 'title' => '上一年的文章', 'year' => '2025', 'date' => '2025-12-31'),
     );
     foreach (array(2, 1, 0) as $count) {
-        $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => array_slice($rows, 0, $count));
+        $GLOBALS['transients'][zen_archive_cache_key()] = array_slice($rows, 0, $count);
         $html = render('page-archives.php');
         check(substr_count($html, '<details class="zen-archive-group" open>') === $count, 'every available year must open');
         check(substr_count($html, '<section class="zen-archive-month"') === $count, 'no empty month group may be invented');
@@ -705,7 +705,7 @@ test('archive directory progressively reveals older years without hiding the no-
             $year = (string) (2026 - $index);
             $rows[] = array('id' => $index + 1, 'url' => '/post/' . ($index + 1), 'title' => 'Article ' . $year, 'year' => $year, 'date' => $year . '-10-01');
         }
-        $GLOBALS['transients']['zen_archives_public_posts_v3'] = array('zh_CN:' => $rows);
+        $GLOBALS['transients'][zen_archive_cache_key()] = $rows;
         $html = render('page-archives.php');
         check(substr_count($html, 'class="zen-archive-group"') === $year_count, 'every year must stay available in the server HTML');
         check(!preg_match('/<details class="zen-archive-group"[^>]*\bhidden\b/', $html), 'no-script archives must not hide older years');
