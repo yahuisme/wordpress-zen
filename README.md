@@ -2,7 +2,7 @@
 
 专注排版、留白与阅读的 WordPress 博客主题，使用原生文章、页面、评论和友链数据，无需配套插件或构建步骤。
 
-当前系列重做了首页、阅读页和归档。想保留旧版界面，可从 [上一系列的最终版](https://github.com/yahuisme/wordpress-zen/releases/tag/v1.6.5) 下载 `zen.zip`。
+V2 版本做了整体重构。想保留旧版设计，可从 [v1.6.5](https://github.com/yahuisme/wordpress-zen/releases/tag/v1.6.5) 下载 V1 版本 `zen.zip`。
 
 ![Zen 首页截图](theme/zen/screenshot.jpg)
 
