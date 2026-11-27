@@ -100,7 +100,7 @@ get_header(null, array('zen_show_toc' => $zen_show_toc));
     <?php endif; ?>
 
     <?php $tags = zen_get_option('zen_show_tags') ? get_the_tags() : false; ?>
-    <?php if ($tags) : ?>
+    <?php if (is_array($tags) && $tags) : ?>
     <div class="zen-post-taxonomy">
         <div class="zen-taxonomy-row">
             <span class="zen-meta-label">标签</span>

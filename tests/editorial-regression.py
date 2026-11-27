@@ -53,13 +53,7 @@ with sync_playwright() as p:
             if is_first:
                 assert card.locator('h2 a').is_visible() and card.locator('.zen-post-excerpt').is_visible()
                 assert_date(card.locator('time'), 'list')
-                category = card.locator('.zen-post-meta > a:nth-child(2).zen-meta-category')
-                assert category.is_visible(), 'Category follows the card date'
-                category.scroll_into_view_if_needed()
-                assert category.evaluate('''e => {
-                    const r = e.getBoundingClientRect();
-                    return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-                }'''), 'Card title hit area must not intercept category clicks'
+                assert card.locator('.zen-meta-category').count() == 0, 'Latest card shows only its date'
                 assert items.locator('.zen-meta-category').count() == 0, 'Ordinary index rows remain date-only'
                 assert card.locator('time span').count() == 0, 'Latest card date stays unsplit'
                 assert card.locator('time').evaluate('e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length}') == 1

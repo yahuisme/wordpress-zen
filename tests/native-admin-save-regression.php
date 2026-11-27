@@ -53,9 +53,11 @@ try {
     update_option('zen_show_toc', 1);
     update_option('zen_show_back_to_top', 1);
     $case = $argv[2] ?? 'refused';
-    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full', 'malformed-footer', 'invalid-date', 'decimal'), true)) throw new InvalidArgumentException('Unknown save case');
+    $empty_route = $case === 'sparse-empty-route';
+    if ($empty_route) $case = 'sparse';
+    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full', 'malformed-footer', 'invalid-date', 'decimal', 'sparse', 'literal-code'), true)) throw new InvalidArgumentException('Unknown save case');
     if ($case === 'create') delete_option('zen_reading_width');
-    $expected_width = in_array($case, array('create', 'full', 'malformed-footer', 'invalid-date', 'decimal'), true) ? 800 : 720;
+    $expected_width = in_array($case, array('create', 'full', 'malformed-footer', 'invalid-date', 'decimal', 'sparse', 'literal-code'), true) ? 800 : 720;
     $refused_writes = 0;
     $refuse = static function ($query) use (&$refused_writes, $wpdb) {
         if (preg_match('/^UPDATE\s+`?' . preg_quote($wpdb->options, '/') . '`?\s+SET\s+.+\s+WHERE\s+`?option_name`?\s*=\s*\'zen_reading_width\'\s*$/is', $query)) {
@@ -87,6 +89,25 @@ try {
         update_option('zen_excerpt_length', 75);
         $input['zen_reading_width'] = '800.0';
         $input['zen_excerpt_length'] = '6e1';
+    } elseif ($case === 'sparse') {
+        $rejected = array('zen_excerpt_length' => '0', 'zen_site_start_date' => '2026-02-30', 'zen_footer_text' => array('unexpected'), 'zen_code_head' => array('unexpected'));
+        foreach (array_keys($rejected) as $key) delete_option($key);
+        $input += $rejected;
+        // On WordPress 6.5, an absent or empty POST action falls back to the URL.
+        $_GET['action'] = $input['action'];
+        if ($empty_route) $input['action'] = '';
+        else unset($input['action']);
+    } elseif ($case === 'literal-code') {
+        if (!current_user_can('unfiltered_html')) throw new RuntimeException('Fixture administrator needs unfiltered_html');
+        $stored_head = "\n <!-- Fixture head C:\\saved --> \n";
+        update_option('zen_code_head', $stored_head);
+        update_option('zen_code_body', '<!-- Clear this value -->');
+        delete_option('zen_code_footer');
+        $input += array(
+            'zen_code_head' => str_replace("\n", "\r\n", $stored_head),
+            'zen_code_body' => '',
+            'zen_code_footer' => "\r\n <!-- Fixture footer C:\\new --> \r\n",
+        );
     } elseif ($case === 'full') {
         update_option('zen_footer_text', 'Saved footer');
         update_option('zen_category_ids', array(2));
@@ -104,7 +125,7 @@ try {
         );
     }
     $_POST = wp_slash($input);
-    $_REQUEST = $_POST;
+    $_REQUEST = array_merge($_GET ?? array(), $_POST);
     try {
         require ABSPATH . 'wp-admin/options.php';
         throw new RuntimeException('Core controller did not redirect');
@@ -130,6 +151,22 @@ try {
         foreach ($retired_values as $key => $value) $check(get_option($key, null) === $value, 'native save ignores stale retired input without changing ' . $key);
         $check(get_option('zen_code_head', null) === $input['zen_code_head'], 'authorized native save preserves literal backslashes');
         $check(get_option($extension_key, null) === $input[$extension_key], 'native save preserves the Settings API group extension');
+    } elseif ($case === 'sparse') {
+        foreach (array_keys($rejected) as $key) {
+            $exists = $wpdb->get_var($wpdb->prepare("SELECT option_name FROM $wpdb->options WHERE option_name = %s", $key));
+            $check($exists === null, 'rejected input leaves ' . $key . ' absent in the options table');
+            $check(!in_array($key . '_not_saved', $codes, true), 'absent ' . $key . ' does not report a write failure');
+        }
+        foreach (array('zen_excerpt_length', 'zen_site_start_date', 'zen_footer_text') as $key) {
+            $check(in_array($key . '_invalid', $codes, true), 'rejected input still reports the ' . $key . ' validation error');
+        }
+        $check(!in_array('settings_updated', $codes, true), 'validation errors suppress the success notice');
+    } elseif ($case === 'literal-code') {
+        foreach (array('zen_code_head' => $stored_head, 'zen_code_body' => '', 'zen_code_footer' => $input['zen_code_footer']) as $key => $expected) {
+            // get_var() returns null for both a missing row and an empty value.
+            $row = $wpdb->get_row($wpdb->prepare("SELECT option_value FROM $wpdb->options WHERE option_name = %s", $key), ARRAY_A);
+            $check($row === array('option_value' => $expected), 'native save preserves exact intended bytes for ' . $key);
+        }
     } elseif ($case !== 'refused') {
         $check(get_option('zen_code_head', null) === $old_values['zen_code_head'], 'omitted code preserves existing value or absence');
     }
@@ -163,12 +200,14 @@ try {
         $inline_id = $field . '_save_error';
         $explanation = $case === 'refused' ? '此处显示当前保存值' : '已保留上次保存值';
         $check($input_node && in_array($inline_id, explode(' ', $input_node->getAttribute('aria-describedby')), true) && str_contains($xpath->evaluate('string(//*[@id="' . $inline_id . '"])'), $explanation), 'field-near explanation is connected to the control');
-    } else {
+    } elseif ($case !== 'sparse') {
         $check(in_array('settings_updated', $codes, true), 'a valid save/unchanged value is not reported as a failure');
         $check(!in_array('zen_reading_width_not_saved', $codes, true), 'native notices do not include spurious write failure');
         if ($case === 'decimal') $check((int) get_option('zen_excerpt_length') === 60, 'integral exponent persists as an integer');
     }
 } finally {
+    // Do not reuse form-specific raw code when restoring the fixture snapshot.
+    $_POST = array();
     if (isset($refuse)) remove_filter('query', $refuse);
     foreach ($old_values as $key => $value) {
         if ($value === null) delete_option($key); else update_option($key, $value);
@@ -177,5 +216,5 @@ try {
     $session->destroy($token);
 }
 $complete = true;
-printf("NATIVE_ADMIN_SAVE_COMPLETE %s: %d checks, %d failures\n", $case, $checks, $failures);
+printf("NATIVE_ADMIN_SAVE_COMPLETE %s: %d checks, %d failures\n", $argv[2] ?? $case, $checks, $failures);
 exit($failures ? 1 : 0);

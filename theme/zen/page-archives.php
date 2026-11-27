@@ -14,6 +14,9 @@ if (!$archive_locked) {
         $archives_posts = array();
         $archive_page = 1;
         $archive_batch_size = 500;
+        $archive_permalink_structure = (string) get_option('permalink_structure');
+        $archive_prime_categories = str_contains($archive_permalink_structure, '%category%');
+        $archive_prime_authors = str_contains($archive_permalink_structure, '%author%');
 
         do {
             $archives_query = new WP_Query(array(
@@ -24,8 +27,13 @@ if (!$archive_locked) {
                 'orderby' => array('date' => 'DESC', 'ID' => 'DESC'),
                 'no_found_rows' => true,
                 'update_post_meta_cache' => false,
-                'update_post_term_cache' => str_contains((string) get_option('permalink_structure'), '%category%'),
+                'update_post_term_cache' => $archive_prime_categories,
             ));
+
+            // We bypass the secondary Loop, so Core's usual author priming does not run.
+            if ($archive_prime_authors && $archives_query->posts) {
+                update_post_author_caches($archives_query->posts);
+            }
 
             foreach ($archives_query->posts as $archive_post) {
                 $archives_posts[] = array(

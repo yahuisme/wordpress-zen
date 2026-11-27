@@ -10,6 +10,7 @@ function post_password_required() { return false; }
 function get_the_title($post = null) { return '归档'; }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function esc_url($v) { return esc_html($v); }
+function home_url($path = '') { return 'https://example.test' . $path; }
 function get_locale() { return 'zh_CN'; }
 function esc_attr($v) { return esc_html($v); }
 function __($v, $domain = '') { return $v; }

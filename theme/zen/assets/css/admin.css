@@ -1,6 +1,7 @@
 /* Native WordPress controls, restrained spacing, Zen settings only. */
 .zen-options {
     --zen-adminbar-offset: 0px;
+    --zen-save-bar-clearance: 104px;
     max-width: 1120px;
 }
 .admin-bar .zen-options {
@@ -41,8 +42,9 @@
     margin-top: 8px;
 }
 .zen-options .zen-options-group,
-.zen-options [aria-invalid="true"] {
-    scroll-margin-top: calc(var(--zen-adminbar-offset) + 104px);
+.zen-options summary,
+.zen-options .form-table :is(input, select, textarea, .CodeMirror) {
+    scroll-margin-top: calc(var(--zen-adminbar-offset) + var(--zen-save-bar-clearance));
 }
 .zen-options .zen-options-group {
     margin-bottom: 16px;
@@ -135,9 +137,8 @@
         --zen-adminbar-offset: 46px;
     }
 
-    .zen-options .zen-options-group,
-    .zen-options [aria-invalid="true"] {
-        scroll-margin-top: calc(var(--zen-adminbar-offset) + 160px);
+    .zen-options {
+        --zen-save-bar-clearance: 160px;
     }
     .zen-options summary {
         padding: 16px;

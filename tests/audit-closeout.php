@@ -124,7 +124,7 @@ function esc_attr_e($value, $domain = '') { echo esc_attr($value); }
 function esc_html_e($value, $domain = '') { echo esc_html($value); }
 function wp_kses_post($value) { return $value; }
 function get_pages($args) { return array(); }
-function home_url($path) { return 'https://example.test' . $path; }
+function home_url($path = '') { return 'https://example.test' . $path; }
 function wp_reset_postdata() {}
 class WP_Query {
     public $posts; public $max_num_pages = 1;

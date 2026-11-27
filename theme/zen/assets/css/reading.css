@@ -110,6 +110,13 @@ samp { font-family: var(--zen-font-body); }
 .editor-styles-wrapper blockquote p {
     margin: 0;
 }
+:is(.entry-content, .editor-styles-wrapper) blockquote p + :is(p, cite) {
+    margin-block-start: 0.5em;
+}
+:is(.entry-content, .editor-styles-wrapper) blockquote cite {
+    display: block;
+    font-size: 0.875em;
+}
 .entry-content blockquote p::before,
 .entry-content blockquote p::after {
     content: none;

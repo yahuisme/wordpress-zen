@@ -228,12 +228,10 @@ test('latest card uses a single-line month-day only in the current year', functi
             check($date instanceof DOMElement, 'card date must be a time element');
             check($date->textContent === $display && $xpath->query('./*', $date)->length === 0, 'card needs a single unsplit date: ' . $year);
             check($date->getAttribute('datetime') === $year . '-11-09T12:00:00+00:00', 'card must retain its complete machine-readable date');
-            $category = $xpath->query('../following-sibling::*[1][self::a and contains(@class,"zen-meta-category")]', $date);
-            $category_link = $category->item(0);
-            check($category->length === 1 && $category_link instanceof DOMElement
-                && $category_link->textContent === '阅读 & 记录' && $category_link->getAttribute('href') === '/category/2/',
-                'card must link the explicit featured post category after its date');
-            check(str_contains(capture(static function () use ($latest) { zen_index_post_meta('full', $latest); }), 'zen-meta-category'), 'article metadata must retain its category');
+            check($xpath->query('//article[@class="zen-latest-card"]//a[contains(@class,"zen-meta-category")]')->length === 0, 'latest card metadata must not show a category');
+            $date_link = $date->parentNode;
+            check($date_link instanceof DOMElement && str_contains($date_link->getAttribute('aria-label'), $year . '年11月9日'), 'card date must expose its full date to assistive technology');
+            check(str_contains(capture(static function () use ($latest) { zen_index_post_meta('full', $latest); }), '阅读 &amp; 记录'), 'ordinary metadata must retain its category');
             check(str_contains($html, '最近发布 ' . $year . '.11.09'), 'masthead date is independent of the card');
             check(str_contains(zen_post_date_html('full', $latest), '>' . $year . '.11.09</time>'), 'article detail dates must keep the year');
         }

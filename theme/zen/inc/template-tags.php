@@ -329,7 +329,8 @@ function zen_archive_cache_key() {
     $locale = get_locale();
     $language = function_exists('pll_current_language') ? pll_current_language() : '';
     $generation = get_option('zen_archives_generation', '');
-    return 'zen_archives_v4_' . md5($locale . ':' . $language . ':' . $generation);
+    // Rows contain absolute permalinks, whose scheme follows the current request.
+    return 'zen_archives_v5_' . md5($locale . ':' . $language . ':' . $generation . ':' . home_url());
 }
 
 function zen_clear_archives_cache() {

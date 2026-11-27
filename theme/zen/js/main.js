@@ -447,16 +447,16 @@ const zenInit = () => {
         });
     }
 
-    // --- 3. TOC 目录 (Universal Logic) ---
-    const focusTocTarget = (target) => {
+    // Move the next Tab position without letting focus change the scroll position.
+    const focusContentTarget = (target) => {
         if (!target) return;
         if (!target.hasAttribute('tabindex')) {
             target.setAttribute('tabindex', '-1');
             target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
         }
-        // Native hash navigation owns scrolling; focus only sets the next Tab position.
         target.focus({ preventScroll: true });
     };
+    // --- 3. TOC 目录 (Universal Logic) ---
     const article = document.getElementById('post-content');
     const tocContainer = document.getElementById('toc-container'); // PC Sidebar
     const tocNav = document.getElementById('toc-nav'); // PC Nav Content
@@ -505,24 +505,13 @@ const zenInit = () => {
 
     // TOC Generation & Spy
     if (article && (tocNav || drawerTocNav)) {
-        const headers = article.querySelectorAll('h2, h3');
-        if (headers.length > 0) {
-            // 1. 初始化显示
-            // 只要有目录内容，就移除 display:none (hidden)
-            // 具体的显隐由 CSS @media 查询控制 (xl:block / xl:hidden)
-            if (tocContainer) {
-                tocContainer.classList.add('zen-toc-ready');
-                tocContainer.classList.remove('opacity-0');
-            }
-            if (headerTocBtn) {
-                headerTocBtn.hidden = false;
-                headerTocBtn.classList.remove('hidden', 'zen-toc-pending');
-                headerTocBtn.classList.add('zen-toc-ready');
-            }
-
-            const headings = new Set(headers);
-            const anchorNames = new Set(Array.from(document.querySelectorAll('a[name]'), anchor => anchor.name));
-            const usedIds = new Set();
+        const headings = new Set(article.querySelectorAll('h2, h3'));
+        const anchorNames = new Set();
+        const usedIds = new Set();
+        const hasLiteralAnchor = fragment => usedIds.has(fragment) || anchorNames.has(fragment);
+        const tocItems = [];
+        if (headings.size) {
+            for (const anchor of document.querySelectorAll('a[name]')) anchorNames.add(anchor.name);
             const preserved = new Map();
             for (const element of document.querySelectorAll('[id]')) {
                 if (!element.id) continue;
@@ -533,23 +522,38 @@ const zenInit = () => {
                 if (usedIds.has(id)) preserved.delete(id);
                 else usedIds.add(id);
             }
-            const hasLiteralAnchor = fragment => usedIds.has(fragment) || anchorNames.has(fragment);
-            const tocItems = Array.from(headers).map((header, index) => {
+            let index = 0;
+            for (const header of headings) {
+                const sectionIndex = index++;
                 if (preserved.get(header.id) !== header) {
-                    const baseId = header.id || 'section-' + index;
+                    const baseId = header.id || 'section-' + sectionIndex;
                     let id = baseId;
                     let suffix = 2;
                     while (hasLiteralAnchor(id)) id = baseId + '-' + suffix++;
                     header.id = id;
                     usedIds.add(id);
                 }
-                return {
+                // Keep fragment IDs stable even when a heading is omitted from navigation.
+                if (header.closest('[hidden]:not([hidden="until-found" i]), [aria-hidden="true"]')) continue;
+                tocItems.push({
                     id: header.id,
                     target: header,
                     level: header.tagName.toLowerCase(),
-                    text: header.textContent.trim() || `章节 ${index + 1}`,
-                };
-            });
+                    text: header.textContent.trim() || `章节 ${sectionIndex + 1}`,
+                });
+            }
+        }
+
+        if (tocItems.length) {
+            if (tocContainer) {
+                tocContainer.classList.add('zen-toc-ready');
+                tocContainer.classList.remove('opacity-0');
+            }
+            if (headerTocBtn) {
+                headerTocBtn.hidden = false;
+                headerTocBtn.classList.remove('hidden', 'zen-toc-pending');
+                headerTocBtn.classList.add('zen-toc-ready');
+            }
 
             const comments = document.getElementById('comments');
             if (comments && !tocItems.some(item => item.id === 'comments')) {
@@ -622,7 +626,7 @@ const zenInit = () => {
                         // Some browsers do not reveal collapsed ancestors during fragment navigation.
                         if (revealed) item.target.scrollIntoView();
                         if (nav === drawerTocNav) closeDrawer?.(item.target);
-                        else focusTocTarget(item.target);
+                        else focusContentTarget(item.target);
                         requestScrollUIUpdate();
                     }, 0);
                 });
@@ -755,7 +759,7 @@ const zenInit = () => {
                 drawerToc.setAttribute('inert', '');
                 drawerCloseTimer = null;
                 unlockModal();
-                if (drawerNavigationTarget) focusTocTarget(drawerNavigationTarget);
+                if (drawerNavigationTarget) focusContentTarget(drawerNavigationTarget);
                 else restoreModalFocus(headerTocBtn, pointer && keysAtClose === modalKeySequence);
                 drawerNavigationTarget = null;
             }, 300);
@@ -957,7 +961,7 @@ const zenInit = () => {
     // --- 7. Back to Top ---
     if (backToTopBtn) {
         backToTopBtn.addEventListener('click', (event) => {
-            if (event.detail === 0) document.querySelector('.skip-link[href="#main-content"]')?.focus({ preventScroll: true });
+            if (!pointerActivated(event)) focusContentTarget(document.getElementById('main-content'));
             window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
         });
     }
@@ -1037,6 +1041,7 @@ const zenInit = () => {
     // Optional enhancement runs only after every basic control has its listeners.
     const enhanceCodeBlocks = () => {
         const highlightMargin = 200;
+        const observesVisibility = typeof IntersectionObserver !== 'undefined';
         const pendingHighlights = new Set();
         let highlightObserver;
         codeBlocks.forEach(({ block, code }) => {
@@ -1050,9 +1055,8 @@ const zenInit = () => {
                 const text = code.textContent;
                 if (text.length > 8192 || text.split('\n', 201).length > 200) return;
             }
-            const rect = block.getBoundingClientRect();
-            if (typeof IntersectionObserver === 'undefined' ||
-                (block.getClientRects().length && rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
+            const rect = observesVisibility ? block.getClientRects()[0] : null;
+            if (!observesVisibility || (rect && rect.top <= window.innerHeight + highlightMargin && rect.bottom >= -highlightMargin)) {
                 hljs.highlightElement(code);
             } else {
                 if (!highlightObserver) {

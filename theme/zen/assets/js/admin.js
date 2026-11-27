@@ -9,22 +9,29 @@
         var status = document.getElementById('zen-save-state');
         var width = document.getElementById('zen_reading_width');
         var preset = document.getElementById('zen_reading_width_preset');
+        var presetControls = document.getElementById('zen-width-presets');
         var submission = null;
         var groups = Array.from(form.querySelectorAll('.zen-options-group')).filter(group => group.id && group.id !== 'zen-code');
         var groupsKey = 'zen-options-groups';
+        var groupPreferences = {};
         try {
             var savedGroups = JSON.parse(window.sessionStorage.getItem(groupsKey) || '{}');
             groups.forEach(function (group) {
-                if (!group.querySelector('[aria-invalid="true"]') && savedGroups && typeof savedGroups[group.id] === 'boolean') {
-                    group.open = savedGroups[group.id];
+                if (savedGroups && typeof savedGroups[group.id] === 'boolean') {
+                    groupPreferences[group.id] = savedGroups[group.id];
+                    if (!group.querySelector('[aria-invalid="true"]')) group.open = savedGroups[group.id];
                 }
             });
         } catch (error) {}
+        var lastOpen = new Map(groups.map(group => [group, group.open]));
         groups.forEach(function (group) {
             group.addEventListener('toggle', function () {
-                var state = {};
-                groups.forEach(item => { state[item.id] = item.open; });
-                try { window.sessionStorage.setItem(groupsKey, JSON.stringify(state)); } catch (error) {}
+                // Initial markup, restored state and error reveals can all queue toggle.
+                if (group.open === lastOpen.get(group)) return;
+                lastOpen.set(group, group.open);
+                if (group.open === groupPreferences[group.id]) return;
+                groupPreferences[group.id] = group.open;
+                try { window.sessionStorage.setItem(groupsKey, JSON.stringify(groupPreferences)); } catch (error) {}
             });
         });
 
@@ -50,15 +57,18 @@
         if (width && preset) {
             syncPreset();
             preset.addEventListener('change', function () {
-                if (preset.value !== 'custom') width.value = preset.value;
-                else width.focus();
-                refresh();
+                if (preset.value === 'custom') width.focus();
+                else if (width.value !== preset.value) {
+                    width.value = preset.value;
+                    refresh();
+                }
             });
             width.addEventListener('input', syncPreset);
             width.addEventListener('change', syncPreset);
+            if (presetControls) presetControls.hidden = false;
         }
         function refreshSetting(event) {
-            if (event.target !== preset) refresh();
+            if (event.target.name && event.target.form === form && !event.target.disabled) refresh();
         }
         form.addEventListener('input', refreshSetting);
         form.addEventListener('change', refreshSetting);
@@ -88,10 +98,9 @@
                         onTabPrevious: function () { focusCode(index - 1); }
                     });
                     editors[index] = instance.codemirror;
-                    if (field.getAttribute('aria-invalid') === 'true') {
-                        var input = editors[index].getInputField();
-                        input.setAttribute('aria-invalid', 'true');
-                        input.setAttribute('aria-describedby', field.getAttribute('aria-describedby'));
+                    var input = editors[index].getInputField();
+                    for (var attribute of ['aria-invalid', 'aria-describedby']) {
+                        if (field.hasAttribute(attribute)) input.setAttribute(attribute, field.getAttribute(attribute));
                     }
                     editors[index].on('change', function () {
                         editors[index].save();
@@ -111,7 +120,10 @@
         function revealField(field) {
             var parent = field.parentElement;
             while (parent && parent !== form) {
-                if (parent.tagName === 'DETAILS') parent.open = true;
+                if (parent.tagName === 'DETAILS' && !parent.open) {
+                    if (lastOpen.has(parent)) lastOpen.set(parent, true);
+                    parent.open = true;
+                }
                 parent = parent.parentElement;
             }
         }
@@ -120,13 +132,14 @@
             link.addEventListener('click', function (event) {
                 var field = document.getElementById(link.hash.slice(1));
                 if (!field || !form.contains(field)) return;
+                event.preventDefault();
                 revealField(field);
                 var editor = editors[codeFields.indexOf(field)];
                 if (editor) {
-                    event.preventDefault();
                     editor.getWrapperElement().scrollIntoView({ block: 'center' });
                     editor.focus();
                 } else {
+                    field.scrollIntoView({ block: 'center' });
                     field.focus({ preventScroll: true });
                 }
             });
@@ -148,11 +161,13 @@
         function clearSubmission() { submission = null; }
         window.addEventListener('pageshow', clearSubmission);
         document.addEventListener('click', clearSubmission, true);
-        document.addEventListener('keydown', clearSubmission, true);
         document.addEventListener('keydown', function (event) {
+            // A held save shortcut must not revoke a pending native save exemption.
+            var save = !event.defaultPrevented && !event.isComposing && event.key.toLowerCase() === 's'
+                && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && form.requestSubmit;
+            if (!save || !event.repeat) clearSubmission();
             // Capture before CodeMirror consumes the key: one validated save path for every control.
-            if (event.defaultPrevented || event.isComposing || event.key.toLowerCase() !== 's'
-                || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey || !form.requestSubmit) return;
+            if (!save) return;
             event.preventDefault();
             if (!event.repeat) saveSettings();
         }, true);

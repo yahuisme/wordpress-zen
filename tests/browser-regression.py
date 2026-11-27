@@ -23,7 +23,9 @@ with sync_playwright() as playwright:
     group = Path('/proc/self/cgroup').read_text()
     control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
     ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
-    assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+    assert any((limit := (p / 'memory.max').read_text().strip()).isdigit()
+               and int(limit) <= 4294967296 and (p / 'memory.swap.max').read_text().strip() == '0'
+               for p in ancestors)
     processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
     assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
     context = browser.new_context(viewport={'width': 1440, 'height': 900}, reduced_motion='reduce')
@@ -62,6 +64,24 @@ with sync_playwright() as playwright:
         button.click()
         page.wait_for_timeout(150)
         assert page.evaluate('scrollY') == 0
+        page.evaluate('scrollTo(0, 500)')
+        page.wait_for_function('!document.getElementById("back-to-top").disabled')
+        button.focus()
+        page.keyboard.press('Enter')
+        assert page.evaluate('document.activeElement.id') == 'main-content'
+        assert page.evaluate('scrollY') == 0
+
+    def lightbox_touch_target():
+        visit('normal', 320)
+        image = page.locator('#post-content img[role="button"]').first
+        image.click()
+        close = page.locator('#lightbox-close')
+        assert close.evaluate('''e => {
+            const r = e.getBoundingClientRect();
+            return r.width >= 44 && r.height >= 44 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }''')
+        page.keyboard.press('Escape')
+        assert image.evaluate('e => e === document.activeElement')
 
     def empty_toc():
         for width in (375, 1279, 1280, 1300, 1359, 1360, 1440):
@@ -118,6 +138,7 @@ with sync_playwright() as playwright:
 
     check('image_name', image_name)
     check('back_to_top', back_to_top)
+    check('lightbox_touch_target', lightbox_touch_target)
     check('empty_toc', empty_toc)
     check('heading_offset', heading_offset)
     check('toc_space', toc_space)

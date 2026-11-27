@@ -30,7 +30,7 @@ function backend_native_check($ok, $label) {
 }
 zen_register_options();
 $sanitize = get_registered_settings()['zen_footer_text']['sanitize_callback'];
-$saved_footer = get_option('zen_footer_text', '');
+$saved_footer = get_option('zen_footer_text');
 foreach (array(array('unexpected'), null, 17, new stdClass()) as $invalid) {
     $before = count(get_settings_errors());
     backend_native_check($sanitize($invalid) === $saved_footer, 'registered footer sanitizer preserves stored value for ' . gettype($invalid));
@@ -51,7 +51,7 @@ foreach (array(
 ) as $source => $expected) {
     backend_native_check(zen_clean_description($source) === $expected, 'native Core text cleanup: ' . $source);
 }
-backend_native_check(get_option('zen_footer_text', '') === $saved_footer, 'read-only sanitizer checks leave stored footer unchanged');
+backend_native_check(get_option('zen_footer_text') === $saved_footer, 'read-only sanitizer checks leave stored footer unchanged');
 $complete = true;
 printf("NATIVE_BACKEND_COMPLETE %d checks, %d failures; WordPress %s; PHP %s\n", $checks, $failures, $GLOBALS['wp_version'], PHP_VERSION);
 exit($failures ? 1 : 0);

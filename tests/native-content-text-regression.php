@@ -14,15 +14,18 @@ register_shutdown_function(static function () use (&$content_native_complete) {
 $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['HTTP_HOST'] = '127.0.0.1';
 $_SERVER['SERVER_PORT'] = '80';
+$_SERVER['REQUEST_URI'] = '/';
 require $argv[1];
-if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1') {
+if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') {
     throw new RuntimeException('Isolated loopback WordPress required');
 }
-foreach (array('template-tags.php', 'schema.php', 'enqueue.php') as $file) {
-    if (hash_file('sha256', get_template_directory() . '/inc/' . $file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/inc/' . $file)) {
+foreach (array('inc/template-tags.php', 'inc/schema.php', 'inc/enqueue.php', 'single.php') as $file) {
+    if (hash_file('sha256', get_template_directory() . '/' . $file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/' . $file)) {
         throw new RuntimeException('Fixture source mismatch: ' . $file);
     }
 }
+add_filter('pre_http_request', static fn() => new WP_Error('isolated', 'Outbound HTTP blocked'), 1);
+add_filter('pre_wp_mail', '__return_false');
 $total = $failures = 0;
 $ids = array();
 $saved_options = array();
@@ -81,7 +84,7 @@ function content_native_single() {
     }
 }
 try {
-    foreach (array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8, 'zen_show_highlight' => 1, 'zen_show_reading_count' => 1, 'zen_show_reading_time' => 1) as $key => $value) {
+    foreach (array('zen_list_style' => 'standard', 'zen_excerpt_length' => 8, 'zen_show_highlight' => 1, 'zen_show_reading_count' => 1, 'zen_show_reading_time' => 1, 'zen_show_tags' => 1) as $key => $value) {
         $saved_options[$key] = get_option($key, null);
         update_option($key, $value);
         if (get_option($key) != $value) throw new RuntimeException('Option fixture failed: ' . $key);
@@ -179,6 +182,30 @@ try {
     content_native_query(content_native_post(array('post_content' => '<!-- wp:preformatted --><pre>Plain text</pre><!-- /wp:preformatted -->')));
     content_native_check(!zen_has_code_blocks(), 'native Preformatted block is not a code block');
     content_native_assets(false, 'preformatted text only');
+
+    $tagged_id = content_native_post(array('post_content' => '<p>Tagged native article body</p>'));
+    $test_tag = wp_insert_term('Zen native tag fallback', 'post_tag');
+    if (is_wp_error($test_tag)) throw new RuntimeException($test_tag->get_error_message());
+    try {
+        wp_set_post_tags($tagged_id, array((int) $test_tag['term_id']));
+        content_native_query($tagged_id);
+        content_native_check(str_contains(content_native_single(), '#Zen native tag fallback'), 'native single renders a real assigned tag');
+        $refuse_terms = static function ($terms, $post_id, $taxonomy) use ($tagged_id) {
+            return $post_id === $tagged_id && $taxonomy === 'post_tag' ? new WP_Error('fixture', 'Terms unavailable') : $terms;
+        };
+        add_filter('get_the_terms', $refuse_terms, 10, 3);
+        try {
+            content_native_query($tagged_id);
+            $warnings = array();
+            set_error_handler(static function ($severity, $message) use (&$warnings) {
+                $warnings[] = $message;
+                return true;
+            }, E_WARNING);
+            try { $html = content_native_single(); }
+            finally { restore_error_handler(); }
+            content_native_check(str_contains($html, 'Tagged native article body') && !str_contains($html, 'zen-post-taxonomy') && !$warnings, 'native term failure keeps the article usable without broken tag links or warnings');
+        } finally { remove_filter('get_the_terms', $refuse_terms, 10); }
+    } finally { wp_delete_term($test_tag['term_id'], 'post_tag'); }
 } finally {
     foreach (array_reverse($ids) as $id) wp_delete_post($id, true);
     foreach ($saved_options as $key => $value) {

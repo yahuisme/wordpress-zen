@@ -429,6 +429,15 @@ body .font-serif {
 #drawer-toc.translate-x-full {
     box-shadow: none;
 }
+.zen-toc-drawer-header .zen-icon-btn {
+    inline-size: 44px;
+    block-size: 44px;
+    flex: none;
+}
+#lightbox-close {
+    inline-size: 44px;
+    block-size: 44px;
+}
 #toc-container.zen-desktop-toc {
     display: none !important;
     position: fixed;

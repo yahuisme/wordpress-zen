@@ -72,7 +72,7 @@ function zen_register_options() {
             'show_in_rest'      => false,
             'sanitize_callback' => static function ($value) use ($key) {
                 if (!current_user_can('unfiltered_html') || !is_string($value)) {
-                    return get_option($key, '');
+                    return get_option($key);
                 }
                 return $value;
             },
@@ -82,9 +82,11 @@ function zen_register_options() {
 add_action('admin_init', 'zen_register_options');
 
 /** Keep Core's capability, nonce and save flow; verify the values it attempted to save. */
-function zen_prepare_settings_save() {
-    if ('POST' !== ($_SERVER['REQUEST_METHOD'] ?? '') || 'zen_options' !== ($_POST['option_page'] ?? '') || 'update' !== ($_POST['action'] ?? '')) {
-        return;
+function zen_prepare_settings_save($allowed) {
+    global $action, $option_page;
+    // The native controller has already resolved the routing keys at this filter.
+    if ('zen_options' !== $option_page || 'update' !== $action || !isset($allowed['zen_options'])) {
+        return $allowed;
     }
 
     // Core appends settings-updated to the form's referer, which may be a reset result.
@@ -93,19 +95,35 @@ function zen_prepare_settings_save() {
     });
 
     $zen_options = zen_get_option_defaults();
-    $submitted = array_keys(array_intersect_key($zen_options, $_POST));
-    $omitted = array_keys(array_diff_key($zen_options, $_POST));
-    // Core normally sends null to sanitizers for missing controls. Zen's clearable
-    // controls submit explicit empty values, while restricted fields may be absent.
-    add_filter('allowed_options', static function ($allowed) use ($omitted) {
-        if (isset($allowed['zen_options'])) {
-            $allowed['zen_options'] = array_values(array_diff($allowed['zen_options'], $omitted));
-        }
-        return $allowed;
-    });
+    $code_fields = zen_code_fields();
+    $submitted = array_intersect_key($zen_options, $_POST);
+    if (!current_user_can('unfiltered_html')) {
+        $submitted = array_diff_key($submitted, $code_fields);
+    }
+    $omitted = array_keys(array_diff_key($zen_options, $submitted));
+    // Core sends null to sanitizers for missing controls. Skip only Zen-owned
+    // omissions (or fields the user cannot edit); leave extensions alone.
+    if ($omitted) $allowed['zen_options'] = array_values(array_diff($allowed['zen_options'], $omitted));
 
+    // options.php trims scalar inputs before unslashing. Restore only this
+    // form's authorized string values before the registered code sanitizer.
+    foreach (array_intersect_key($submitted, $code_fields) as $key => $_) {
+        if (!is_string($_POST[$key])) continue;
+        add_filter('sanitize_option_' . $key, static function ($value) use ($key) {
+            $raw = $_POST[$key] ?? null;
+            if (!current_user_can('unfiltered_html') || !is_string($raw) || $value !== wp_unslash(trim($raw))) return $value;
+
+            $code = wp_unslash($raw);
+            $stored = get_option($key);
+            // Browsers normalize textarea line endings, even when untouched.
+            $lf = static fn($text) => str_replace(array("\r\n", "\r"), "\n", $text);
+            return is_string($stored) && $lf($stored) === $lf($code) ? $stored : $code;
+        }, 9);
+    }
+
+    if (!$submitted) return $allowed;
     $expected = array();
-    foreach ($submitted as $key) {
+    foreach (array_keys($submitted) as $key) {
         add_filter('sanitize_option_' . $key, static function ($value) use ($key, &$expected) {
             $expected[$key] = $value;
             return $value;
@@ -116,8 +134,9 @@ function zen_prepare_settings_save() {
     add_filter('pre_set_transient_settings_errors', static function ($notices) use (&$expected) {
         $failed = array();
         foreach ($expected as $key => $value) {
-            $stored = get_option($key, null);
-            if ($stored !== $value && !(is_scalar($stored) && is_scalar($value) && (string) $stored === (string) $value)) {
+            // A rejected value can return Core's false sentinel for an absent row.
+            $stored = get_option($key, $value === false ? false : null);
+            if ($stored !== $value && !(is_int($value) && $stored === (string) $value)) {
                 $failed[] = array(
                     'setting' => $key,
                     'code' => $key . '_not_saved',
@@ -134,8 +153,11 @@ function zen_prepare_settings_save() {
         }
         return array_merge($notices, $failed);
     });
+    return $allowed;
 }
-add_action('load-options.php', 'zen_prepare_settings_save');
+add_action('load-options.php', static function () {
+    add_filter('allowed_options', 'zen_prepare_settings_save');
+});
 
 function zen_check_reset_request($action) {
     if (!current_user_can('manage_options')) {
@@ -229,13 +251,13 @@ function zen_sanitize_number($value, $key, $min, $max) {
         }
     }
     add_settings_error($key, $key . '_invalid', sprintf(__('请输入 %1$d–%2$d 范围内的整数；已保留上次保存值。', 'zen'), $min, $max));
-    return zen_get_option($key);
+    return get_option($key);
 }
 
 function zen_sanitize_footer_text($value) {
     if (!is_string($value)) {
         add_settings_error('zen_footer_text', 'zen_footer_text_invalid', __('请输入有效的页脚文本；已保留上次保存值。', 'zen'));
-        return zen_get_option('zen_footer_text');
+        return get_option('zen_footer_text');
     }
     return wp_kses_post($value);
 }
@@ -271,7 +293,7 @@ function zen_sanitize_site_start_date($value) {
         }
     }
     add_settings_error('zen_site_start_date', 'zen_site_start_date_invalid', __('请输入有效日期（YYYY-MM-DD）；已保留上次保存值。', 'zen'));
-    return zen_get_option('zen_site_start_date');
+    return get_option('zen_site_start_date');
 }
 
 /** Hand off one parsed root between Zen's readers, never to Core. */
@@ -402,14 +424,15 @@ function zen_option_error($key, $errors) {
 }
 
 function zen_checkbox_field($key, $label, $desc, $errors) {
+    $help_id = $key . '_help';
     ?>
     <tr>
-        <th scope="row"><?php echo esc_html($label); ?></th>
+        <th scope="row" id="<?php echo esc_attr($key . '_label'); ?>"><?php echo esc_html($label); ?></th>
         <td>
             <input type="hidden" name="<?php echo esc_attr($key); ?>" value="0">
             <label for="<?php echo esc_attr($key); ?>">
-                <input type="checkbox" name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" value="1" <?php checked(1, zen_get_option($key)); ?><?php zen_option_description($key, $errors); ?>>
-                <?php echo esc_html($desc); ?>
+                <input type="checkbox" name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" value="1" <?php checked(1, zen_get_option($key)); ?> aria-labelledby="<?php echo esc_attr($key . '_label'); ?>"<?php zen_option_description($key, $errors, $help_id); ?>>
+                <span id="<?php echo esc_attr($help_id); ?>"><?php echo esc_html($desc); ?></span>
             </label>
             <?php zen_option_error($key, $errors); ?>
         </td>
@@ -477,25 +500,26 @@ function zen_options_page_html() {
                     <table class="form-table" role="presentation">
                         <tr>
                             <th scope="row"><label for="zen_theme_mode_default"><?php echo esc_html($labels['zen_theme_mode_default']); ?></label></th>
-                            <td><select name="zen_theme_mode_default" id="zen_theme_mode_default"<?php zen_option_description('zen_theme_mode_default', $errors); ?>>
+                            <td><select name="zen_theme_mode_default" id="zen_theme_mode_default"<?php zen_option_description('zen_theme_mode_default', $errors, 'zen-theme-mode-help'); ?>>
                                 <?php foreach (array('auto' => '跟随系统', 'light' => '浅色', 'dark' => '深色') as $value => $label) : ?>
                                     <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $theme_mode); ?>><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
-                            </select><p class="description"><?php esc_html_e('首次访问时使用的外观', 'zen'); ?></p><?php zen_option_error('zen_theme_mode_default', $errors); ?></td>
+                            </select><p class="description" id="zen-theme-mode-help"><?php esc_html_e('首次访问时使用的外观', 'zen'); ?></p><?php zen_option_error('zen_theme_mode_default', $errors); ?></td>
                         </tr>
                         <tr>
                             <th scope="row"><label for="zen_reading_width"><?php echo esc_html($labels['zen_reading_width']); ?></label></th>
                             <td>
-                                <label for="zen_reading_width_preset"><?php esc_html_e('预设', 'zen'); ?></label>
-                                <select id="zen_reading_width_preset" aria-describedby="zen-reading-width-help">
-                                    <?php $zen_reading_presets = array(600, 720, 768, 800, 960); ?>
-                                    <?php foreach ($zen_reading_presets as $width) : ?>
-                                        <option value="<?php echo esc_attr($width); ?>" <?php selected($width, $reading_width); ?>><?php echo esc_html($width . ' px'); ?></option>
-                                    <?php endforeach; ?>
-                                    <option value="custom" <?php selected(false, in_array((int) $reading_width, $zen_reading_presets, true)); ?>><?php esc_html_e('自定义', 'zen'); ?></option>
-                                </select>
+                                <span id="zen-width-presets" hidden>
+                                    <label for="zen_reading_width_preset"><?php esc_html_e('预设', 'zen'); ?></label>
+                                    <select id="zen_reading_width_preset" aria-label="<?php echo esc_attr(__('正文宽度预设', 'zen')); ?>" aria-describedby="zen-reading-width-help">
+                                        <?php foreach (array(600, 720, 768, 800, 960) as $width) : ?>
+                                            <option value="<?php echo esc_attr($width); ?>"><?php echo esc_html($width . ' px'); ?></option>
+                                        <?php endforeach; ?>
+                                        <option value="custom"><?php esc_html_e('自定义', 'zen'); ?></option>
+                                    </select>
+                                </span>
                                 <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text"<?php zen_option_description('zen_reading_width', $errors, 'zen-reading-width-help'); ?>> px
-                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('选择预设或输入 600–960px，默认 %dpx', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
+                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('可设为 600–960px，默认 %dpx', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
                                 <?php zen_option_error('zen_reading_width', $errors); ?>
                             </td>
                         </tr>
@@ -533,11 +557,11 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_highlight', $labels['zen_show_highlight'], __('启用代码块语法高亮', 'zen'), $errors); ?>
                     <?php zen_checkbox_field('zen_show_reading_count', $labels['zen_show_reading_count'], __('显示文章浏览次数', 'zen'), $errors); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php echo esc_html($labels['zen_copyright_license']); ?></label></th>
-                        <td><select name="zen_copyright_license" id="zen_copyright_license"<?php zen_option_description('zen_copyright_license', $errors); ?>>
+                        <td><select name="zen_copyright_license" id="zen_copyright_license"<?php zen_option_description('zen_copyright_license', $errors, 'zen-license-help'); ?>>
                             <?php foreach (zen_copyright_licenses() as $value => list($label)) : ?>
                                 <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $license); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
-                        </select><p class="description"><?php esc_html_e('显示在文章底部，仅选择你明确授予的许可', 'zen'); ?></p>
+                        </select><p class="description" id="zen-license-help"><?php esc_html_e('显示在文章底部，仅选择你明确授予的许可', 'zen'); ?></p>
                         <?php zen_option_error('zen_copyright_license', $errors); ?>
                         <?php $legacy_copyright = get_option('zen_show_copyright', null); ?>
                         <?php if (null !== $legacy_copyright && !$legacy_copyright && 'none' !== $license) : ?>
@@ -549,11 +573,11 @@ function zen_options_page_html() {
                 <summary><?php esc_html_e('页脚', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
                     <tr><th scope="row"><label for="zen_footer_text"><?php echo esc_html($labels['zen_footer_text']); ?></label></th>
-                        <td><textarea name="zen_footer_text" id="zen_footer_text" rows="4" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot;&gt;Hosted by Example&lt;/a&gt;"<?php zen_option_description('zen_footer_text', $errors); ?>><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
-                        <p class="description"><?php esc_html_e('支持安全 HTML，留空不显示', 'zen'); ?></p><?php zen_option_error('zen_footer_text', $errors); ?></td></tr>
+                        <td><textarea name="zen_footer_text" id="zen_footer_text" rows="4" class="large-text code" placeholder="例如：&lt;a href=&quot;https://example.com&quot;&gt;Hosted by Example&lt;/a&gt;"<?php zen_option_description('zen_footer_text', $errors, 'zen-footer-text-help'); ?>><?php echo esc_textarea(zen_get_option('zen_footer_text')); ?></textarea>
+                        <p class="description" id="zen-footer-text-help"><?php esc_html_e('支持安全 HTML，留空不显示', 'zen'); ?></p><?php zen_option_error('zen_footer_text', $errors); ?></td></tr>
                     <tr><th scope="row"><label for="zen_site_start_date"><?php echo esc_html($labels['zen_site_start_date']); ?></label></th>
-                        <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off"<?php zen_option_description('zen_site_start_date', $errors); ?>>
-                        <p class="description"><?php esc_html_e('填写 YYYY-MM-DD，留空按首篇公开文章计算', 'zen'); ?></p><?php zen_option_error('zen_site_start_date', $errors); ?></td></tr>
+                        <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off"<?php zen_option_description('zen_site_start_date', $errors, 'zen-start-date-help'); ?>>
+                        <p class="description" id="zen-start-date-help"><?php esc_html_e('填写 YYYY-MM-DD，留空按首篇公开文章计算', 'zen'); ?></p><?php zen_option_error('zen_site_start_date', $errors); ?></td></tr>
                     <?php zen_checkbox_field('zen_show_footer_rss', $labels['zen_show_footer_rss'], __('显示 RSS 订阅链接', 'zen'), $errors); ?>
                 </table></div>
             </details>
@@ -563,10 +587,15 @@ function zen_options_page_html() {
                     <p><?php esc_html_e('仅粘贴可信代码，脚本会直接运行，切换主题后不再输出', 'zen'); ?></p>
                     <?php if (current_user_can('unfiltered_html')) : ?>
                         <table class="form-table" role="presentation">
-                            <?php foreach (zen_code_fields() as $key => list(,, $description)) : ?>
+                            <?php foreach (zen_code_fields() as $key => list(,, $description)) :
+                                $help_id = $key . '_help';
+                                $code = zen_get_option($key);
+                                // HTML parsers discard one newline just after the opening tag.
+                                if (is_string($code) && (str_starts_with($code, "\n") || str_starts_with($code, "\r"))) $code = "\n" . $code;
+                            ?>
                             <tr><th scope="row"><label for="<?php echo esc_attr($key); ?>"><?php echo esc_html($labels[$key]); ?></label></th>
-                                <td><textarea name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" rows="6" class="large-text code" spellcheck="false" placeholder="<?php echo esc_attr(__('完整 HTML 或 script 代码', 'zen')); ?>"<?php zen_option_description($key, $errors); ?>><?php echo esc_textarea(zen_get_option($key)); ?></textarea>
-                                <p class="description"><?php echo esc_html($description); ?></p><?php zen_option_error($key, $errors); ?></td></tr>
+                                <td><textarea name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" rows="6" class="large-text code" spellcheck="false" placeholder="<?php echo esc_attr(__('完整 HTML 或 script 代码', 'zen')); ?>"<?php zen_option_description($key, $errors, $help_id); ?>><?php echo esc_textarea($code); ?></textarea>
+                                <p class="description" id="<?php echo esc_attr($help_id); ?>"><?php echo esc_html($description); ?></p><?php zen_option_error($key, $errors); ?></td></tr>
                             <?php endforeach; ?>
                         </table>
                     <?php else : ?>

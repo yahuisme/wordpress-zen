@@ -9,6 +9,7 @@ const html = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--
 function asset(file) { const target = path.join(root, file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }
 function boot(prepare = () => {}, markup = html) {
     const dom = new JSDOM(markup, { url: 'https://example.test/wp-admin/admin.php?page=zen-options', runScripts: 'outside-only' });
+    dom.window.HTMLElement.prototype.scrollIntoView = () => {};
     prepare(dom.window);
     dom.window.eval(asset('assets/js/admin.js'));
     dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
@@ -40,6 +41,29 @@ test('saved field errors take priority over collapsed session state and support 
     link.click();
     assert.equal(footer.open, true);
     assert.equal(document.activeElement.id, 'zen_site_start_date');
+    dom.window.close();
+});
+test('a code error link focuses the editor after reopening its group', () => {
+    const errorHtml = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html', '--code-save-error'], { encoding: 'utf8' });
+    const dom = boot(window => {
+        window.zenAdmin = { codeEditor: '1' };
+        window.wp = { codeEditor: { initialize(field) {
+            const input = window.document.createElement('textarea');
+            field.after(input);
+            field.hidden = true;
+            return { codemirror: { getInputField: () => input, getWrapperElement: () => input, focus: () => input.focus(), on() {}, refresh() {} } };
+        } } };
+    }, errorHtml);
+    const { document } = dom.window;
+    const editor = document.getElementById('zen_code_head').nextElementSibling;
+    assert.equal(editor.getAttribute('aria-describedby'), 'zen_code_head_help zen_code_head_save_error');
+    assert.equal(editor.getAttribute('aria-invalid'), 'true');
+    assert.equal(document.getElementById('zen_code_body').nextElementSibling.getAttribute('aria-describedby'), 'zen_code_body_help');
+    document.getElementById('zen-code').open = false;
+    document.querySelector('.zen-settings-errors a').click();
+    assert.equal(document.getElementById('zen-code').open, true);
+    assert.equal(document.activeElement, editor);
+    assert.equal(unloading(dom), false);
     dom.window.close();
 });
 test('dirty state reflects real form changes and restoring originals becomes clean', () => {
@@ -78,6 +102,14 @@ test('collapsed fields remain successful controls and native disclosure works', 
     assert.equal(unloading(dom), false);
     dom.window.close();
 });
+test('native textarea exposes saved code with its leading and trailing whitespace', () => {
+    const savedHtml = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html', '--saved-code'], { encoding: 'utf8' });
+    const dom = boot(undefined, savedHtml);
+    const form = dom.window.document.getElementById('zen-options-form');
+    assert.equal(new dom.window.FormData(form).get('zen_code_head'), '\n <!-- fixture C:\\saved --> \n');
+    assert.equal(unloading(dom), false);
+    dom.window.close();
+});
 test('presets update the single submitted width while custom selection alone stays clean', () => {
     const dom = boot();
     const doc = dom.window.document;
@@ -109,11 +141,18 @@ test('a native preset selection snapshots the form only after applying the width
         };
     });
     const preset = dom.window.document.getElementById('zen_reading_width_preset');
+    assert.equal(preset.closest('[hidden]'), null, 'the preset becomes available once initialized');
     const next = Array.from(preset.options).find(option => option.value !== preset.value && option.value !== 'custom').value;
     snapshots.length = 0;
     edit(dom, preset.id, next, 'input');
     edit(dom, preset.id, next, 'change');
     assert.deepEqual(snapshots, [next]);
+    snapshots.length = 0;
+    edit(dom, preset.id, 'custom', 'change');
+    const unnamed = dom.window.document.createElement('textarea'); // CodeMirror's input surface is unnamed.
+    preset.closest('form').append(unnamed);
+    unnamed.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.deepEqual(snapshots, [], 'unnamed controls and focusing custom width do not serialize settings');
     dom.window.close();
 });
 test('native validation opens collapsed invalid controls before submission', () => {
@@ -222,6 +261,22 @@ test('ordinary settings groups remember disclosure without storing raw code or d
     dom.window.close();
 });
 
+test('restoring disclosure and revealing a saved error do not overwrite stored choices', async () => {
+    const key = 'zen-options-groups';
+    const errorHtml = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html', '--save-error'], { encoding: 'utf8' });
+    const saved = JSON.stringify({ 'zen-footer': false, 'zen-reading': false });
+    const dom = boot(window => window.sessionStorage.setItem(key, saved), errorHtml);
+    const { document, sessionStorage } = dom.window;
+    const drain = () => new Promise(resolve => setTimeout(resolve, 0));
+    await drain();
+    assert.equal(sessionStorage.getItem(key), saved, 'load must not write disclosure state');
+    assert.equal(document.getElementById('zen-footer').open, true);
+    document.getElementById('zen-post').open = false;
+    await drain();
+    assert.deepEqual(JSON.parse(sessionStorage.getItem(key)), { 'zen-footer': false, 'zen-reading': false, 'zen-post': false });
+    dom.window.close();
+});
+
 for (const state of ['invalid JSON', 'storage denied']) {
     test(`settings still work with ${state}`, () => {
         const dom = boot(window => {
@@ -274,7 +329,9 @@ test('native code editors initialize on disclosure once, sync raw text and dirty
         window.zenAdmin = { codeEditor: '1' }; // Native wp_localize_script scalar availability flag.
         window.wp = { codeEditor: { initialize(textarea, settings) {
             const callbacks = {};
+            const input = window.document.createElement('textarea');
             const cm = { value: textarea.value, refreshes: 0,
+                getInputField() { return input; },
                 on(event, callback) { callbacks[event] = callback; },
                 save() { textarea.value = cm.value; },
                 refresh() { cm.refreshes++; },
@@ -342,9 +399,9 @@ test('CodeMirror keyboard save honors repeat, composition, and the native submit
         }));
         key();
         assert.equal(submissions, 1, 'one physical shortcut submits once');
-        assert.equal(unloading(dom), false, 'the CodeMirror submit keeps its native unload exemption');
         key({ repeat: true });
         assert.equal(submissions, 1, 'holding Ctrl S must not repeatedly submit from CodeMirror');
+        assert.equal(unloading(dom), false, 'the CodeMirror submit keeps its native unload exemption even after a repeat');
         key({ isComposing: true, keyCode: 229, which: 229 });
         assert.equal(submissions, 1, 'IME composition must not submit');
         assert.equal(unloading(dom), true, 'later non-submitting keyboard activity must leave dirty protection intact');

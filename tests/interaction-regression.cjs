@@ -183,6 +183,31 @@ async function page(t, html, prepare = () => {}) {
     return { window, document, observers, flush, press };
 }
 
+test('TOC skips intentionally hidden sections but keeps collapsed appendix headings and existing anchors', async t => {
+    const { document } = await page(t, `<button id="header-toc-btn" hidden>目录</button><nav id="toc-nav"></nav>
+        <article id="post-content"><div hidden><h2 id="section-0">草稿</h2></div>
+            <h2>正文</h2><div aria-hidden="true"><h2>辅助内容</h2></div>
+            <h2 id="shared">先出现的正文</h2><h2 id="shared" hidden>重复草稿</h2>
+            <details><summary>附录</summary><h3 id="appendix">附录一</h3></details></article>`);
+    const links = [...document.querySelectorAll('#toc-nav a')];
+    assert.deepEqual(links.map(link => link.textContent), ['正文', '先出现的正文', '附录一']);
+    assert.equal(links[0].hash, '#section-1', 'filtering a heading must not shift generated links that readers may have shared');
+    assert.equal(document.querySelector('[hidden] h2').id, 'section-0');
+    assert.equal(document.querySelector('[aria-hidden="true"] h2').id, 'section-2');
+    assert.equal(document.getElementById('shared').textContent, '先出现的正文');
+    assert.equal(links[1].hash, '#shared');
+    assert.equal(links[2].hash, '#appendix');
+    assert.equal(document.querySelector('details').open, false);
+});
+
+test('all-hidden headings keep their generated anchors without enabling an empty TOC', async t => {
+    const { document } = await page(t, `<button id="header-toc-btn" hidden>目录</button><nav id="toc-nav"></nav>
+        <article id="post-content"><h2 hidden>Hidden</h2></article>`);
+    assert.ok(document.getElementById('section-0'));
+    assert.equal(document.querySelector('#toc-nav').children.length, 0);
+    assert.equal(document.getElementById('header-toc-btn').hidden, true);
+});
+
 function archiveMarkup(count) {
     return `<div id="zen-archive-years">${Array.from({ length: count }, (_, index) => `
         <details class="zen-archive-group" open><summary class="zen-archive-year-head"><h2 class="zen-archive-year">${2026 - index}</h2></summary>
@@ -907,7 +932,7 @@ test('muted or zero-volume audio can be unmuted or adjusted in its native player
     }
 });
 
-test('keyboard back-to-top moves focus to the first page link without a second scroll', async t => {
+test('keyboard back-to-top moves focus to main content without a second scroll or an extra Tab stop', async t => {
     const scrolls = [];
     const focusOptions = [];
     const { document } = await page(t, `
@@ -916,16 +941,20 @@ test('keyboard back-to-top moves focus to the first page link without a second s
         window.matchMedia = query => ({ matches: query === '(prefers-reduced-motion: reduce)' });
         window.scrollY = 700;
         window.scrollTo = options => { scrolls.push([options.top, options.behavior]); };
-        const skip = window.document.querySelector('.skip-link');
-        const originalFocus = skip.focus.bind(skip);
-        skip.focus = options => { focusOptions.push(options?.preventScroll); originalFocus(options); };
+        const main = window.document.getElementById('main-content');
+        const originalFocus = main.focus.bind(main);
+        main.focus = options => { focusOptions.push(options?.preventScroll); originalFocus(options); };
     });
     const button = document.getElementById('back-to-top');
     button.focus();
     button.click();
-    assert.equal(document.activeElement, document.querySelector('.skip-link'));
+    const main = document.getElementById('main-content');
+    assert.equal(document.activeElement, main);
+    assert.equal(main.tabIndex, -1);
     assert.deepEqual(focusOptions, [true]);
     assert.deepEqual(scrolls, [[0, 'auto']]);
+    button.focus();
+    assert.equal(main.hasAttribute('tabindex'), false);
 });
 
 test('responsive lightbox uses its own slot and clears responsive attributes for a single image', async t => {

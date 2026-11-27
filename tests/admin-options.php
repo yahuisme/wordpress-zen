@@ -8,6 +8,15 @@ function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
     $GLOBALS['hook_callbacks'][$hook][$priority][] = $callback;
 }
 function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?? $default; }
+function add_filter($hook, $callback, $priority = 10) { $GLOBALS['save_filters'][$hook][$priority][] = $callback; }
+function apply_save_filters($hook, $value) {
+    $callbacks = $GLOBALS['save_filters'][$hook] ?? array();
+    ksort($callbacks);
+    foreach ($callbacks as $group) foreach ($group as $callback) $value = $callback($value);
+    return $value;
+}
+function wp_unslash($value) { return stripslashes($value); }
+function sanitize_text_field($text) { return is_string($text) ? trim(strip_tags($text)) : ''; }
 function current_user_can($cap) { return $GLOBALS['caps'][$cap] ?? false; }
 function register_setting($group, $key, $args) { $GLOBALS['settings'][$key] = $args; }
 function add_settings_error($key, $code, $message, $type = 'error') { $GLOBALS['errors'][] = compact('key', 'code', 'message', 'type'); }
@@ -20,7 +29,7 @@ function esc_html_e($text, $domain = '') { echo esc_html($text); }
 function esc_html__($text, $domain = '') { return esc_html($text); }
 function selected($a, $b) { if ((string) $a === (string) $b) echo ' selected="selected"'; }
 function checked($a, $b) { if ((string) $a === (string) $b) echo ' checked="checked"'; }
-function sanitize_text_field($text) { return strip_tags($text); }
+
 // Native wp_kses_post also requires a string; its full allowlist is covered by the native backend test.
 function wp_kses_post($text) {
     if (!is_string($text)) throw new TypeError('Footer HTML must be a string');
@@ -65,6 +74,13 @@ if (in_array('--html', $argv, true)) {
             'message' => '请输入有效日期（YYYY-MM-DD）；已保留上次保存值。',
         ));
     }
+    if (in_array('--code-save-error', $argv, true)) {
+        $GLOBALS['wp_settings_errors'] = array(array(
+            'setting' => 'zen_code_head', 'code' => 'zen_code_head_not_saved', 'type' => 'error',
+            'message' => '未能保存本次提交的值。',
+        ));
+    }
+    if (in_array('--saved-code', $argv, true)) $GLOBALS['options']['zen_code_head'] = "\r\n <!-- fixture C:\\saved --> \r\n";
     echo render();
     exit;
 }
@@ -131,6 +147,53 @@ test('malformed footer values preserve saved HTML and report a native settings e
     expect(count($GLOBALS['errors']) === $before + 4, 'each malformed footer needs a settings error');
     expect(end($GLOBALS['errors'])['code'] === 'zen_footer_text_invalid', 'footer error must identify the rejected field');
     $GLOBALS['options'] = array();
+});
+
+test('native invalid-value fallback does not materialize absent options', function () {
+    $invalid = array('zen_reading_width' => '599', 'zen_excerpt_length' => '', 'zen_site_start_date' => '2026-02-30', 'zen_footer_text' => array('unexpected'));
+    $GLOBALS['options'] = array();
+    foreach ($invalid as $key => $input) {
+        $sanitize = $GLOBALS['settings'][$key]['sanitize_callback'];
+        // Core compares the sanitized value with get_option() before deciding to insert.
+        expect($sanitize($input) === get_option($key), "$key would write a fallback into an absent row");
+    }
+});
+
+test('settings save preserves restricted and untouched code but allows deliberate clearing', function () {
+    $group = array('zen_options' => array('zen_code_head', 'zen_code_body', 'zen_code_footer', 'zen_reading_width', 'zen_show_toc', 'extension_option'), 'reading' => array('posts_per_page'));
+    $old_method = $_SERVER['REQUEST_METHOD'] ?? null;
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    $_POST = array('action' => 'update', 'option_page' => 'zen_options', 'zen_code_head' => addslashes("\r\n <!-- fixture C:\\saved --> \n"), 'zen_code_body' => '', 'zen_code_footer' => ' ', 'zen_reading_width' => '599', 'extension_option' => 'extension');
+    $GLOBALS['options'] = array('zen_code_head' => "\n <!-- fixture C:\\saved --> \r\n", 'zen_code_body' => '<!-- remove -->');
+    try {
+        $GLOBALS['caps']['unfiltered_html'] = false;
+        $GLOBALS['action'] = 'update';
+        $GLOBALS['option_page'] = 'reading';
+        expect(zen_prepare_settings_save($group) === $group, 'other Core settings groups are unaffected');
+        $GLOBALS['option_page'] = 'zen_options';
+        $GLOBALS['hook_callbacks']['load-options.php'][10][0]();
+        $allowed = apply_save_filters('allowed_options', $group);
+        expect($allowed === array('zen_options' => array('zen_reading_width', 'extension_option'), 'reading' => $group['reading']), 'restricted, omitted and extension fields have the wrong write boundary');
+        $GLOBALS['caps']['unfiltered_html'] = true;
+        $GLOBALS['save_filters'] = array();
+        $GLOBALS['hook_callbacks']['load-options.php'][10][0]();
+        $allowed = apply_save_filters('allowed_options', $group);
+        expect($allowed['zen_options'] === array('zen_code_head', 'zen_code_body', 'zen_code_footer', 'zen_reading_width', 'extension_option'), 'explicit edits remain eligible');
+        $submitted = wp_unslash(trim($_POST['zen_code_head']));
+        expect(apply_save_filters('sanitize_option_zen_code_head', $submitted) === $GLOBALS['options']['zen_code_head'], 'unchanged textarea content must preserve stored newline bytes');
+        expect(apply_save_filters('sanitize_option_zen_code_body', '') === '', 'explicit empty code must clear the saved text');
+        expect(apply_save_filters('sanitize_option_zen_code_footer', '') === ' ', 'Core trim must not discard deliberate outer whitespace');
+        expect(apply_save_filters('sanitize_option_zen_code_footer', ' ') === ' ', 'Core add-option re-sanitization must keep restored bytes');
+        apply_save_filters('sanitize_option_zen_reading_width', false);
+        $GLOBALS['options']['zen_code_body'] = '';
+        $GLOBALS['options']['zen_code_footer'] = ' ';
+        expect(apply_save_filters('pre_set_transient_settings_errors', array()) === array(), 'correctly stored code and a validation-preserved absent value are not failed writes');
+    } finally {
+        $GLOBALS['options'] = $GLOBALS['save_filters'] = $_POST = array();
+        unset($GLOBALS['action'], $GLOBALS['option_page']);
+        $GLOBALS['caps']['unfiltered_html'] = true;
+        if ($old_method === null) unset($_SERVER['REQUEST_METHOD']); else $_SERVER['REQUEST_METHOD'] = $old_method;
+    }
 });
 
 test('single settings form groups all old and new fields', function () {
@@ -245,6 +308,25 @@ test('option descriptions use short copy without terminal punctuation', function
     $help = $xpath->query('//*[@id="zen_code_head"]/following-sibling::p')->item(0);
     expect($help !== null && trim($help->textContent) === '在 </head> 前输出', 'head code needs the generic placement hint');
     expect($help->childNodes->length === 1 && $help->firstChild->nodeType === XML_TEXT_NODE, 'head placement hint must be escaped text');
+});
+
+test('rendered controls associate option names and help with their inputs', function () {
+    $doc = new DOMDocument();
+    @$doc->loadHTML('<?xml encoding="UTF-8">' . render());
+    $xpath = new DOMXPath($doc);
+    $refs = static fn($node, $attribute) => preg_split('/\s+/', $node->getAttribute($attribute), -1, PREG_SPLIT_NO_EMPTY);
+    foreach ($xpath->query('//*[@id="zen-options-form"]//input[@type="checkbox"]') as $node) {
+        $title = $refs($node, 'aria-labelledby');
+        $help = $refs($node, 'aria-describedby');
+        expect(count($title) === 1 && trim($xpath->evaluate('string(//th[@id="' . $title[0] . '"])')) !== '', 'checkbox must announce its visible setting name');
+        expect(count($help) === 1 && trim($xpath->evaluate('string(//label/span[@id="' . $help[0] . '"])')) !== '', 'checkbox must announce its visible help');
+    }
+    foreach (array('zen_theme_mode_default', 'zen_copyright_license', 'zen_footer_text', 'zen_site_start_date', 'zen_code_head', 'zen_code_body', 'zen_code_footer') as $key) {
+        $node = $xpath->query('//*[@id="' . $key . '"]')->item(0);
+        $help = $refs($node, 'aria-describedby');
+        expect(count($help) === 1 && trim($xpath->evaluate('string(//p[@id="' . $help[0] . '"])')) !== '', "$key lacks associated help");
+    }
+    expect($xpath->query('//*[@hidden]/select[@id="zen_reading_width_preset"]')->length === 1, 'JS-only preset must not appear functional without JS');
 });
 
 test('custom code uses standard hooks once and preserves marker and whitespace bytes', function () {

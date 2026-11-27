@@ -7,6 +7,7 @@ function get_header(){}function get_footer(){}function the_title(){echo 'Archive
 function __($value,$domain=''){return $value;}
 function post_password_required(){return false;}
 function get_locale(){return 'en_US';}
+function home_url(){return 'https://example.test';}
 function get_transient($key){return $GLOBALS['cache'][$key]??false;}
 function set_transient($key,$value,$ttl){$GLOBALS['cache'][$key]=$value;}
 function get_option($key,$default=false){return $default;}
