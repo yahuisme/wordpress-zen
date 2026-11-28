@@ -13,7 +13,7 @@ function zen_setup() {
     add_editor_style(array_merge(array_values(zen_reference_font_styles()), array('assets/css/reading.css')));
     add_theme_support('automatic-feed-links');
 
-    register_nav_menus(array('footer' => __('Footer Menu', 'zen')));
+    register_nav_menus(array('footer' => __('页脚菜单', 'zen')));
 
     add_theme_support('html5', array('search-form', 'comment-form', 'comment-list', 'gallery', 'caption', 'script', 'style'));
     add_filter('pre_option_link_manager_enabled', '__return_true');
@@ -57,19 +57,30 @@ function zen_link_order_metabox_render($link) {
     $order = isset($link->link_rating) ? (int) $link->link_rating : 0;
     ?>
     <p>
-        <label for="zen_link_order"><?php esc_html_e('排序序号：', 'zen'); ?></label>
-        <input type="number" name="zen_link_order" id="zen_link_order" value="<?php echo esc_attr($order); ?>" min="0" step="1" class="small-text">
+        <label for="zen_link_order"><?php esc_html_e('排序：', 'zen'); ?></label>
+        <input type="number" name="zen_link_order" id="zen_link_order" value="<?php echo esc_attr($order); ?>" min="0" max="2147483647" step="1" class="small-text" aria-describedby="zen-link-order-help">
     </p>
-    <p class="description"><?php esc_html_e('自定义排序序号（数字越小越靠前，默认 0 排在最后）。', 'zen'); ?></p>
+    <p class="description" id="zen-link-order-help"><?php esc_html_e('数字越小越靠前，填 0 或留空排在最后', 'zen'); ?></p>
     <?php
 }
 
-function zen_save_link_order() {
-    if (isset($_POST['zen_link_order'])) {
-        $_POST['link_rating'] = absint($_POST['zen_link_order']);
+function zen_save_link_order($nonce_action, $verified) {
+    if (!$verified || 'POST' !== ($_SERVER['REQUEST_METHOD'] ?? '') || !current_user_can('manage_links')
+        || !isset($_POST['zen_link_order']) || ('add-bookmark' !== $nonce_action && !str_starts_with($nonce_action, 'update-bookmark_'))) return;
+
+    $value = $_POST['zen_link_order'];
+    $digits = is_string($value) && preg_match('/\A[0-9]*\z/', $value) ? ltrim($value, '0') : null;
+    // Compare before conversion so neither floating-point rounding nor integer overflow can change the input.
+    $max = '2147483647';
+    if ($digits === null || strlen($digits) > strlen($max) || (strlen($digits) === strlen($max) && strcmp($digits, $max) > 0)) {
+        wp_die(esc_html__('排序必须是 0 到 2147483647 之间的整数。请返回修改后再保存。', 'zen'), '', array('response' => 400, 'back_link' => true));
     }
+    $_POST['link_rating'] = (int) $digits;
 }
-add_action('admin_init', 'zen_save_link_order');
+add_action('load-link.php', static function () {
+    // Let Core validate its own add/edit nonce before translating the form field.
+    add_action('check_admin_referer', 'zen_save_link_order', 10, 2);
+});
 
 function zen_link_manager_columns($columns) {
     if (isset($columns['rating'])) {

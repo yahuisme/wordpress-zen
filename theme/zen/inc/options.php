@@ -267,11 +267,17 @@ function zen_sanitize_footer_text($value) {
 }
 
 function zen_sanitize_list_style($value) {
-    return in_array($value, array('standard', 'compact'), true) ? $value : 'standard';
+    return zen_sanitize_choice($value, 'zen_list_style', array('standard', 'compact'));
 }
 
 function zen_sanitize_theme_mode($value) {
-    return in_array($value, array('auto', 'light', 'dark'), true) ? $value : 'auto';
+    return zen_sanitize_choice($value, 'zen_theme_mode_default', array('auto', 'light', 'dark'));
+}
+
+function zen_sanitize_choice($value, $key, $choices) {
+    if (in_array($value, $choices, true)) return $value;
+    add_settings_error($key, $key . '_invalid', __('请选择此字段支持的选项；已保留上次保存值。', 'zen'));
+    return get_option($key);
 }
 
 function zen_copyright_licenses() {
@@ -285,7 +291,7 @@ function zen_copyright_licenses() {
 }
 
 function zen_sanitize_copyright_license($value) {
-    return is_string($value) && isset(zen_copyright_licenses()[$value]) ? $value : 'none';
+    return zen_sanitize_choice($value, 'zen_copyright_license', array_keys(zen_copyright_licenses()));
 }
 
 function zen_sanitize_site_start_date($value) {
@@ -523,7 +529,7 @@ function zen_options_page_html() {
                                     </select>
                                 </span>
                                 <input type="number" name="zen_reading_width" id="zen_reading_width" value="<?php echo esc_attr($reading_width); ?>" min="600" max="960" step="1" required class="small-text"<?php zen_option_description('zen_reading_width', $errors, 'zen-reading-width-help'); ?>> px
-                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('可设为 600–960px，默认 %dpx', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?></p>
+                                <p class="description" id="zen-reading-width-help"><?php printf(esc_html__('可设为 600–960px，默认 %dpx', 'zen'), zen_get_option_defaults()['zen_reading_width']); ?><span hidden id="zen-width-preset-help"><?php esc_html_e('；预设会填入数值，也可直接修改', 'zen'); ?></span></p>
                                 <?php zen_option_error('zen_reading_width', $errors); ?>
                             </td>
                         </tr>

@@ -19,7 +19,7 @@ def wp(*args):
     return result.stdout.strip()
 
 identity = json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);'))
-assert identity == ['local', origin, str(root / 'db/zen.sqlite')], identity
+assert identity == ['local', origin, str((root / 'db/zen.sqlite').resolve())], identity
 content = '<h2 id="ordinary-heading">Ordinary heading</h2><p>Ordinary text</p>'
 for kind in ('cover', 'group'):
     for color, background in (('white', 'black'), ('black', 'white')):
@@ -42,7 +42,8 @@ try:
             group = Path('/proc/self/cgroup').read_text()
             control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
             ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
-            assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+            assert any((limit := (p / 'memory.max').read_text().strip()).isdigit()
+                       and 0 < int(limit) <= 4 * 1024**3 and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
             processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
             assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
             return browser
@@ -68,10 +69,18 @@ try:
         # Use a fresh serial browser: single-process Chromium cannot mix contexts reliably.
         if mode in ('all', 'noscript'):
             browser = launch()
-            context = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 900})
+            context = browser.new_context(java_script_enabled=False, viewport={'width': 390, 'height': 900}, reduced_motion='reduce')
             context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
             page = context.new_page()
             page.goto(origin + '/', wait_until='domcontentloaded')
+            page.keyboard.press('Tab')
+            rows.append({'name': 'noscript-skip-link-first', 'passed': page.locator('.skip-link').evaluate('e => e === document.activeElement')})
+            page.keyboard.press('Enter')
+            rows.append({'name': 'noscript-skip-focuses-main', 'passed': page.locator('main').evaluate('e => e === document.activeElement')})
+            rows.append({'name': 'noscript-skip-clears-sticky-header', 'passed': page.evaluate('''() => {
+                const heading = document.querySelector('main h1');
+                return heading && heading.getBoundingClientRect().top >= document.querySelector('.zen-site-header').getBoundingClientRect().bottom;
+            }''')})
             for width in (320, 767, 768):
                 page.set_viewport_size({'width': width, 'height': 900})
                 footer = page.locator('.zen-footer-navigation')

@@ -28,12 +28,13 @@ function wp_head() {
 function seo_context($kind = 'post', $overrides = array()) {
     $GLOBALS['seo_filters'] = array();
     $GLOBALS['seo_context'] = array_merge(array(
-        'kind' => $kind, 'protected' => false, 'excerpt' => 'An editorial excerpt.',
+        'kind' => $kind, 'protected' => false, 'password' => '', 'status' => 'publish', 'excerpt' => 'An editorial excerpt.',
         'content' => 'Article body.', 'term' => '', 'bio' => '', 'archive_title' => '',
         'name' => 'Quiet Site', 'description' => 'A reading journal',
     ), $overrides);
     $GLOBALS['seo_queried_post'] = $GLOBALS['post'] = (object) array(
-        'ID' => 17, 'post_author' => 42,
+        'ID' => 17, 'post_author' => 42, 'post_status' => $GLOBALS['seo_context']['status'],
+        'post_password' => $GLOBALS['seo_context']['password'],
         'post_excerpt' => $GLOBALS['seo_context']['excerpt'],
         'post_content' => $GLOBALS['seo_context']['content'],
     );
@@ -52,12 +53,14 @@ function is_date() { return 'date' === $GLOBALS['seo_context']['kind']; }
 function is_archive() { return is_category() || is_tag() || is_tax() || is_author() || is_date(); }
 function is_search() { return 'search' === $GLOBALS['seo_context']['kind']; }
 function is_home() { return 'home' === $GLOBALS['seo_context']['kind']; }
+function is_preview() { return $GLOBALS['seo_context']['preview'] ?? false; }
 function is_front_page() { return is_home(); }
 function is_404() { return '404' === $GLOBALS['seo_context']['kind']; }
 function get_post($id = null) { return $GLOBALS['post']; }
 function get_queried_object_id() { return is_author() ? 42 : 17; }
 function get_queried_object() { return is_author() ? (object) array('ID' => 42) : $GLOBALS['seo_queried_post']; }
 function get_the_excerpt($post = null) { return $GLOBALS['seo_context']['excerpt']; }
+function is_post_publicly_viewable($post) { return 'publish' === $post->post_status; }
 function post_password_required($post = null) { return $GLOBALS['seo_context']['protected']; }
 function get_bloginfo($key) { return $GLOBALS['seo_context'][$key] ?? 'UTF-8'; }
 function term_description() { return $GLOBALS['seo_context']['term']; }
@@ -169,6 +172,8 @@ seo_check(($data['mainEntityOfPage']['@id'] ?? null) === 'https://example.test/a
 seo_check(!array_key_exists('image', $data ?? array()), 'missing or stale attachment URL does not emit a false schema image');
 seo_context('post', array('thumbnail' => true, 'thumbnail_url' => 'https://example.test/image.jpg'));
 seo_check((seo_schema(seo_output())['image'] ?? null) === 'https://example.test/image.jpg', 'schema includes a valid featured-image URL');
+seo_context('post', array('name' => 'A &amp; B &#039;Journal&#039;'));
+seo_check((seo_schema(seo_output())['publisher']['name'] ?? null) === "A & B 'Journal'", 'publisher name decodes native site-name entities for JSON-LD');
 seo_check(!str_contains($header, 'name="description"'), 'description no longer hardcoded in header');
 seo_context('page', array('excerpt' => ' [sample]hidden[/sample] <b> </b> ', 'content' => "<p>Fallback</p>\n body [sample]hidden[/sample] text"));
 seo_check('Fallback body text' === seo_meta(seo_output()), 'empty cleaned excerpt falls back to cleaned content');
@@ -180,10 +185,20 @@ seo_context('post', array('excerpt' => str_repeat('文', 170)));
 seo_check(str_repeat('文', 160) . '…' === seo_meta(seo_output()), 'description length remains bounded in Unicode characters');
 
 foreach (array('post', 'page') as $kind) {
-    seo_context($kind, array('protected' => true, 'excerpt' => 'Secret excerpt', 'content' => 'Secret body'));
+    seo_context($kind, array('protected' => true, 'password' => 'example', 'excerpt' => 'Password excerpt', 'content' => 'Password body'));
     $output = seo_output();
     seo_check(null === seo_meta($output), "$kind password content emits no description");
     seo_check(null === seo_schema($output), "$kind password content emits no BlogPosting");
+}
+foreach (array(
+    'unlocked password post' => array('password' => 'example'),
+    'private post' => array('status' => 'private'),
+    'draft preview' => array('status' => 'draft', 'preview' => true),
+    'preview of a published post' => array('preview' => true),
+) as $label => $context) {
+    seo_context('post', $context);
+    $output = seo_output();
+    seo_check(null === seo_meta($output) && null === seo_schema($output), "$label emits no public metadata");
 }
 seo_context('post');
 seo_check('https://example.test/writers/42/' === (seo_schema(seo_output())['author']['url'] ?? null), 'schema uses the native author archive URL');

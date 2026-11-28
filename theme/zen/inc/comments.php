@@ -12,8 +12,8 @@ function zen_comment_callback($comment, $args, $depth) {
         'add_below' => 'div-comment',
         'reply_to_text' => __('回复给 %s', 'zen'),
     ));
-    $commenter = wp_get_current_commenter();
-    $show_pending_links = !empty($commenter['comment_author']);
+    // Core's commenter-cookie check only affects unapproved comments.
+    $show_pending_links = '1' !== $comment->comment_approved && !empty(wp_get_current_commenter()['comment_author']);
     $reply_link = ('1' === $comment->comment_approved || $show_pending_links) ? get_comment_reply_link($reply_args, $comment) : '';
     ?>
     <li id="comment-<?php comment_ID(); ?>" <?php comment_class(); ?>>
@@ -26,9 +26,11 @@ function zen_comment_callback($comment, $args, $depth) {
                             $comment,
                             $args['avatar_size'],
                             '',
-                            get_comment_author() . ' 的头像',
+                            '', // Decorative; the author is named in the adjacent heading.
                             array(
                                 'class' => 'rounded-full object-cover ring-2 ring-white dark:ring-zinc-900 shadow-sm grayscale opacity-80 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
                             )
                         );
                     }

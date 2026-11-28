@@ -15,7 +15,7 @@ function delete_transient($key){unset($GLOBALS['cache'][$key]);}
 function get_option($key,$default=false){return $key==='permalink_structure'?'/%postname%/':($GLOBALS['opts'][$key]??$default);}
 function update_option($key,$value,$autoload=null){$GLOBALS['opts'][$key]=$value;}
 function wp_generate_uuid4(){return uniqid('generation-');}
-function get_post_type($id){return 'post';}
+function get_post_type($id){$GLOBALS['type_reads']=($GLOBALS['type_reads']??0)+1;return 'post';}
 function get_post_status($id){return 'publish';}
 function get_the_title($post=null){return $post ? $GLOBALS['language'].' '.$GLOBALS['locale'].' title' : 'Archives';}
 function get_permalink($post){return '/'.$GLOBALS['language'].'/post/'.$post->ID;}
@@ -34,7 +34,13 @@ $language='zh';$locale='zh_CN';$again=render_archive();check($again===$zh&&$quer
 $date_style='classic';$legacy=render_archive();
 check($legacy===$zh && str_contains($legacy,'datetime="2026-10-19">10月 19日</time>') && $queries===2,'retired date setting leaves the warm archive and ISO date unchanged');
 $locale='zh_TW';$translated=render_archive();check(str_contains($translated,'zh zh_TW title'),'locale-specific filtered titles have independent cache');
-zen_clear_archives_cache_on_category_relationship(7,[1],'language');check(get_transient(zen_archive_cache_key())===false,'language reassignment invalidates the previous archive generation');
+$warm_key=zen_archive_cache_key();
+$type_reads=0;
+foreach(['post_tag','category'] as $taxonomy){foreach($hooks['deleted_term_relationships'] as $fn)$fn(7,[1],$taxonomy);}
+check($type_reads===0 && zen_archive_cache_key()===$warm_key && is_array(get_transient($warm_key)), 'tag removal and category removal under non-category permalinks skip post lookups and keep the archive warm');
+$type_reads=0;
+foreach($hooks['deleted_term_relationships'] as $fn)$fn(7,[1],'language');
+check($type_reads===1 && get_transient(zen_archive_cache_key())===false,'language relationship removal still checks the post and invalidates the archive');
 $old_key=zen_archive_cache_key();
 $query_hook=static function(){
     $GLOBALS['archive_fixture_posts']=[];

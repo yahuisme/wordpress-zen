@@ -17,10 +17,14 @@ function zen_directory_more($list_id, $batch_size, $label, $class = 'zen-directo
     <?php
 }
 
+/** Keep block boundaries and line breaks when Core removes the markup. */
+function zen_space_excerpt_blocks($text) {
+    return preg_replace('~</?(?:br|p|div|li|h[1-6]|blockquote|pre|td|th|dt|dd)(?=[\s/>])~i', ' $0', (string) $text);
+}
+
 /** Trim visible characters, keeping combining marks and emoji together. */
 function zen_trim_excerpt($text, $length, $more = '…') {
-    // Keep block boundaries and line breaks when Core removes the markup.
-    $text = preg_replace('~</?(?:br|p|div|li|h[1-6]|blockquote|pre|td|th|dt|dd)(?=[\s/>])~i', ' $0', (string) $text);
+    $text = zen_space_excerpt_blocks($text);
     $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
     $length = max(1, min(300, (int) $length));
@@ -213,16 +217,24 @@ function zen_display_excerpt($excerpt) {
 }
 
 function zen_index_post_excerpt($post = null) {
-    // Let Core prepare this excerpt without cutting entities. Nested excerpts keep their native limit.
-    $excerpt_stack = array_merge($GLOBALS['wp_current_filter'] ?? array(), array('get_the_excerpt', 'excerpt_length'));
-    $defer_trimming = static function ($length) use ($excerpt_stack) {
-        return $GLOBALS['wp_current_filter'] === $excerpt_stack ? PHP_INT_MAX - 1 : $length;
+    // Keep Core's excerpt preparation, but preserve block boundaries and avoid cutting entities.
+    // Neither filter should alter content or excerpts requested by a nested callback.
+    $excerpt_stack = array_merge($GLOBALS['wp_current_filter'] ?? array(), array('get_the_excerpt'));
+    $length_stack = array_merge($excerpt_stack, array('excerpt_length'));
+    $content_stack = array_merge($excerpt_stack, array('the_content'));
+    $defer_trimming = static function ($length) use ($length_stack) {
+        return $GLOBALS['wp_current_filter'] === $length_stack ? PHP_INT_MAX - 1 : $length;
+    };
+    $keep_boundaries = static function ($content) use ($content_stack) {
+        return $GLOBALS['wp_current_filter'] === $content_stack ? zen_space_excerpt_blocks($content) : $content;
     };
     add_filter('excerpt_length', $defer_trimming, PHP_INT_MAX);
+    add_filter('the_content', $keep_boundaries, PHP_INT_MAX);
     try {
         $excerpt = get_the_excerpt($post);
     } finally {
         remove_filter('excerpt_length', $defer_trimming, PHP_INT_MAX);
+        remove_filter('the_content', $keep_boundaries, PHP_INT_MAX);
     }
     $excerpt = zen_display_excerpt($excerpt);
     if ($excerpt !== '') printf('<div class="zen-post-excerpt">%s</div>', $excerpt);
@@ -381,10 +393,10 @@ add_action('delete_option_zen_site_start_date', 'zen_clear_uptime_cache');
 add_action('edited_category', 'zen_clear_archives_cache');
 add_action('delete_category', 'zen_clear_archives_cache');
 function zen_archive_relationship_affects_cache($object_id, $taxonomy) {
-    return 'post' === get_post_type($object_id)
-        && 'publish' === get_post_status($object_id)
-        && ('language' === $taxonomy || ('category' === $taxonomy
-            && str_contains((string) get_option('permalink_structure'), '%category%')));
+    return ('language' === $taxonomy || ('category' === $taxonomy
+            && str_contains((string) get_option('permalink_structure'), '%category%')))
+        && 'post' === get_post_type($object_id)
+        && 'publish' === get_post_status($object_id);
 }
 function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids, $taxonomy) {
     if (zen_archive_relationship_affects_cache($object_id, $taxonomy)) {
@@ -394,7 +406,7 @@ function zen_clear_archives_cache_on_category_relationship($object_id, $term_ids
 // Core flushes relationship caches after the insertion hooks, then fires set_object_terms.
 $zen_archive_term_additions = array();
 add_action('added_term_relationship', static function ($object_id, $term_id, $taxonomy) use (&$zen_archive_term_additions) {
-    if (('category' === $taxonomy || 'language' === $taxonomy) && zen_archive_relationship_affects_cache($object_id, $taxonomy)) {
+    if (zen_archive_relationship_affects_cache($object_id, $taxonomy)) {
         $zen_archive_term_additions[$taxonomy][$object_id] = true;
     }
 }, 10, 3);

@@ -7,6 +7,7 @@
     --zen-space-5: 48px;
     --zen-control-radius: 8px;
     --zen-gutter: 32px;
+    --zen-header-height: 84px;
 }
 
 body { font-family: var(--zen-font-body); }
@@ -34,6 +35,8 @@ body .font-serif {
 #main-content {
     padding: 32px var(--zen-gutter) 64px;
 }
+/* The native skip link must land below the sticky header, including on admin-bar pages. */
+#main-content:target { scroll-margin-block-start: calc(var(--zen-header-height) + var(--zen-header-top, 0px)); }
 .zen-site-header > .max-w-zen,
 .zen-site-footer > .max-w-zen {
     padding-inline: var(--zen-gutter);
@@ -64,22 +67,17 @@ body .font-serif {
     overflow-wrap: anywhere;
 }
 .zen-site-header > div:first-child {
-    min-height: 84px;
+    min-height: var(--zen-header-height);
     padding-block: 40px 0;
     gap: 16px;
 }
-.admin-bar .zen-site-header {
-    top: 32px;
-}
+.admin-bar { --zen-header-top: 32px; }
+.admin-bar .zen-site-header { top: var(--zen-header-top); }
 @media (max-width: 782px) {
-    .admin-bar .zen-site-header {
-        top: 46px;
-    }
+    .admin-bar { --zen-header-top: 46px; }
 }
 @media (max-width: 600px) {
-    .admin-bar .zen-site-header {
-        top: 0;
-    }
+    .admin-bar { --zen-header-top: 0px; }
 }
 .zen-header-actions {
     flex-shrink: 0;
@@ -716,9 +714,9 @@ body .font-serif {
 .zen-site-footer a:hover { color: var(--zen-accent); }
 .zen-footer-links { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 639.98px) {
-    :root { --zen-gutter: 28px; }
+    :root { --zen-gutter: 28px; --zen-header-height: 62px; }
     #main-content { padding-block: 28px 48px; }
-    .zen-site-header > div:first-child { min-height: 62px; padding-block: 18px 0; gap: 0 8px; }
+    .zen-site-header > div:first-child { padding-block: 18px 0; gap: 0 8px; }
     .blog #main-content:has(> .zen-masthead) { padding-top: 28px; }
     :is(.home.blog .zen-post-list, .zen-post-list--editorial) > .zen-post-item {
         grid-template-columns: 4.5rem minmax(0, 1fr);

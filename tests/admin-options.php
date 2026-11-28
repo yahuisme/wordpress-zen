@@ -127,14 +127,33 @@ test('registered new options sanitize values and reject invalid numbers without 
     expect(zen_sanitize_site_start_date(array()) === '2020-01-01', 'non-string date lost saved value');
     expect(zen_sanitize_site_start_date('') === '', 'explicit empty date cannot clear value');
     expect(count($GLOBALS['errors']) === 12, 'invalid fields need native settings errors');
-    expect(zen_sanitize_list_style('compact') === 'compact' && zen_sanitize_list_style('bogus') === 'standard', 'list enum mismatch');
-    expect(zen_sanitize_copyright_license('bogus') === 'none', 'invalid license should not impose a license');
+    expect(zen_sanitize_list_style('compact') === 'compact', 'valid list style rejected');
     $GLOBALS['caps']['unfiltered_html'] = false;
     $GLOBALS['options']['zen_code_head'] = '<script>saved()</script>';
     $callback = $GLOBALS['settings']['zen_code_head']['sanitize_callback'];
     expect($callback(null) === '<script>saved()</script>' && $callback('<script>new()</script>') === '<script>saved()</script>', 'omitted or unauthorized code lost saved value');
     $GLOBALS['caps']['unfiltered_html'] = true;
     $GLOBALS['options'] = array();
+});
+test('invalid choices keep saved selections and leave unset options unset', function () {
+    $choices = array('zen_theme_mode_default' => 'dark', 'zen_list_style' => 'compact', 'zen_copyright_license' => 'cc-by-sa-4.0');
+    $before = count($GLOBALS['errors']);
+    try {
+        foreach ($choices as $key => $saved) {
+            $sanitize = $GLOBALS['settings'][$key]['sanitize_callback'];
+            expect($sanitize($saved) === $saved, "$key rejects a valid choice");
+            $GLOBALS['options'][$key] = $saved;
+            expect($sanitize('unrecognized') === $saved, "$key replaces a saved choice with a default");
+            unset($GLOBALS['options'][$key]);
+            expect($sanitize(array('unexpected')) === false, "$key creates an absent option on rejection");
+        }
+        $codes = array_column(array_slice($GLOBALS['errors'], $before), 'code');
+        foreach (array_keys($choices) as $key) {
+            expect(count(array_keys($codes, $key . '_invalid', true)) === 2, "$key rejects without a field error");
+        }
+    } finally {
+        $GLOBALS['options'] = array();
+    }
 });
 test('malformed footer values preserve saved HTML and report a native settings error', function () {
     zen_register_options();
@@ -246,7 +265,6 @@ test('copyright choices keep their original order, labels and saved values', fun
             expect(zen_sanitize_copyright_license($value) === $value, "$value must stay accepted");
             expect(str_contains($options[2][$i], 'selected') === ($value === 'cc-by-sa-4.0'), 'saved choice must remain selected');
         }
-        foreach (array(array(), null, 0, new stdClass()) as $invalid) expect(zen_sanitize_copyright_license($invalid) === 'none', 'invalid values must not impose a license');
     } finally { unset($GLOBALS['options']['zen_copyright_license']); }
 });
 test('limited permissions hide code editors without leaking or removing saved code', function () {

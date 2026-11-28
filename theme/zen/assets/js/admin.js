@@ -66,6 +66,8 @@
             width.addEventListener('input', syncPreset);
             width.addEventListener('change', syncPreset);
             if (presetControls) presetControls.hidden = false;
+            var presetHelp = document.getElementById('zen-width-preset-help');
+            if (presetHelp) presetHelp.hidden = false;
         }
         function refreshSetting(event) {
             if (event.target.name && event.target.form === form && !event.target.disabled) refresh();

@@ -19,7 +19,7 @@ require $argv[1];
 if (wp_get_environment_type() !== 'local' || wp_parse_url(home_url(), PHP_URL_HOST) !== '127.0.0.1' || get_template() !== 'zen') {
     throw new RuntimeException('Isolated loopback WordPress required');
 }
-foreach (array('inc/template-tags.php', 'inc/schema.php', 'inc/enqueue.php', 'single.php') as $file) {
+foreach (array('inc/options.php', 'inc/template-tags.php', 'inc/schema.php', 'inc/enqueue.php', 'single.php') as $file) {
     if (hash_file('sha256', get_template_directory() . '/' . $file) !== hash_file('sha256', dirname(__DIR__) . '/theme/zen/' . $file)) {
         throw new RuntimeException('Fixture source mismatch: ' . $file);
     }
@@ -176,12 +176,62 @@ try {
     $_COOKIE['wp-postpass_' . COOKIEHASH] = $hasher->HashPassword('fixture-pass');
     content_native_check(!post_password_required() && str_contains(get_the_content(), 'SECRET_NATIVE_CODE'), 'actual WordPress password cookie unlocks content without deleting password');
     content_native_check(get_post($id)->post_password === 'fixture-pass' && zen_has_code_blocks(), 'unlocked password article still detects code');
+    ob_start();
+    zen_output_meta_description();
+    zen_json_ld();
+    content_native_check(ob_get_clean() === '', 'even a cookie-unlocked article does not emit public metadata');
     content_native_query($id);
     content_native_assets(true, 'cookie-unlocked article');
     $unlocked_html = content_native_single();
     content_native_check(!str_contains($unlocked_html, '浏览次数') && str_contains($unlocked_html, '预计阅读'), 'unlock restores reading time but does not enable tracking');
     unset($_COOKIE['wp-postpass_' . COOKIEHASH]);
     $pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' => $code));
+    $text_pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' => '<!-- wp:paragraph --><p>Synced text</p><!-- /wp:paragraph -->'));
+    $nested_pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' => '<!-- wp:block {"ref":' . $text_pattern . '} /-->'));
+    $draft_pattern = content_native_post(array('post_type' => 'wp_block', 'post_status' => 'draft', 'post_content' => '<p>Draft pattern</p>'));
+    $protected_pattern = content_native_post(array('post_type' => 'wp_block', 'post_password' => 'fixture-pass', 'post_content' => '<p>Protected pattern</p>'));
+    $pattern_markup = '<p>Before</p><!-- wp:block {"ref":' . $nested_pattern . '} /-->'
+        . '<!-- wp:block {"ref":' . $draft_pattern . '} /--><!-- wp:block {"ref":' . $protected_pattern . '} /--><p>After</p>';
+    content_native_query(content_native_post(array('post_content' => $pattern_markup)));
+    $rendered = do_blocks($pattern_markup);
+    content_native_check(str_contains($rendered, 'Synced text') && !str_contains($rendered, 'Draft pattern') && !str_contains($rendered, 'Protected pattern'), 'Core renders published nested synced text but not draft/protected patterns');
+    list($schema) = content_native_schema();
+    content_native_check(zen_meta_description() === 'Before Synced text After' && $schema['description'] === zen_meta_description(), 'article metadata includes public synced text in document order');
+    $bound_pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' =>
+        '<!-- wp:paragraph {"metadata":{"name":"Body","bindings":{"content":{"source":"core/pattern-overrides"}}}} --><p>Default text</p><!-- /wp:paragraph -->'
+        . '<!-- wp:paragraph --><p>Shared text</p><!-- /wp:paragraph -->'));
+    $core_block = WP_Block_Type_Registry::get_instance()->get_registered('core/block');
+    $native_context = isset($core_block->provides_context['pattern/overrides']);
+    $legacy_text = $native_context ? 'Default text' : 'Legacy text';
+    $override_cases = array(
+        array($bound_pattern, array('content' => array('Body' => array('content' => '<em>Instance</em> &amp; text'))), 'Before Instance & text Shared text After'),
+        array($bound_pattern, array('content' => array('Body' => array('content' => ''))), 'Before Shared text After'),
+        array($bound_pattern, array('content' => array('Body' => array('values' => array('content' => 'Legacy text')))), 'Before ' . $legacy_text . ' Shared text After'),
+        array($bound_pattern, array('content' => array('Other' => array('content' => 'Unrelated text'))), 'Before Default text Shared text After'),
+    );
+    $nested_bound = content_native_post(array('post_type' => 'wp_block', 'post_content' => '<!-- wp:block {"ref":' . $bound_pattern . '} /-->'));
+    $nested_text = $native_context ? 'Default text' : 'Inherited text';
+    $override_cases[] = array($nested_bound, array('content' => array('Body' => array('content' => 'Inherited text'))), 'Before ' . $nested_text . ' Shared text After');
+    if (version_compare($GLOBALS['wp_version'], '6.6', '>=')) {
+        $heading_pattern = content_native_post(array('post_type' => 'wp_block', 'post_content' =>
+            '<!-- wp:heading {"metadata":{"name":"Title","bindings":{"__default":{"source":"core/pattern-overrides"}}}} --><h2 class="wp-block-heading">Default heading</h2><!-- /wp:heading -->'));
+        $override_cases[] = array($heading_pattern, array('content' => array('Title' => array('content' => 'Instance heading'))), 'Before Instance heading After');
+    }
+    foreach ($override_cases as [$pattern_id, $attrs, $expected]) {
+        $bound_body = '<p>Before</p><!-- wp:block ' . wp_json_encode(array('ref' => $pattern_id) + $attrs, JSON_HEX_TAG) . ' /--><p>After</p>';
+        content_native_query(content_native_post(array('post_content' => wp_slash($bound_body))));
+        $rendered_text = zen_clean_description(do_blocks(get_post()->post_content));
+        content_native_check($rendered_text === $expected, 'Core renders the effective instance text: ' . $expected . ($rendered_text === $expected ? '' : ' (got ' . $rendered_text . ')'));
+        list($schema) = content_native_schema();
+        ob_start();
+        zen_output_meta_description();
+        $head = new WP_HTML_Tag_Processor(ob_get_clean());
+        content_native_check($head->next_tag('META') && $head->get_attribute('content') === $expected && $schema['description'] === $expected,
+            'native meta description and JSON-LD use effective saved text rather than pattern defaults');
+    }
+    wp_update_post(array('ID' => $text_pattern, 'post_content' => '<p>Synced text</p><!-- wp:block {"ref":' . $nested_pattern . '} /-->'));
+    content_native_query(content_native_post(array('post_content' => '<!-- wp:block {"ref":' . $text_pattern . '} /--><!-- wp:block {"ref":' . $text_pattern . '} /-->')));
+    content_native_check(zen_meta_description() === 'Synced text Synced text', 'a cyclic reference stops on its branch while intentional repeated patterns remain');
     foreach (array('classic' => '<pre><code>public code</code></pre>', 'core block' => $code, 'synced block' => '<!-- wp:block {"ref":' . $pattern . '} /-->') as $label => $body) {
         $id = content_native_post(array('post_content' => $body));
         content_native_query($id);

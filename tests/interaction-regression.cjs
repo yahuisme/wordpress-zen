@@ -131,6 +131,28 @@ test('reading count accepts the localized enabled flag and waits once for DOM re
     assert.equal(document.getElementById('zen-reading-count').textContent, '0');
 });
 
+test('reading count waits for a prerendered article to be activated', async t => {
+    let requests = 0;
+    let prerendering = true;
+    const { window, document } = await countPage(t, countMarkup, window => {
+        Object.defineProperty(window.document, 'prerendering', { get: () => prerendering });
+        window.fetch = async () => {
+            ++requests;
+            return { ok: true, json: async () => ({ success: true, data: { count: '8' } }) };
+        };
+    });
+    const count = document.getElementById('zen-reading-count');
+    assert.equal(requests, 0, 'speculation alone is not a visit');
+    assert.equal(count.textContent, '7', 'prerender retains the server-rendered count');
+
+    prerendering = false;
+    document.dispatchEvent(new window.Event('prerenderingchange'));
+    document.dispatchEvent(new window.Event('prerenderingchange'));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests, 1, 'activation sends the same single request as an ordinary load');
+    assert.equal(count.textContent, '8');
+});
+
 async function page(t, html, prepare = () => {}) {
     const dom = new JSDOM('<!doctype html>' + html, {
         url: 'https://zen.test/', runScripts: 'outside-only', pretendToBeVisual: true,
@@ -961,6 +983,8 @@ test('responsive lightbox uses its own slot and clears responsive attributes for
     const { document, press } = await page(t, `
         <div class="entry-content">
             <img id="responsive" src="small.jpg" srcset="small.jpg 320w, large.jpg 1200w" sizes="320px">
+            <picture><source media="(max-width: 640px)" srcset="portrait.jpg">
+                <img id="art-directed" src="landscape.jpg" srcset="landscape.jpg 1200w"></picture>
             <img id="single" src="single.jpg">
         </div>
         <div id="lightbox" class="hidden"><button id="lightbox-close">Close</button><img id="lightbox-img"></div>`);
@@ -970,6 +994,12 @@ test('responsive lightbox uses its own slot and clears responsive attributes for
     assert.equal(large.srcset, bodyImage.srcset);
     assert.equal(large.sizes, 'min(92vw, 72rem)');
     assert.equal(bodyImage.sizes, '320px');
+    press('Escape');
+    const artDirected = document.getElementById('art-directed');
+    Object.defineProperty(artDirected, 'currentSrc', { value: 'https://zen.test/portrait.jpg' });
+    artDirected.click();
+    assert.equal(large.getAttribute('src'), artDirected.currentSrc);
+    assert.equal(large.hasAttribute('srcset'), false, 'picture fallback candidates must not replace the selected crop');
     press('Escape');
     document.getElementById('single').click();
     assert.equal(large.hasAttribute('srcset'), false);

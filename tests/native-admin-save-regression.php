@@ -55,9 +55,9 @@ try {
     $case = $argv[2] ?? 'refused';
     $empty_route = $case === 'sparse-empty-route';
     if ($empty_route) $case = 'sparse';
-    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full', 'malformed-footer', 'invalid-date', 'decimal', 'sparse', 'literal-code'), true)) throw new InvalidArgumentException('Unknown save case');
+    if (!in_array($case, array('refused', 'invalid', 'unchanged', 'create', 'full', 'malformed-footer', 'invalid-date', 'invalid-choice', 'decimal', 'sparse', 'literal-code'), true)) throw new InvalidArgumentException('Unknown save case');
     if ($case === 'create') delete_option('zen_reading_width');
-    $expected_width = in_array($case, array('create', 'full', 'malformed-footer', 'invalid-date', 'decimal', 'sparse', 'literal-code'), true) ? 800 : 720;
+    $expected_width = in_array($case, array('refused', 'invalid', 'unchanged'), true) ? 720 : 800;
     $refused_writes = 0;
     $refuse = static function ($query) use (&$refused_writes, $wpdb) {
         if (preg_match('/^UPDATE\s+`?' . preg_quote($wpdb->options, '/') . '`?\s+SET\s+.+\s+WHERE\s+`?option_name`?\s*=\s*\'zen_reading_width\'\s*$/is', $query)) {
@@ -85,6 +85,11 @@ try {
     } elseif ($case === 'invalid-date') {
         update_option('zen_site_start_date', '2022-07-01');
         $input['zen_site_start_date'] = '<b>2026-02-28</b>';
+    } elseif ($case === 'invalid-choice') {
+        update_option('zen_theme_mode_default', 'dark');
+        update_option('zen_copyright_license', 'cc-by-sa-4.0');
+        delete_option('zen_list_style');
+        $input += array('zen_theme_mode_default' => 'obsolete', 'zen_copyright_license' => array('unexpected'), 'zen_list_style' => '');
     } elseif ($case === 'decimal') {
         update_option('zen_excerpt_length', 75);
         $input['zen_reading_width'] = '800.0';
@@ -176,6 +181,7 @@ try {
         'invalid' => array('zen_reading_width', '正文宽度', 'zen-reading', '_invalid'),
         'malformed-footer' => array('zen_footer_text', '自定义页脚', 'zen-footer', '_invalid'),
         'invalid-date' => array('zen_site_start_date', '博客起始日期', 'zen-footer', '_invalid'),
+        'invalid-choice' => array('zen_theme_mode_default', '默认外观', 'zen-reading', '_invalid'),
         'sparse' => array('zen_code_head', '头部代码', 'zen-code', '_invalid'),
     );
     if (isset($field_errors[$case])) {
@@ -183,6 +189,13 @@ try {
         $code = $field . $suffix;
         if ($case === 'malformed-footer') $check(get_option($field) === 'Saved footer', 'malformed footer preserves the previous text without aborting native save');
         if ($case === 'invalid-date') $check(get_option($field) === '2022-07-01', 'malformed date retains the previously saved date');
+        if ($case === 'invalid-choice') {
+            $check(get_option('zen_theme_mode_default') === 'dark' && get_option('zen_copyright_license') === 'cc-by-sa-4.0', 'unknown or malformed choices preserve saved values');
+            $check(get_option('zen_list_style', null) === null, 'a rejected choice does not write a previously absent option');
+            foreach (array('zen_theme_mode_default', 'zen_copyright_license', 'zen_list_style') as $choice) {
+                $check(in_array($choice . '_invalid', $codes, true) && !in_array($choice . '_not_saved', $codes, true), 'rejected choice reports only its validation error: ' . $choice);
+            }
+        }
         $check(in_array($code, $codes, true), 'native notices identify the unsaved field');
         $check(!in_array('settings_updated', $codes, true), 'native notices do not falsely claim success');
         // Render the settings callback without a script from the native redirect data.

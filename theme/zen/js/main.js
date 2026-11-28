@@ -414,11 +414,12 @@ const zenInit = () => {
 
                 lightboxImg.src = img.currentSrc || img.src;
                 lightboxImg.alt = img.alt || '放大图片';
-                if (img.srcset) {
+                if (img.srcset && !img.closest('picture')) {
                     // Match the lightbox's width cap, not the inline image's sizes.
                     lightboxImg.sizes = 'min(92vw, 72rem)';
                     lightboxImg.srcset = img.srcset;
                 } else {
+                    // A picture may select a different crop or format from the img's fallback candidates.
                     lightboxImg.removeAttribute('srcset');
                     lightboxImg.removeAttribute('sizes');
                 }

@@ -10,6 +10,12 @@
         const postId = counter.getAttribute('data-post-id');
         if (!postId || !/^[1-9]\d*$/.test(postId)) return;
 
+        // An article rendered speculatively is not a visit until it is activated.
+        if (document.prerendering) {
+            document.addEventListener('prerenderingchange', refreshReadingCount, { once: true });
+            return;
+        }
+
         const body = new URLSearchParams({ action: 'zen_post_view', post_id: postId });
         fetch(window.zenReadingCount.ajax_url, {
             method: 'POST',

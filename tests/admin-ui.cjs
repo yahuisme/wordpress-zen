@@ -149,6 +149,7 @@ test('presets update the single submitted width while custom selection alone sta
 test('a native preset selection snapshots the form only after applying the width', () => {
     const snapshots = [];
     const dom = boot(window => {
+        assert.equal(window.document.getElementById('zen-width-preset-help').hidden, true, 'no script means no preset-specific help');
         window.FormData = class extends window.FormData {
             constructor(...args) {
                 super(...args);
@@ -158,6 +159,10 @@ test('a native preset selection snapshots the form only after applying the width
     });
     const preset = dom.window.document.getElementById('zen_reading_width_preset');
     assert.equal(preset.closest('[hidden]'), null, 'the preset becomes available once initialized');
+    const help = dom.window.document.getElementById(preset.getAttribute('aria-describedby'));
+    const presetHint = help.querySelector('#zen-width-preset-help');
+    assert.equal(presetHint.hidden, false, 'explain the preset only after it becomes available');
+    assert.match(presetHint.textContent, /预设会填入数值，也可直接修改/);
     const next = Array.from(preset.options).find(option => option.value !== preset.value && option.value !== 'custom').value;
     snapshots.length = 0;
     edit(dom, preset.id, next, 'input');

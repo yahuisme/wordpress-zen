@@ -38,6 +38,8 @@ try {
         array('中文', 2, '中文', true),
         array("e\u{0301}x", 1, "e\u{0301}…", true),
         array('👩‍💻👨‍💻', 1, '👩‍💻…', true),
+        array('<p>First</p><p>Second<br>third &lt;br&gt;.</p>', 60, 'First Second third <br>.', true),
+        array('<!-- wp:paragraph --><p>第一段</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>第二段</p><!-- /wp:paragraph -->', 60, '第一段 第二段', true),
     ) as $case) {
         list($input, $length, $expected) = $case;
         $auto = $case[3] ?? false;

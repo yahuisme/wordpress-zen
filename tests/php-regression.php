@@ -266,7 +266,10 @@ function zen_tag_has_attribute($html, $id, $attribute) {
 }
 function post_password_required() { return false; }
 function has_excerpt() { return false; }
-function wp_get_current_commenter() { return array('comment_author' => '', 'comment_author_email' => ''); }
+function wp_get_current_commenter() {
+    $GLOBALS['zen_test_commenter_reads'] = ($GLOBALS['zen_test_commenter_reads'] ?? 0) + 1;
+    return array('comment_author' => $GLOBALS['zen_test_commenter_name'] ?? '', 'comment_author_email' => '');
+}
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
 function get_permalink() { return 'https://example.test/fixture/'; }
 function wp_logout_url($redirect) { return 'https://example.test/logout/'; }
@@ -289,6 +292,50 @@ foreach (array(true, false) as $required) {
         zen_expect(zen_tag_has_attribute($html, 'comment', 'required'), 'comment textarea must always be required');
     });
 }
+
+require ABSPATH . 'inc/comments.php';
+function get_avatar($comment, $size, $default, $alt, $args) {
+    $GLOBALS['zen_test_avatar_calls'][] = array($comment, $size, $default, $alt, $args);
+    return '<img class="fixture-avatar" alt="">';
+}
+function get_comment_reply_link($args, $comment) { return '<a class="fixture-reply" href="#respond">Reply</a>'; }
+function comment_ID() { echo '17'; }
+function comment_class() { echo 'class="comment"'; }
+function get_comment_author() { return 'Fixture reader'; }
+function get_comment_link($comment) { return '#comment-17'; }
+function get_comment_time(...$args) { return '2020-01-01T12:00:00+00:00'; }
+function get_comment_date(...$args) { return '2020.01.01'; }
+function comment_text($comment, $args) { echo 'Existing comment'; }
+
+zen_test('approved comment cards skip commenter-cookie lookups', function () {
+    $args = array('avatar_size' => 0);
+    foreach (array('pending' => '0', 'approved' => '1') as $state => $approved) {
+        $comment = (object) array('comment_approved' => $approved, 'comment_type' => 'comment');
+        $GLOBALS['zen_test_commenter_name'] = 'Remembered reader';
+        $GLOBALS['zen_test_commenter_reads'] = 0;
+        try {
+            $html = zen_capture(static function () use ($comment, $args) { zen_comment_callback($comment, $args, 1); });
+            zen_expect(str_contains($html, 'Existing comment') && str_contains($html, 'fixture-reply'), "$state comment still renders content and reply");
+            zen_expect($GLOBALS['zen_test_commenter_reads'] === (int) ($state === 'pending'), "$state comment read the commenter cookie boundary an unexpected number of times");
+        } finally {
+            unset($GLOBALS['zen_test_commenter_name']);
+        }
+    }
+});
+
+zen_test('comment avatars use native lazy and async attributes without repeating the author name', function () {
+    $comment = (object) array('comment_approved' => '1', 'comment_type' => 'comment');
+    $GLOBALS['zen_test_avatar_calls'] = array();
+    $html = zen_capture(static function () use ($comment) { zen_comment_callback($comment, array('avatar_size' => 48), 1); });
+    zen_expect(str_contains($html, 'fixture-avatar') && str_contains($html, '>Fixture reader</h4>'), 'avatar and visible author must still render');
+    zen_expect(count($GLOBALS['zen_test_avatar_calls']) === 1, 'one native avatar call');
+    [$subject, $size, $default, $alt, $args] = $GLOBALS['zen_test_avatar_calls'][0];
+    zen_expect($subject === $comment && $size === 48 && $default === '', 'native avatar subject, size and default preserved');
+    zen_expect($alt === '', 'decorative avatar must have empty alt beside the author heading');
+    zen_expect(($args['loading'] ?? null) === 'lazy' && ($args['decoding'] ?? null) === 'async', 'request lazy loading and async decoding via the native API');
+    zen_capture(static function () use ($comment) { zen_comment_callback($comment, array('avatar_size' => 0), 1); });
+    zen_expect(count($GLOBALS['zen_test_avatar_calls']) === 1, 'zero-size request still skips the native avatar');
+});
 
 zen_test('links introduction uses existing entry-content wrapping', function () {
     $html = zen_render_template('page-links.php');

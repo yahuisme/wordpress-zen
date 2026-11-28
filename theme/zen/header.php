@@ -104,4 +104,4 @@
     </div>
 </div>
 
-<main id="main-content" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 relative">
+<main id="main-content" tabindex="-1" class="flex-grow w-full max-w-zen mx-auto px-4 sm:px-6 relative">

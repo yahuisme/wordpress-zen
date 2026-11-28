@@ -2,8 +2,23 @@
 /** Run: php tests/content-text-regression.php. Native integration runs separately. */
 define('ABSPATH', dirname(__DIR__) . '/theme/zen/');
 function add_action(...$args) {}
-function add_filter(...$args) {}
-function remove_filter(...$args) {}
+function add_filter($hook, $callback, $priority = 10) { $GLOBALS['excerpt_filters'][$hook][$priority][] = $callback; }
+function remove_filter($hook, $callback, $priority = 10) {
+    foreach ($GLOBALS['excerpt_filters'][$hook][$priority] ?? array() as $index => $candidate) {
+        if ($candidate === $callback) unset($GLOBALS['excerpt_filters'][$hook][$priority][$index]);
+    }
+}
+function apply_filters($hook, $text) {
+    $GLOBALS['wp_current_filter'][] = $hook;
+    try {
+        $filters = $GLOBALS['excerpt_filters'][$hook] ?? array();
+        ksort($filters);
+        foreach ($filters as $callbacks) foreach ($callbacks as $callback) $text = $callback($text);
+        return $text;
+    } finally {
+        array_pop($GLOBALS['wp_current_filter']);
+    }
+}
 function wp_strip_all_tags($text, $remove_breaks = false) {
     $text = strip_tags(preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', $text));
     return trim($remove_breaks ? preg_replace('/[\r\n\t ]+/', ' ', $text) : $text);
@@ -25,7 +40,7 @@ function get_the_date($format = '', $post = null) {
 }
 function wp_date($format) { return gmdate($format, strtotime('2026-11-01T12:00:00Z')); }
 function get_month_link($year, $month) { return '/2026/10/'; }
-function get_the_excerpt() { return $GLOBALS['content_excerpt']; }
+function get_the_excerpt($post = null) { return apply_filters('get_the_excerpt', $GLOBALS['content_excerpt']); }
 require ABSPATH . 'inc/template-tags.php';
 $checks = 0;
 $failures = 0;
@@ -85,5 +100,28 @@ foreach (array(
     $actual = html_entity_decode(trim($match[1] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     content_check($actual === $visible, 'one-layer visible text survives actual template: ' . $source . ' => ' . $actual);
 }
+// Model Core's auto-excerpt boundary: content filters run before wp_trim_words
+// strips markup. The block rendering and character trimming themselves are not mocked here.
+$GLOBALS['content_length'] = 60;
+$GLOBALS['content_excerpt'] = '';
+$body = '<p>First</p><p>Second<br>third &lt;br&gt;.</p>';
+$nested_input = '<p>Nested</p><p>content</p>';
+$nested_body = null;
+$nested = static function ($text) use ($nested_input, &$nested_body) {
+    if ($text !== $nested_input) $nested_body = apply_filters('the_content', $nested_input);
+    return $text;
+};
+$auto_excerpt = static function ($text) use ($body) {
+    return $text !== '' ? $text : wp_strip_all_tags(apply_filters('the_content', $body));
+};
+add_filter('the_content', $nested, 9);
+add_filter('get_the_excerpt', $auto_excerpt);
+ob_start();
+zen_index_post_excerpt();
+$html = ob_get_clean();
+content_check(str_contains($html, '>First Second third &lt;br&gt;.</div>'), 'automatic excerpt keeps paragraph and line-break boundaries before Core strips markup');
+content_check($nested_body === $nested_input, 'excerpt spacing leaves nested content with block markup untouched');
+content_check(get_the_excerpt() === 'FirstSecondthird &lt;br&gt;.', 'subsequent native excerpts do not inherit Zen spacing');
+
 printf("Content text: %d checks, %d failures\n", $checks, $failures);
 exit($failures ? 1 : 0);

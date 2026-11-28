@@ -28,31 +28,78 @@ function zen_clean_description($text) {
     return zen_limit_description(zen_description_text($text));
 }
 
-/** Keep the saved markup order without rendering shortcodes or dynamic blocks. */
-function zen_visible_block_markup($block) {
-    if (false === ($block['attrs']['metadata']['blockVisibility'] ?? null)) return '';
+/** Keep saved markup order, following public synced patterns without rendering dynamic blocks. */
+function zen_visible_block_markup($block, $supports_visibility, $ancestors = array(), $overrides = array()) {
+    if ($supports_visibility && false === ($block['attrs']['metadata']['blockVisibility'] ?? null)) return '';
+    if ('core/block' === $block['blockName']) {
+        $ref = $block['attrs']['ref'] ?? 0;
+        if (!is_int($ref) || isset($ancestors[$ref]) || !($pattern = zen_get_published_block_pattern($ref))) return '';
+        $ancestors[$ref] = true;
+        $saved = $block['attrs']['content'] ?? null;
+        $type = WP_Block_Type_Registry::get_instance()->get_registered('core/block');
+        if (!isset($type->provides_context['pattern/overrides'])) {
+            // Older Core uses a render context filter and normalizes the legacy `values` map.
+            if (is_array($saved)) {
+                foreach ($saved as &$item) {
+                    if (is_array($item['values'] ?? null) && !wp_is_numeric_array($item['values'])) $item = $item['values'];
+                }
+                unset($item);
+            } else {
+                $saved = $block['attrs']['overrides'] ?? $overrides;
+            }
+        }
+        return zen_description_block_markup($pattern->post_content, $supports_visibility, $ancestors, is_array($saved) ? $saved : array());
+    }
+
+    if ($overrides) {
+        $text_attribute = array('core/paragraph' => 'content', 'core/heading' => 'content', 'core/button' => 'text')[$block['blockName']] ?? null;
+        $metadata = $block['attrs']['metadata'] ?? array();
+        $name = $metadata['name'] ?? null;
+        if ($text_attribute && is_string($name) && $name !== '' && $name !== '0') {
+            $source = $metadata['bindings'][$text_attribute]['source'] ?? null;
+            if (!isset($metadata['bindings'][$text_attribute]) && version_compare($GLOBALS['wp_version'], '6.6', '>=')) {
+                $source = $metadata['bindings']['__default']['source'] ?? null;
+            }
+            if ($source === 'core/pattern-overrides') {
+                $text = $overrides[$name][$text_attribute] ?? null;
+                if (is_string($text)) return '<p>' . wp_kses_post($text) . '</p>';
+                if ($text !== null) return '';
+            }
+        }
+    }
 
     $html = '';
     $index = 0;
     foreach ($block['innerContent'] as $part) {
-        $html .= is_string($part) ? $part : zen_visible_block_markup($block['innerBlocks'][$index++]);
+        $html .= is_string($part) ? $part : zen_visible_block_markup($block['innerBlocks'][$index++], $supports_visibility, $ancestors, $overrides);
     }
     return $html;
+}
+
+function zen_description_block_markup($content, $supports_visibility, $ancestors = array(), $overrides = array()) {
+    return implode('', array_map(static fn($block) => zen_visible_block_markup($block, $supports_visibility, $ancestors, $overrides), parse_blocks($content)));
+}
+
+/** Only public singular views should supply metadata to search engines. */
+function zen_has_public_singular_metadata($post) {
+    return $post && !is_preview() && is_post_publicly_viewable($post) && '' === $post->post_password
+        && !post_password_required($post);
 }
 
 function zen_meta_description() {
     if (is_singular()) {
         static $last_post, $description;
         $post = get_queried_object();
-        if (post_password_required($post)) {
+        if (!zen_has_public_singular_metadata($post)) {
             return '';
         }
         if ($last_post !== $post) {
             $description = zen_clean_description($post->post_excerpt);
             if ('' === $description) {
                 $content = $post->post_content;
-                if (function_exists('wp_render_block_visibility_support') && str_contains($content, '<!--')) {
-                    $content = implode('', array_map('zen_visible_block_markup', parse_blocks($content)));
+                $supports_visibility = function_exists('wp_render_block_visibility_support');
+                if (str_contains($content, '<!--') && ($supports_visibility || has_block('core/block', $content))) {
+                    $content = zen_description_block_markup($content, $supports_visibility);
                 }
                 $description = zen_clean_description($content);
             }
@@ -110,7 +157,7 @@ function zen_json_ld() {
     if (!apply_filters('zen_json_ld_enabled', !zen_seo_plugin_active())) {
         return;
     }
-    if (is_singular('post') && !post_password_required(get_queried_object())) {
+    if (is_singular('post') && zen_has_public_singular_metadata(get_queried_object())) {
         $post = get_queried_object();
 
         $author_id = $post->post_author;
@@ -131,7 +178,7 @@ function zen_json_ld() {
             ),
             'publisher' => array(
                 '@type' => 'Organization',
-                'name' => get_bloginfo('name'),
+                'name' => html_entity_decode(wp_strip_all_tags(get_bloginfo('name')), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             ),
         );
 
