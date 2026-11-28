@@ -205,7 +205,7 @@ test('editorial dates retain older years; a later sticky position cannot pick an
     check(zen_get_latest_index_post(array($locked)) === null, 'no eligible post should render no card');
 });
 
-test('latest card uses a single-line month-day only in the current year', function () {
+test('latest card keeps a single-line date followed by its own category link', function () {
     $previous_query = $GLOBALS['wp_query'];
     $previous_options = $GLOBALS['options'];
     $GLOBALS['options']['zen_show_latest_card'] = 1;
@@ -228,9 +228,10 @@ test('latest card uses a single-line month-day only in the current year', functi
             check($date instanceof DOMElement, 'card date must be a time element');
             check($date->textContent === $display && $xpath->query('./*', $date)->length === 0, 'card needs a single unsplit date: ' . $year);
             check($date->getAttribute('datetime') === $year . '-11-09T12:00:00+00:00', 'card must retain its complete machine-readable date');
-            check($xpath->query('//article[@class="zen-latest-card"]//a[contains(@class,"zen-meta-category")]')->length === 0, 'latest card metadata must not show a category');
             $date_link = $date->parentNode;
             check($date_link instanceof DOMElement && str_contains($date_link->getAttribute('aria-label'), $year . '年11月9日'), 'card date must expose its full date to assistive technology');
+            $category = $xpath->query('following-sibling::a[1][contains(@class,"zen-meta-category")]', $date_link)->item(0);
+            check($category instanceof DOMElement && $category->textContent === '阅读 & 记录' && $category->getAttribute('href') === get_category_link(2), 'card date must be followed by the featured post category link');
             check(str_contains(capture(static function () use ($latest) { zen_index_post_meta('full', $latest); }), '阅读 &amp; 记录'), 'ordinary metadata must retain its category');
             check(str_contains($html, '最近发布 ' . $year . '.11.09'), 'masthead date is independent of the card');
             check(str_contains(zen_post_date_html('full', $latest), '>' . $year . '.11.09</time>'), 'article detail dates must keep the year');

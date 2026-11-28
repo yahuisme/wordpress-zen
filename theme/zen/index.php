@@ -37,7 +37,7 @@ $zen_latest = $zen_show_latest_card ? $zen_recent_post : null;
             <a href="<?php the_permalink($zen_latest); ?>" class="zen-post-title-link"><?php echo esc_html(zen_post_title($zen_latest)); ?></a>
         </h2>
         <?php zen_index_post_excerpt($zen_latest); ?>
-        <div class="zen-post-meta"><?php zen_posted_on_link('list', $zen_latest); ?></div>
+        <?php zen_index_post_meta('list', $zen_latest); ?>
     </article>
     </div>
 <?php endif; ?>

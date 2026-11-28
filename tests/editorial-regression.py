@@ -53,7 +53,17 @@ with sync_playwright() as p:
             if is_first:
                 assert card.locator('h2 a').is_visible() and card.locator('.zen-post-excerpt').is_visible()
                 assert_date(card.locator('time'), 'list')
-                assert card.locator('.zen-meta-category').count() == 0, 'Latest card shows only its date'
+                category = card.locator('.zen-post-meta a:has(> time) + a.zen-meta-category')
+                assert category.count() == 1 and category.is_visible(), 'Latest card date is followed by its category link'
+                assert category.inner_text().strip() and category.get_attribute('href')
+                page.evaluate('document.fonts.ready.then(() => true)')
+                category.scroll_into_view_if_needed()
+                assert category.evaluate('''link => {
+                    const range = document.createRange();
+                    range.selectNodeContents(link);
+                    const line = range.getClientRects()[0];
+                    return line && document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2) === link;
+                }'''), 'The card title overlay must not intercept category clicks'
                 assert items.locator('.zen-meta-category').count() == 0, 'Ordinary index rows remain date-only'
                 assert card.locator('time span').count() == 0, 'Latest card date stays unsplit'
                 assert card.locator('time').evaluate('e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length}') == 1
