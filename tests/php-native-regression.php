@@ -114,6 +114,9 @@ function zen_php_comments() {
         $shallow = array_merge($args, array('max_depth' => 1));
         $theme = wp_list_comments($shallow + array('callback' => 'zen_comment_callback'), array($comment));
         zen_php_check(!str_contains($theme, 'comment-reply-link'), 'comments: native maximum-depth reply suppression remains');
+        preg_match('~<time datetime="([^"]*)">\s*([^<]+?)\s*</time>~', $theme, $time);
+        zen_php_check(($time[1] ?? '') === get_comment_time('c', false, true, $comment), 'comments: machine-readable time retains the native timestamp');
+        zen_php_check(($time[2] ?? '') === get_comment_date('Y.m.d', $comment), 'comments: readable date uses the same compact native calendar date on every cached render');
         update_option('comment_registration', 1);
         $theme = wp_list_comments($args + array('callback' => 'zen_comment_callback'), array($comment));
         $core = wp_list_comments($args, array($comment));

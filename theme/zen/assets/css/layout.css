@@ -177,6 +177,7 @@ body .font-serif {
     font-weight: 500;
     line-height: 1.08;
     letter-spacing: -0.04em;
+    text-wrap: balance;
     overflow-wrap: anywhere;
 }
 .zen-masthead-meta,
@@ -544,6 +545,7 @@ body .font-serif {
     color: var(--zen-muted);
     text-decoration: none;
     line-height: 1.45;
+    overflow-wrap: anywhere;
 }
 .toc-link.active,
 .toc-link:hover,
@@ -718,6 +720,9 @@ body .font-serif {
     #main-content { padding-block: 28px 48px; }
     .zen-site-header > div:first-child { min-height: 62px; padding-block: 18px 0; gap: 0 8px; }
     .blog #main-content:has(> .zen-masthead) { padding-top: 28px; }
+    :is(.home.blog .zen-post-list, .zen-post-list--editorial) > .zen-post-item {
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+    }
     .zen-masthead { padding-bottom: 14px; margin-bottom: 16px; }
     .zen-site-intro { font-size: clamp(1.6rem, 7.2vw, 2.7rem); line-height: 1.22; }
     .zen-masthead-meta { display: grid; margin-top: 10px; font-size: 0.75rem; }

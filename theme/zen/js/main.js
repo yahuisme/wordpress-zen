@@ -929,16 +929,15 @@ const zenInit = () => {
 
         progressContainer.addEventListener('click', (e) => {
             const rect = progressContainer.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
-            const ratio = Math.min(1, Math.max(0, clickX / rect.width));
+            if (!rect.width || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+            const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
             audio.currentTime = (getComputedStyle(progressContainer).direction === 'rtl' ? 1 - ratio : ratio) * audio.duration;
         });
 
         progressContainer.addEventListener('keydown', (e) => {
             if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
 
-            const step = Math.max(audio.duration * 0.05, 5);
+            const step = Math.min(audio.duration * 0.05, 5);
             if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
                 e.preventDefault();
                 audio.currentTime = Math.max(0, audio.currentTime - step);

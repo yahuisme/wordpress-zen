@@ -1,6 +1,7 @@
 """Native audio cancellation, TOC keyboard focus and nonblocking highlight loading."""
 from pathlib import Path
 import json
+import os
 import re
 import subprocess
 import sys
@@ -18,13 +19,15 @@ def wp(*args):
     result = subprocess.run(cli + list(args), capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
-assert json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);')) == ['local', origin, str(root / 'db/zen.sqlite')]
+assert json.loads(wp('eval', 'echo wp_json_encode([wp_get_environment_type(),home_url(),FQDB]);')) == ['local', origin, str((root / 'db/zen.sqlite').resolve())]
 media = root / 'evidence/native-interaction.wav'
 with wave.open(str(media), 'wb') as stream:
     stream.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
     stream.writeframes(b'\x00\x00' * 16000)
 content = '<h2 id="first">First chapter</h2><p><a href="#middle">First link</a></p>' + '<p>Native scrolling content.</p>' * 30
 content += '<h2 id="middle">Middle chapter</h2><p><a id="middle-link" href="#end">Next native focus target</a></p><pre><code class="language-js">const quiet = 42;</code></pre><audio id="native-audio" controls preload="none" src="/native-interaction.wav"></audio><h2 id="end">End</h2>'
+if selection in ('all', 'toc'):
+    content += '<h2 id="long-heading">' + 'LongUnbrokenHeading' * 8 + '</h2>'
 if selection in ('all', 'modal-visibility', 'focus-return'):
     attachment = int(json.loads((root / 'fixture.json').read_text())['media'][0])
     image_url = wp('eval', f'echo wp_get_attachment_url({attachment});')
@@ -45,11 +48,15 @@ try:
         group = Path('/proc/self/cgroup').read_text()
         control = Path('/sys/fs/cgroup') / group.strip().split('::/', 1)[1]
         ancestors = [p for p in (control, *control.parents) if (p / 'memory.max').is_file()]
-        assert any((p / 'memory.max').read_text().strip() == '4294967296' and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
+        assert any((limit := (p / 'memory.max').read_text().strip()).isdigit()
+                   and int(limit) <= 4 * 1024**3
+                   and (p / 'memory.swap.max').read_text().strip() == '0' for p in ancestors)
         for case in (cases if selection == 'all' else (selection,)):
-            browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'])
-            processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
-            assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
+            browser = playwright.chromium.launch(
+                executable_path='/usr/lib/chromium/chromium',
+                args=['--no-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'],
+                env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': 'disabled:', 'DBUS_SYSTEM_BUS_ADDRESS': 'disabled:'},
+            )
             context = browser.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce',
                                           is_mobile=case == 'focus-return', has_touch=case == 'focus-return')
             if case == 'modal-visibility':
@@ -86,6 +93,8 @@ try:
             page = context.new_page()
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(origin + '/?p=' + post, wait_until='commit' if case == 'highlight' else 'domcontentloaded')
+            processes = browser.new_browser_cdp_session().send('SystemInfo.getProcessInfo')['processInfo']
+            assert processes and all(Path(f'/proc/{p["id"]}/cgroup').read_text() == group for p in processes)
             page.wait_for_selector('#search-toggle')
             page.wait_for_timeout(200)
             if case == 'modal-visibility':
@@ -195,13 +204,20 @@ try:
                 player = page.locator('#native-audio + .zen-audio-player')
                 player.locator('button').click()
                 page.wait_for_function('document.querySelector("#native-audio").readyState>=1')
-                page.locator('#native-audio').evaluate('e=>e.pause()')
+                audio = page.locator('#native-audio')
+                audio.evaluate('e=>e.pause()')
                 slider = player.locator('.zen-audio-progress-container')
                 assert slider.evaluate('e=>getComputedStyle(e).direction') == case.removeprefix('audio-')
+                slider.press('Home')
+                slider.press('ArrowUp')
+                time = audio.evaluate('e=>e.currentTime')
+                record(case + ' keyboard seeks within a two-second clip', 0 < time < 2, time)
+                slider.press('End')
+                record(case + ' End still reaches the end', audio.evaluate('e=>e.currentTime === e.duration'))
                 for x, expected in ((0.25, 0.25), (0.75, 0.75)):
                     box = slider.bounding_box()
                     slider.click(position={'x': box['width']*x, 'y':box['height']/2})
-                    ratio = page.locator('#native-audio').evaluate('e=>e.currentTime/e.duration')
+                    ratio = audio.evaluate('e=>e.currentTime/e.duration')
                     expected = 1-expected if case == 'audio-rtl' else expected
                     record(case + f' click {x} follows visible fill', abs(ratio-expected)<0.04, ratio)
             elif case == 'highlight':
@@ -249,6 +265,14 @@ try:
             elif case == 'toc':
                 page.locator('#header-toc-btn').click()
                 page.wait_for_timeout(350)
+                long_link = page.locator('#drawer-toc-nav a[href="#long-heading"]')
+                record('unbroken heading wraps within the drawer without clipping', long_link.evaluate('''link=>{
+                    const text = document.createRange();
+                    text.selectNodeContents(link);
+                    const lines = [...text.getClientRects()];
+                    const box = link.getBoundingClientRect();
+                    return lines.length > 1 && lines.every(line => line.left >= box.left - 1 && line.right <= box.right + 1);
+                }'''))
                 page.locator('#drawer-toc-nav a[href="#middle"]').focus()
                 page.keyboard.press('Enter')
                 page.wait_for_timeout(400)

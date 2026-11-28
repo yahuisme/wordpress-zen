@@ -81,6 +81,7 @@ zen_reset_check(get_option('zen_archives_generation') === 'fixture-generation', 
 zen_reset_check(get_option('zen_category_ids') === array(9, 2) && !in_array('zen_category_ids', $GLOBALS['deleted'], true), 'restricted reset preserves the retired category row without deleting it');
 zen_reset_check(get_option('zen_content_width') === 1080 && !in_array('zen_content_width', $GLOBALS['deleted'], true), 'restricted reset preserves the retired content width row without deleting it');
 zen_reset_check($status === 'partial', 'restricted reset reports partial status');
+zen_reset_check(str_contains(zen_reset_confirmation_message(), '丢弃未保存的修改') && str_contains(zen_reset_confirmation_message(), '自定义代码将保留'), 'restricted confirmation describes unsaved edits and code retention');
 $html = zen_reset_notice($status);
 zen_reset_check(str_contains($html, '自定义代码已保留') && str_contains($html, 'notice-warning') && !str_contains($html, 'Zen 设置已恢复默认值。'), 'restricted notice explains preserved code without full-success claim');
 zen_reset_check(str_contains($html, 'id="zen-options-form"'), 'reset notice keeps settings form');
@@ -109,6 +110,7 @@ zen_reset_check($status === '1' && !$GLOBALS['deleted'], 'already-default absent
 zen_reset_check(get_option('unrelated_option') === 'untouched', 'already-default reset preserves unrelated option');
 zen_reset_fixture();
 unset($GLOBALS['options']['zen_show_tags']);
+zen_reset_check(str_contains(zen_reset_confirmation_message(), '丢弃未保存的修改') && str_contains(zen_reset_confirmation_message(), '清除已保存的自定义代码'), 'authorized confirmation describes unsaved edits and code deletion');
 $GLOBALS['options']['zen_show_reading_count'] = 0;
 $GLOBALS['options']['zen_footer_text'] = '';
 $status = zen_reset_call();

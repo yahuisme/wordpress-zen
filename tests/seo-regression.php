@@ -63,7 +63,7 @@ function get_bloginfo($key) { return $GLOBALS['seo_context'][$key] ?? 'UTF-8'; }
 function term_description() { return $GLOBALS['seo_context']['term']; }
 function get_the_archive_description() { return is_author() ? $GLOBALS['seo_context']['bio'] : term_description(); }
 function get_the_archive_title() { return $GLOBALS['seo_context']['archive_title']; }
-function get_search_query($escaped = true) { return 'a "quote"'; }
+function get_search_query($escaped = true) { return $GLOBALS['seo_context']['search_query'] ?? 'a "quote"'; }
 function get_the_author_meta($key, $id = null) { return 'description' === $key ? $GLOBALS['seo_context']['bio'] : 'An Author'; }
 function get_author_posts_url($id) { return 'https://example.test/writers/' . $id . '/'; }
 function get_the_title($post = null) { return ($post ?? get_post())->ID !== 17 ? 'Unrelated post title' : ($GLOBALS['seo_context']['title'] ?? 'A <test> "title"'); }
@@ -207,6 +207,10 @@ seo_context('home', array('name' => '', 'description' => ''));
 seo_check(null === seo_meta(seo_output()), 'empty site metadata emits no empty meta');
 seo_context('search');
 seo_check('关于“a "quote"”的搜索结果 - Quiet Site' === seo_meta(seo_output()), 'search description safely escapes the query');
+seo_context('search', array('search_query' => 'HTML <figure> &copy; [sample]example[/sample]', 'name' => 'A &amp; B'));
+$output = seo_output();
+seo_check('关于“HTML <figure> &copy; [sample]example[/sample]”的搜索结果 - A & B' === seo_meta($output), 'search description preserves literal query text and decodes site-name markup');
+seo_check(!str_contains($output, '<figure>') && str_contains($output, '&amp;copy;'), 'literal query text stays escaped in the attribute');
 
 foreach (array('WPSEO_VERSION', 'RANK_MATH_VERSION', 'AIOSEO_VERSION', 'SEOPRESS_VERSION') as $constant) {
     $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' ' . escapeshellarg($constant);

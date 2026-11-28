@@ -128,11 +128,15 @@ function home_url($path = '') { return 'https://example.test' . $path; }
 function wp_reset_postdata() {}
 class WP_Query {
     public $posts; public $max_num_pages = 1;
+    public function get($key) { return $key === 'posts_per_page' ? 500 : ''; }
     public function __construct($args) { $this->posts = array((object) array('ID' => 7)); $GLOBALS['archive_queries'] = ($GLOBALS['archive_queries'] ?? 0) + 1; }
 }
 $cache['zen_archives_public_posts_v2'] = array('zh_CN:' => array(array('id' => 7, 'date' => '2025年4月1日')));
+$old_archive_key = preg_replace('/\Azen_archives_v\d+_/', 'zen_archives_v5_', zen_archive_cache_key());
+$cache[$old_archive_key] = array(array('id' => 8, 'url' => '/post/8', 'title' => 'Truncated old cache', 'year' => '2026', 'date' => '2026-01-01'));
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; $html = ob_get_clean();
 check(str_contains($html, '>10月 5日</time>') && !str_contains($html, '2025年4月1日'), 'legacy cache safely rebuilt');
+check(!str_contains($html, 'Truncated old cache') && $GLOBALS['archive_queries'] === 1, 'the previous archive cache version cannot retain truncated results');
 ob_start(); require dirname(__DIR__) . '/theme/zen/page-archives.php'; ob_end_clean();
 check($GLOBALS['archive_queries'] === 1, 'warm archive avoids rebuild');
 

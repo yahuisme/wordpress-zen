@@ -90,6 +90,7 @@ try {
         $input['zen_reading_width'] = '800.0';
         $input['zen_excerpt_length'] = '6e1';
     } elseif ($case === 'sparse') {
+        if (!current_user_can('unfiltered_html')) throw new RuntimeException('Fixture administrator needs unfiltered_html');
         $rejected = array('zen_excerpt_length' => '0', 'zen_site_start_date' => '2026-02-30', 'zen_footer_text' => array('unexpected'), 'zen_code_head' => array('unexpected'));
         foreach (array_keys($rejected) as $key) delete_option($key);
         $input += $rejected;
@@ -157,7 +158,7 @@ try {
             $check($exists === null, 'rejected input leaves ' . $key . ' absent in the options table');
             $check(!in_array($key . '_not_saved', $codes, true), 'absent ' . $key . ' does not report a write failure');
         }
-        foreach (array('zen_excerpt_length', 'zen_site_start_date', 'zen_footer_text') as $key) {
+        foreach (array_keys($rejected) as $key) {
             $check(in_array($key . '_invalid', $codes, true), 'rejected input still reports the ' . $key . ' validation error');
         }
         $check(!in_array('settings_updated', $codes, true), 'validation errors suppress the success notice');
@@ -175,6 +176,7 @@ try {
         'invalid' => array('zen_reading_width', '正文宽度', 'zen-reading', '_invalid'),
         'malformed-footer' => array('zen_footer_text', '自定义页脚', 'zen-footer', '_invalid'),
         'invalid-date' => array('zen_site_start_date', '博客起始日期', 'zen-footer', '_invalid'),
+        'sparse' => array('zen_code_head', '头部代码', 'zen-code', '_invalid'),
     );
     if (isset($field_errors[$case])) {
         list($field, $label, $group, $suffix) = $field_errors[$case];

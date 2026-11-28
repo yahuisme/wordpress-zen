@@ -5,6 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '..', 'theme', 'zen');
+const core = process.env.ZEN_WP_CORE || '/opt/test-tools/wordpress/clean-core';
 const html = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html'], { encoding: 'utf8' });
 function asset(file) { const target = path.join(root, file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }
 function boot(prepare = () => {}, markup = html) {
@@ -47,7 +48,7 @@ test('a code error link focuses the editor after reopening its group', () => {
     const errorHtml = execFileSync('php', [path.join(__dirname, 'admin-options.php'), '--html', '--code-save-error'], { encoding: 'utf8' });
     const dom = boot(window => {
         window.zenAdmin = { codeEditor: '1' };
-        window.wp = { codeEditor: { initialize(field) {
+        window.wp = { CodeMirror: { fromTextArea() {} }, codeEditor: { initialize(field) {
             const input = window.document.createElement('textarea');
             field.after(input);
             field.hidden = true;
@@ -81,6 +82,21 @@ test('dirty state reflects real form changes and restoring originals becomes cle
     edit(dom, 'zen_show_toc', true, 'change');
     assert.equal(unloading(dom), false);
     dom.window.close();
+});
+test('save status is shown only after its updater is active', () => {
+    const dom = boot(window => {
+        const state = window.document.getElementById('zen-save-state');
+        assert.equal(state.hidden, true, 'without JS an unchanging status would claim edits are saved');
+    });
+    try {
+        const state = dom.window.document.getElementById('zen-save-state');
+        assert.equal(state.hidden, false);
+        assert.equal(state.textContent, state.dataset.clean);
+        edit(dom, 'zen_footer_text', 'unsaved');
+        assert.equal(state.textContent, state.dataset.dirty);
+    } finally {
+        dom.window.close();
+    }
 });
 test('collapsed fields remain successful controls and native disclosure works', () => {
     const dom = boot();
@@ -327,7 +343,7 @@ test('native code editors initialize on disclosure once, sync raw text and dirty
     const instances = [];
     const dom = boot(window => {
         window.zenAdmin = { codeEditor: '1' }; // Native wp_localize_script scalar availability flag.
-        window.wp = { codeEditor: { initialize(textarea, settings) {
+        window.wp = { CodeMirror: { fromTextArea() {} }, codeEditor: { initialize(textarea, settings) {
             const callbacks = {};
             const input = window.document.createElement('textarea');
             const cm = { value: textarea.value, refreshes: 0,
@@ -371,7 +387,6 @@ test('native code editors initialize on disclosure once, sync raw text and dirty
 
 test('CodeMirror keyboard save honors repeat, composition, and the native submit lifecycle', async () => {
     // Use the real Core-bundled keyboard engine; jsdom only needs geometry doubled.
-    const core = process.env.ZEN_WP_CORE || '/opt/test-tools/wordpress/clean-core';
     const dom = boot(window => {
         window.Range.prototype.getBoundingClientRect = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
         window.Range.prototype.getClientRects = () => [];
@@ -412,11 +427,41 @@ test('CodeMirror keyboard save honors repeat, composition, and the native submit
     }
 });
 
+test('the real Core wrapper without its CodeMirror asset leaves the form editable', async () => {
+    const errors = [];
+    const dom = boot(window => {
+        window.wp = { codeEditor: {} };
+        for (const file of ['wp-includes/js/jquery/jquery.min.js', 'wp-admin/js/code-editor.js']) {
+            window.eval(fs.readFileSync(path.join(core, file), 'utf8'));
+        }
+        window.zenAdmin = { codeEditor: '1' };
+        window.addEventListener('error', event => { errors.push(event.message); event.preventDefault(); });
+    });
+    try {
+        // Let jsdom reach its real DOMContentLoaded before simulating user input.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const { document, FormData } = dom.window;
+        const section = document.getElementById('zen-code');
+        const field = document.getElementById('zen_code_head');
+        assert.equal(typeof dom.window.wp.codeEditor.initialize, 'function', 'Core wrapper really did load');
+        assert.equal(dom.window.wp.CodeMirror, undefined, 'only the dependent asset is missing');
+        section.open = true;
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.deepEqual(errors, []);
+        assert.equal(field.style.display, '');
+        edit(dom, field.id, '<!-- plain fallback -->');
+        assert.equal(new FormData(field.form).get(field.name), '<!-- plain fallback -->');
+        assert.equal(unloading(dom), true);
+    } finally {
+        dom.window.close();
+    }
+});
+
 test('native code-editor opt-out and missing resources preserve plain-text saving', () => {
     for (const reason of ['localized false', 'missing API']) {
         const dom = boot(window => {
             window.zenAdmin = { codeEditor: reason === 'localized false' ? '' : '1' };
-            if (reason === 'localized false') window.wp = { codeEditor: { initialize() { throw new Error('editor opt-out was ignored'); } } };
+            if (reason === 'localized false') window.wp = { CodeMirror: { fromTextArea() {} }, codeEditor: { initialize() { throw new Error('editor opt-out was ignored'); } } };
         });
         const { document, Event, KeyboardEvent } = dom.window;
         const section = document.getElementById('zen-code');

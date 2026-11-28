@@ -86,8 +86,10 @@
             else codeFields[index].focus();
         }
         function initCodeEditors() {
-            if (!codeSection.open || !window.zenAdmin || !window.zenAdmin.codeEditor
-                || !window.wp || !window.wp.codeEditor) return;
+            // Core's wrapper can load even if its CodeMirror script did not.
+            if (!codeSection.open || !window.zenAdmin?.codeEditor
+                || typeof window.wp?.codeEditor?.initialize !== 'function'
+                || typeof window.wp?.CodeMirror?.fromTextArea !== 'function') return;
             codeFields.forEach(function (field, index) {
                 if (!editors[index]) {
                     var instance = window.wp.codeEditor.initialize(field, {
@@ -180,7 +182,10 @@
                 event.returnValue = '';
             }
         });
-
+        if (status) {
+            status.textContent = status.dataset.clean;
+            status.hidden = false;
+        }
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

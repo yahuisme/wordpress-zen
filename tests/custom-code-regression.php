@@ -9,6 +9,8 @@ function add_action($hook, $callback, ...$args) { $GLOBALS['hooks'][$hook][] = $
 function register_setting($group, $key, $args) { $GLOBALS['settings'][$key] = $args; }
 function current_user_can($cap) { return $cap === 'manage_options' || $GLOBALS['can_code']; }
 function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?? $default; }
+function __($message, $domain = '') { return $message; }
+function add_settings_error($setting, $code, $message) { $GLOBALS['errors'][$setting][] = $code; }
 require ABSPATH . 'inc/options.php';
 zen_register_options();
 $failed = 0;
@@ -28,8 +30,10 @@ foreach (array('head' => 'wp_head', 'body' => 'wp_body_open', 'footer' => 'wp_fo
     $GLOBALS['can_code'] = false;
     check($sanitize('<script>replace()</script>') === $code, "$position denies unauthorized replacement");
     check($sanitize(null) === $code, "$position preserves omitted restricted field");
+    check(!isset($GLOBALS['errors'][$key]), "$position restricted fields do not report validation errors");
     $GLOBALS['can_code'] = true;
     check($sanitize(array('invalid')) === $code, "$position rejects malformed value");
+    check($GLOBALS['errors'][$key] === array($key . '_invalid'), "$position rejects malformed input with a field-specific settings error");
     check($sanitize('') === '', "$position accepts intentional clearing");
     check(zen_get_option($key) === $code, "$position reads stored code");
 }

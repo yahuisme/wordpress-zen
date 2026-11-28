@@ -22,7 +22,7 @@ function get_permalink($post){return '/'.$GLOBALS['language'].'/post/'.$post->ID
 function get_the_date($format,$post){return $format==='Y'?'2026':'2026-10-19';}
 function wp_reset_postdata(){}function esc_html($value){return htmlspecialchars((string)$value,ENT_QUOTES);}
 function esc_url($value){return esc_html($value);}
-class WP_Query{public $posts;public $max_num_pages=1;function __construct($args){$GLOBALS['queries']++;$this->posts=$GLOBALS['archive_fixture_posts']??[(object)['ID'=>7]];if($hook=$GLOBALS['query_hook']??null){unset($GLOBALS['query_hook']);$hook();}}}
+class WP_Query{public $posts;public $max_num_pages=1;function get($key){return $key==='posts_per_page'?500:'';}function __construct($args){$GLOBALS['queries']++;$this->posts=$GLOBALS['archive_fixture_posts']??[(object)['ID'=>7]];if($hook=$GLOBALS['query_hook']??null){unset($GLOBALS['query_hook']);$hook();}}}
 function esc_attr($value){return esc_html($value);}
 function zen_get_option($name){return $GLOBALS['date_style']??'editorial';}
 require ABSPATH.'inc/template-tags.php';

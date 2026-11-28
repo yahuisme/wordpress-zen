@@ -46,7 +46,10 @@ if (!$archive_locked) {
             }
 
             // Iterating the returned posts without the_post() leaves the main Loop untouched.
-            $archive_has_more = count($archives_query->posts) === $archive_batch_size;
+            // A numeric offset takes precedence over paged in WP_Query.
+            $archive_has_more = $archives_query->posts && !$archives_query->get('nopaging')
+                && !is_numeric($archives_query->get('offset'))
+                && count($archives_query->posts) === (int) $archives_query->get('posts_per_page');
             $archive_page++;
             unset($archives_query);
         } while ($archive_has_more);

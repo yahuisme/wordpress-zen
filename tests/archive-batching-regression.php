@@ -1,7 +1,7 @@
 <?php
 /** php tests/archive-batching-regression.php: archive batches avoid total-row counts. */
 define('ABSPATH',dirname(__DIR__).'/theme/zen/');define('HOUR_IN_SECONDS',3600);
-$cache=[];$batch_sizes=[];$batch_posts=[500,500,201];
+$cache=[];$batch_sizes=[];$batch_posts=[500,500,201];$effective_page_size=500;$nopaging=false;
 function add_action($hook,$callback,...$args){}
 function get_header(){}function get_footer(){}function the_title(){echo 'Archives';}
 function __($value,$domain=''){return $value;}
@@ -22,6 +22,7 @@ function wp_reset_postdata(){$GLOBALS['archive_loop_resets']=($GLOBALS['archive_
 function esc_url($value){return esc_html($value);}
 class WP_Query {
     public $posts=[];
+    function get($key){return ['posts_per_page'=>$GLOBALS['effective_page_size'],'nopaging'=>$GLOBALS['nopaging']][$key]??'';}
     function __construct($args){
         $i=count($GLOBALS['batch_sizes']);$GLOBALS['batch_sizes'][]=$args;
         $count=$GLOBALS['batch_posts'][$i]??0;
@@ -39,5 +40,11 @@ $checks=[
     [empty($archive_loop_resets), 'archive batching does not reset an unused secondary loop'],
     [substr_count($html,'class="zen-archive-row')===1201, 'all fetched posts remain rendered'],
 ];
+$cache=[];$batch_sizes=[];$batch_posts=[2,2,1];$effective_page_size=2;
+ob_start();include ABSPATH.'page-archives.php';$html=ob_get_clean();
+$checks[]=[array_column($batch_sizes,'paged')===[1,2,3] && substr_count($html,'class="zen-archive-row')===5, 'filtered page size still renders every batch'];
+$cache=[];$batch_sizes=[];$batch_posts=[500];$effective_page_size=500;$nopaging=true;
+ob_start();include ABSPATH.'page-archives.php';$html=ob_get_clean();
+$checks[]=[count($batch_sizes)===1 && substr_count($html,'class="zen-archive-row')===500, 'an unpaged query renders every row without another batch'];
 foreach($checks as [$ok,$label]){echo ($ok?'PASS ':'FAIL ').$label.PHP_EOL;if(!$ok)$failed++;}
 exit($failed?1:0);

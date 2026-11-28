@@ -116,6 +116,18 @@ try {
     } finally {
         remove_filter('the_title', $title_filter, 99);
     }
+    $search = 'Literal HTML <figure> &copy;';
+    $GLOBALS['wp_query'] = $GLOBALS['wp_the_query'] = new WP_Query(array('s' => $search));
+    content_native_check(is_search() && get_search_query(false) === $search, 'Core retains literal text in the native search query');
+    ob_start();
+    try {
+        zen_output_meta_description();
+        $head = ob_get_contents();
+    } finally {
+        ob_end_clean();
+    }
+    $tags = new WP_HTML_Tag_Processor($head);
+    content_native_check($tags->next_tag('META') && str_starts_with((string) $tags->get_attribute('content'), '关于“' . $search . '”的搜索结果'), 'search metadata preserves literal Core query text after HTML decoding');
     if (function_exists('wp_render_block_visibility_support')) {
         $body = '<!-- wp:paragraph --><p>Before</p><!-- /wp:paragraph -->'
             . '<!-- wp:group --><div class="wp-block-group">'

@@ -159,6 +159,25 @@ test('native invalid-value fallback does not materialize absent options', functi
     }
 });
 
+test('malformed custom code reports validation failure without replacing saved code', function () {
+    $key = 'zen_code_head';
+    $sanitize = $GLOBALS['settings'][$key]['sanitize_callback'];
+    $before = count($GLOBALS['errors']);
+    try {
+        expect($sanitize(array('unexpected')) === false, 'rejected code must not create an absent row');
+        $GLOBALS['options'][$key] = '<!-- saved snippet -->';
+        expect($sanitize(array('unexpected')) === get_option($key), 'rejected code must preserve the original string');
+        expect($sanitize('') === '', 'an explicit empty string still clears the field');
+        expect(array_column(array_slice($GLOBALS['errors'], $before), 'code') === array($key . '_invalid', $key . '_invalid'), 'both rejections must report a native field validation error');
+        $GLOBALS['caps']['unfiltered_html'] = false;
+        expect($sanitize('<!-- ignored snippet -->') === get_option($key), 'restricted callback must preserve the saved value');
+        expect(count($GLOBALS['errors']) === $before + 2, 'the restricted path must not report an editable field error');
+    } finally {
+        $GLOBALS['caps']['unfiltered_html'] = true;
+        unset($GLOBALS['options'][$key]);
+    }
+});
+
 test('settings save preserves restricted and untouched code but allows deliberate clearing', function () {
     $group = array('zen_options' => array('zen_code_head', 'zen_code_body', 'zen_code_footer', 'zen_reading_width', 'zen_show_toc', 'extension_option'), 'reading' => array('posts_per_page'));
     $old_method = $_SERVER['REQUEST_METHOD'] ?? null;
@@ -235,6 +254,7 @@ test('limited permissions hide code editors without leaking or removing saved co
     $GLOBALS['options']['zen_code_head'] = 'private-code';
     $html = render();
     expect(!str_contains($html, 'name="zen_code_head"') && !str_contains($html, 'private-code'), 'restricted editor leaked');
+    expect(str_contains($html, '保存其他设置或恢复默认设置时，已保存的代码会保留') && !str_contains($html, '仅粘贴可信代码'), 'restricted users should see retention guidance, not editing instructions');
     $GLOBALS['caps']['manage_options'] = false;
     expect(render() === '', 'settings page visible without manage_options');
     $GLOBALS['caps'] = array('manage_options' => true, 'unfiltered_html' => true);
@@ -289,11 +309,12 @@ test('option descriptions use short copy without terminal punctuation', function
     @$doc->loadHTML('<?xml encoding="UTF-8">' . render());
     $xpath = new DOMXPath($doc);
     foreach (array(
-        'zen_show_site_intro' => '首页显示 WordPress 站点副标题',
-        'zen_show_latest_card' => '从文章索引首页选出最新的公开文章',
+        'zen_show_site_intro' => '在文章索引首页显示 WordPress 站点副标题',
+        'zen_show_latest_card' => '在文章索引首页以卡片展示最新公开文章',
         'zen_show_featured_image' => '在文章页展示原生特色图',
-        'zen_show_lightbox' => '点击图片开启灯箱效果',
+        'zen_show_lightbox' => '放大查看正文中的图片',
         'zen_show_reading_count' => '显示文章浏览次数',
+        'zen_show_footer_rss' => '在页脚菜单中补充 RSS 订阅链接',
     ) as $key => $description) {
         expect(trim($xpath->evaluate('string(//label[@for="' . $key . '"])')) === $description, "$key copy differs");
     }

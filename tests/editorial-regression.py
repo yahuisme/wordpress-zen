@@ -69,12 +69,15 @@ with sync_playwright() as p:
                 const nodes = time.classList.contains('zen-index-date') ? [...time.querySelectorAll('span')] : [time];
                 const lines = nodes.map(node => {const range = document.createRange();range.selectNodeContents(node);return range;});
                 return {titleX:title.x, excerptX:text.x, titleWidth:title.width, excerptWidth:text.width,
+                        dateColumn:parseFloat(getComputedStyle(item).gridTemplateColumns),
                         dateRight:Math.max(...lines.map(line=>line.getBoundingClientRect().right)),
                         dateLines:lines.map(line=>line.getClientRects().length)};
             })''')
             for row in geom:
                 assert abs(row['titleX']-row['excerptX']) < 1 and abs(row['titleWidth']-row['excerptWidth']) < 1, row
                 assert row['dateLines'] in ([1], [1, 1]) and row['titleX'] >= row['dateRight'] + 12, row
+                if width < 640:
+                    assert row['dateColumn'] <= 72, 'Keep more room for titles and excerpts on narrow phones'
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     if '--settings' in sys.argv:
         fixture_ids = json.loads((fixture / 'fixture.json').read_text())

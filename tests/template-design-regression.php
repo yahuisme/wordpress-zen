@@ -639,10 +639,41 @@ test('friend links use an empty state when every saved URL is unrenderable', fun
 });
 function get_tags($args) { return $GLOBALS['directory_tags'] ?? array(); }
 function is_wp_error($value) { return false; }
+function get_the_terms($post, $taxonomy) { return $GLOBALS['directory_post_terms'][$post->ID] ?? array(); }
 class WP_Query {
     public $posts = array();
-    public function __construct($args) {}
+    public function __construct($args) {
+        if (!isset($GLOBALS['directory_query_batches'])) return;
+        $GLOBALS['directory_query_calls'][] = $args;
+        $this->posts = array_shift($GLOBALS['directory_query_batches']) ?? array();
+    }
+    public function get($key) { return $GLOBALS['directory_query_vars'][$key] ?? ($key === 'posts_per_page' ? 100 : ''); }
 }
+test('tags use the effective batch size while narrowing the pending term set', function () {
+    $common = (object) array('term_id' => 30, 'name' => 'Common', 'count' => 2);
+    $rare = (object) array('term_id' => 31, 'name' => 'Rare', 'count' => 1);
+    $common_post = (object) array('ID' => 7, 'post_date' => '2025-02-03');
+    $older_common = (object) array('ID' => 8, 'post_date' => '2025-01-03');
+    $rare_post = (object) array('ID' => 9, 'post_date' => '2024-01-03');
+    $GLOBALS['directory_tags'] = array($common, $rare);
+    $GLOBALS['directory_post_terms'] = array(7 => array($common), 8 => array($common), 9 => array($rare));
+    try {
+        foreach (array(false, true) as $unpaged) {
+            $GLOBALS['directory_query_vars'] = array('posts_per_page' => 2, 'nopaging' => $unpaged);
+            $GLOBALS['directory_query_batches'] = $unpaged ? array(array($common_post, $older_common, $rare_post)) : array(array($common_post, $older_common), array($rare_post));
+            $GLOBALS['directory_query_calls'] = array();
+            $GLOBALS['loop_left'] = 1;
+            $html = render('page-tags.php');
+            $calls = $GLOBALS['directory_query_calls'];
+            check(str_contains($html, 'datetime="2025-02-03"'), 'newest common preview is missing');
+            check(str_contains($html, 'datetime="2024-01-03"'), 'rare preview after a full filtered batch is missing');
+            check(count($calls) === ($unpaged ? 1 : 2), 'wrong number of tag queries');
+            if (!$unpaged) check($calls[1]['paged'] === 1 && $calls[1]['tax_query'][0]['terms'] === array(31), 'second query must restart after narrowing to the rare tag');
+        }
+    } finally {
+        unset($GLOBALS['directory_tags'], $GLOBALS['directory_post_terms'], $GLOBALS['directory_query_vars'], $GLOBALS['directory_query_batches'], $GLOBALS['directory_query_calls']);
+    }
+});
 test('tags and friend links only offer more when the list exceeds twenty entries', function () {
     foreach (array(20, 21) as $count) {
         $GLOBALS['directory_tags'] = $GLOBALS['bookmarks'] = array();

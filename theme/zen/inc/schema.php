@@ -6,19 +6,26 @@ function zen_description_substr($text, $length) {
     if (function_exists('mb_substr')) {
         return mb_substr($text, 0, $length, 'UTF-8');
     }
-    $count = preg_match_all('/./us', $text, $matches);
-    return false === $count ? substr($text, 0, $length) : implode('', array_slice($matches[0], 0, $length));
+    // Keep just the prefix, not a PHP array entry for every character of the post.
+    return preg_match('/\A.{0,' . $length . '}/us', $text, $match) ? $match[0] : substr($text, 0, $length);
 }
 
-function zen_clean_description($text) {
+function zen_description_text($text) {
     $text = strip_shortcodes($text);
     // Separate blocks even when HTML permits omitted closing tags; keep inline text intact.
     $text = preg_replace('~</?(?:br|p|div|li|h[1-6]|blockquote|pre|tr|td|th|dt|dd)(?=[\s/>])~i', ' $0', $text);
-    $text = html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = trim(preg_replace('/[\s\p{Z}]+/u', ' ', $text));
+    return html_entity_decode(wp_strip_all_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+function zen_limit_description($text) {
+    $text = trim(preg_replace('/[\s\p{Z}]+/u', ' ', $text) ?? '');
     // The string is already plain text. wp_html_excerpt can drop a literal trailing ampersand.
     $excerpt = zen_description_substr($text, 160);
     return $excerpt === $text ? $text : rtrim($excerpt) . '…';
+}
+
+function zen_clean_description($text) {
+    return zen_limit_description(zen_description_text($text));
 }
 
 /** Keep the saved markup order without rendering shortcodes or dynamic blocks. */
@@ -64,7 +71,8 @@ function zen_meta_description() {
         return zen_clean_description(get_the_archive_title());
     }
     if (is_search()) {
-        return zen_clean_description('关于“' . get_search_query(false) . '”的搜索结果 - ' . get_bloginfo('name'));
+        // The query is plain text, not post markup. The output hook escapes it as an attribute.
+        return zen_limit_description('关于“' . get_search_query(false) . '”的搜索结果 - ' . zen_description_text(get_bloginfo('name')));
     }
 
     if (!is_home() && !is_front_page()) {

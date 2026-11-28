@@ -30,3 +30,6 @@ check(zen_trim_excerpt('中文摘要', 4) === '中文摘要', 'exact UTF-8 lengt
 check(zen_trim_excerpt('中文摘要', 2) === '中文…', 'CJK excerpt trims without mbstring');
 check(zen_trim_excerpt("e\u{0301}x", 1) === "e\u{0301}…", 'grapheme boundaries do not require mbstring or intl');
 check(zen_clean_description(str_repeat('中文', 100)) === str_repeat('中文', 80) . '…', 'SEO description trims without mbstring');
+
+// Also run with php -n -d memory_limit=32M: the 160-character result must not allocate a match per source character.
+check(zen_clean_description(str_repeat('甲a', 600000)) === str_repeat('甲a', 80) . '…', 'long post descriptions stay bounded without mbstring');

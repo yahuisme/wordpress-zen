@@ -71,7 +71,11 @@ function zen_register_options() {
             'type'              => 'string',
             'show_in_rest'      => false,
             'sanitize_callback' => static function ($value) use ($key) {
-                if (!current_user_can('unfiltered_html') || !is_string($value)) {
+                if (!current_user_can('unfiltered_html')) {
+                    return get_option($key);
+                }
+                if (!is_string($value)) {
+                    add_settings_error($key, $key . '_invalid', __('请输入有效的代码文本；已保留上次保存值。', 'zen'));
                     return get_option($key);
                 }
                 return $value;
@@ -172,8 +176,8 @@ function zen_check_reset_request($action) {
 
 function zen_reset_confirmation_message() {
     return current_user_can('unfiltered_html')
-        ? __('确定恢复 Zen 全部设置（含自定义代码）的默认值吗？此操作不可撤销。', 'zen')
-        : __('确定恢复可管理的 Zen 设置的默认值吗？受权限限制，自定义代码将保留。此操作不可撤销。', 'zen');
+        ? __('恢复 Zen 默认设置将清除已保存的自定义代码，并丢弃未保存的修改。此操作无法撤销。', 'zen')
+        : __('恢复 Zen 默认设置将丢弃未保存的修改。当前账号无权修改自定义代码，自定义代码将保留。此操作无法撤销。', 'zen');
 }
 
 /** First native POST: render the confirmation without touching settings or caches. */
@@ -487,11 +491,11 @@ function zen_options_page_html() {
             <?php elseif ('partial' === $reset) : ?>
                 <div class="notice notice-warning is-dismissible"><p><?php esc_html_e('可管理的 Zen 设置已恢复默认值；受权限限制，自定义代码已保留。', 'zen'); ?></p></div>
             <?php elseif ('error' === $reset) : ?>
-                <div class="notice notice-error is-dismissible"><p><?php esc_html_e('部分设置未能恢复默认值，请重试并检查数据库写入权限。', 'zen'); ?><?php if (!current_user_can('unfiltered_html')) : ?> <?php esc_html_e('受权限限制，自定义代码已保留。', 'zen'); ?><?php endif; ?></p></div>
+                <div class="notice notice-error is-dismissible"><p><?php esc_html_e('部分设置未能恢复默认值，请检查当前设置后重试。', 'zen'); ?><?php if (!current_user_can('unfiltered_html')) : ?> <?php esc_html_e('受权限限制，自定义代码已保留。', 'zen'); ?><?php endif; ?></p></div>
             <?php endif; ?>
             <div class="zen-save-bar">
                 <?php submit_button(__('保存设置', 'zen'), 'primary', 'zen_save_top', false); ?>
-                <span id="zen-save-state" role="status" aria-live="polite" data-clean="<?php echo esc_attr(__('没有未保存的修改', 'zen')); ?>" data-dirty="<?php echo esc_attr(__('有未保存的修改', 'zen')); ?>"><?php esc_html_e('没有未保存的修改', 'zen'); ?></span>
+                <span id="zen-save-state" role="status" hidden data-clean="<?php echo esc_attr(__('没有未保存的修改', 'zen')); ?>" data-dirty="<?php echo esc_attr(__('有未保存的修改', 'zen')); ?>"></span>
                 <button type="submit" form="zen-reset-form" class="button" data-zen-confirm="<?php echo esc_attr(zen_reset_confirmation_message()); ?>" data-zen-confirm-nonce="<?php echo esc_attr(wp_create_nonce('zen_reset_confirm')); ?>"><?php esc_html_e('恢复默认设置', 'zen'); ?></button>
             </div>
             <details class="zen-options-group" id="zen-reading" open>
@@ -532,8 +536,8 @@ function zen_options_page_html() {
             <details class="zen-options-group" id="zen-list" open>
                 <summary><?php esc_html_e('首页与文章列表', 'zen'); ?></summary>
                 <div class="zen-group-content"><table class="form-table" role="presentation">
-                    <?php zen_checkbox_field('zen_show_site_intro', $labels['zen_show_site_intro'], __('首页显示 WordPress 站点副标题', 'zen'), $errors); ?>
-                    <?php zen_checkbox_field('zen_show_latest_card', $labels['zen_show_latest_card'], __('从文章索引首页选出最新的公开文章', 'zen'), $errors); ?>
+                    <?php zen_checkbox_field('zen_show_site_intro', $labels['zen_show_site_intro'], __('在文章索引首页显示 WordPress 站点副标题', 'zen'), $errors); ?>
+                    <?php zen_checkbox_field('zen_show_latest_card', $labels['zen_show_latest_card'], __('在文章索引首页以卡片展示最新公开文章', 'zen'), $errors); ?>
                     <tr><th scope="row"><label for="zen_list_style"><?php echo esc_html($labels['zen_list_style']); ?></label></th>
                         <td><select name="zen_list_style" id="zen_list_style"<?php zen_option_description('zen_list_style', $errors, 'zen-list-style-help'); ?>>
                             <option value="standard" <?php selected('standard', $list_style); ?>><?php esc_html_e('标准', 'zen'); ?></option>
@@ -553,7 +557,7 @@ function zen_options_page_html() {
                     <?php zen_checkbox_field('zen_show_updated_date', $labels['zen_show_updated_date'], __('显示最后更新时间', 'zen'), $errors); ?>
                     <?php zen_checkbox_field('zen_show_tags', $labels['zen_show_tags'], __('显示文章底部标签', 'zen'), $errors); ?>
                     <?php zen_checkbox_field('zen_show_post_navigation', $labels['zen_show_post_navigation'], __('显示相邻文章导航', 'zen'), $errors); ?>
-                    <?php zen_checkbox_field('zen_show_lightbox', $labels['zen_show_lightbox'], __('点击图片开启灯箱效果', 'zen'), $errors); ?>
+                    <?php zen_checkbox_field('zen_show_lightbox', $labels['zen_show_lightbox'], __('放大查看正文中的图片', 'zen'), $errors); ?>
                     <?php zen_checkbox_field('zen_show_highlight', $labels['zen_show_highlight'], __('启用代码块语法高亮', 'zen'), $errors); ?>
                     <?php zen_checkbox_field('zen_show_reading_count', $labels['zen_show_reading_count'], __('显示文章浏览次数', 'zen'), $errors); ?>
                     <tr><th scope="row"><label for="zen_copyright_license"><?php echo esc_html($labels['zen_copyright_license']); ?></label></th>
@@ -578,14 +582,14 @@ function zen_options_page_html() {
                     <tr><th scope="row"><label for="zen_site_start_date"><?php echo esc_html($labels['zen_site_start_date']); ?></label></th>
                         <td><input type="text" name="zen_site_start_date" id="zen_site_start_date" value="<?php echo esc_attr(zen_get_option('zen_site_start_date')); ?>" placeholder="<?php echo esc_attr(__('例如：2022-07-01', 'zen')); ?>" class="regular-text" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off"<?php zen_option_description('zen_site_start_date', $errors, 'zen-start-date-help'); ?>>
                         <p class="description" id="zen-start-date-help"><?php esc_html_e('填写 YYYY-MM-DD，留空按首篇公开文章计算', 'zen'); ?></p><?php zen_option_error('zen_site_start_date', $errors); ?></td></tr>
-                    <?php zen_checkbox_field('zen_show_footer_rss', $labels['zen_show_footer_rss'], __('显示 RSS 订阅链接', 'zen'), $errors); ?>
+                    <?php zen_checkbox_field('zen_show_footer_rss', $labels['zen_show_footer_rss'], __('在页脚菜单中补充 RSS 订阅链接', 'zen'), $errors); ?>
                 </table></div>
             </details>
             <details class="zen-options-group" id="zen-code"<?php if (array_intersect_key($errors, zen_code_fields())) echo ' open'; ?>>
                 <summary><?php esc_html_e('高级代码', 'zen'); ?></summary>
                 <div class="zen-group-content">
-                    <p><?php esc_html_e('仅粘贴可信代码，脚本会直接运行，切换主题后不再输出', 'zen'); ?></p>
                     <?php if (current_user_can('unfiltered_html')) : ?>
+                        <p><?php esc_html_e('仅粘贴可信代码。保存后，脚本会在站点前台运行；切换主题后不再输出。', 'zen'); ?></p>
                         <table class="form-table" role="presentation">
                             <?php foreach (zen_code_fields() as $key => list(,, $description)) :
                                 $help_id = $key . '_help';
@@ -599,7 +603,7 @@ function zen_options_page_html() {
                             <?php endforeach; ?>
                         </table>
                     <?php else : ?>
-                        <p><?php esc_html_e('当前账号无权编辑原始代码，保存其他设置不影响已有代码', 'zen'); ?></p>
+                        <p><?php esc_html_e('当前账号无权编辑自定义代码。保存其他设置或恢复默认设置时，已保存的代码会保留。', 'zen'); ?></p>
                     <?php endif; ?>
                 </div>
             </details>

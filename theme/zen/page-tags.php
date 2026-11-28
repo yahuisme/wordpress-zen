@@ -50,8 +50,9 @@ while (have_posts()) : the_post();
                 }
                 if (!$pending) break;
             }
-            if (count($tag_posts->posts) < $batch_size) break;
-            // The offset belongs to the original tag set, not the narrowed query.
+            if (!$tag_posts->posts || $tag_posts->get('nopaging') || is_numeric($tag_posts->get('offset'))
+                || count($tag_posts->posts) < (int) $tag_posts->get('posts_per_page')) break;
+            // The page number belongs to the original tag set, not the narrowed query.
             $batch = count($pending) < $pending_count ? 1 : $batch + 1;
         }
     }

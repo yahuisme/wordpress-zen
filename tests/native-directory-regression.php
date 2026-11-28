@@ -1,7 +1,7 @@
 <?php
 /**
  * Native directory/password and public-cache regressions; no server/browser.
- * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery|guestbook|queries]
+ * ZEN_TEST_ISOLATED=1 php tests/native-directory-regression.php /isolated/wp-load.php [password|author|lifecycle|secondary|discovery|guestbook|queries|batch-size]
  * Use a disposable local loopback Zen installation with outbound HTTP/mail blocked.
  */
 if (getenv('ZEN_TEST_ISOLATED') !== '1' || empty($argv[1])) exit(2);
@@ -21,7 +21,7 @@ foreach (array('footer.php', 'page-archives.php', 'page-links.php', 'page-tags.p
     }
 }
 $zen_directory_slice = $argv[2] ?? 'all';
-if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery', 'guestbook', 'queries'), true)) throw new RuntimeException('Unknown slice');
+if (!in_array($zen_directory_slice, array('all', 'password', 'author', 'lifecycle', 'secondary', 'discovery', 'guestbook', 'queries', 'batch-size'), true)) throw new RuntimeException('Unknown slice');
 require_once ABSPATH . 'wp-admin/includes/bookmark.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
 add_filter('pre_http_request', static function () { return new WP_Error('isolated', 'Outbound HTTP blocked'); }, 1);
@@ -575,6 +575,76 @@ function zen_directory_sparse_tags() {
     zen_directory_check(count(array_filter(array_keys($extract($html)), static function ($name) { return str_starts_with($name, 'Batch '); })) === 21 && str_contains($html, 'hidden aria-controls="zen-tags-entries" data-zen-directory-batch="20"'), 'all 21 fixture tags appear in unenhanced HTML with the enhancement control hidden');
 }
 
+function zen_directory_filtered_batch_size() {
+    $page = zen_directory_post(array('post_type' => 'page'));
+    $common = wp_insert_term('Zen filtered batch common', 'post_tag');
+    $rare = wp_insert_term('Zen filtered batch rare', 'post_tag');
+    foreach (array($common, $rare) as $term) {
+        if (is_wp_error($term)) throw new RuntimeException($term->get_error_message());
+        $GLOBALS['zen_directory_terms'][] = array((int) $term['term_id'], 'post_tag');
+    }
+    $ids = array();
+    foreach (array('2025-01-01', '2025-02-02', '2025-03-03') as $index => $date) {
+        $ids[] = $id = zen_directory_post(array('post_title' => 'Zen filtered preview ' . $index, 'post_date' => $date . ' 12:00:00'));
+        $tag = $index === 0 ? $rare : $common;
+        if (!is_array(wp_set_post_tags($id, array((int) $tag['term_id'])))) throw new RuntimeException('Tag assignment failed');
+    }
+    $calls = array();
+    $offset = null;
+    $filter = static function ($query) use (&$ids, &$calls, &$offset) {
+        $batch_size = (int) $query->get('posts_per_page');
+        if ($query->is_main_query() || !in_array($batch_size, array(100, 500), true)) return;
+        $calls[$batch_size][] = (int) $query->get('paged');
+        $query->set('posts_per_page', 2);
+        $query->set('post__in', $ids);
+        if (null !== $offset) {
+            $query->set('offset', $offset);
+            // Bound the regression even if a broken loop would keep loading this window.
+            if (count($calls[$batch_size]) > 3) throw new RuntimeException('Fixed-offset query never finished');
+        }
+    };
+    $limit_tags = static function ($args, $taxonomies) use ($common, $rare) {
+        if ($taxonomies === array('post_tag') && $args['orderby'] === 'count') {
+            $args['include'] = array((int) $common['term_id'], (int) $rare['term_id']);
+        }
+        return $args;
+    };
+    $archive_key = zen_archive_cache_key();
+    delete_transient($archive_key);
+    add_action('pre_get_posts', $filter);
+    add_filter('get_terms_args', $limit_tags, 10, 2);
+    try {
+        $cold = zen_directory_render('page-archives.php', $page);
+        $rows = get_transient($archive_key);
+        zen_directory_check(is_array($rows) && array_column($rows, 'id') === array_reverse($ids) && ($calls[500] ?? null) === array(1, 2), 'filtered archive: all native pages appear in order in the cache');
+        $warm = zen_directory_render('page-archives.php', $page);
+        $directory_rows = static function ($html) {
+            preg_match_all('~<a href="([^"]+)" class="zen-archive-link">~', $html, $matches);
+            return $matches[1];
+        };
+        $expected = array_map(static fn($id) => esc_url(get_permalink($id)), array_reverse($ids));
+        zen_directory_check($directory_rows($cold) === $expected && $directory_rows($warm) === $expected && ($calls[500] ?? null) === array(1, 2), 'filtered archive: same complete warm directory without querying again');
+        $tags = zen_directory_render('page-tags.php', $page);
+        zen_directory_check(str_contains($tags, 'Zen filtered preview 2') && !str_contains($tags, 'Zen filtered preview 1'), 'filtered tags: retains the newest common preview');
+        zen_directory_check(str_contains($tags, 'Zen filtered preview 0') && ($calls[100] ?? null) === array(1, 1), 'filtered tags: narrowing restarts paging and retains the older rare preview');
+
+        $ids[] = $id = zen_directory_post(array('post_title' => 'Zen filtered preview skipped', 'post_date' => '2025-04-04 12:00:00'));
+        if (!is_array(wp_set_post_tags($id, array((int) $common['term_id'])))) throw new RuntimeException('Tag assignment failed');
+        $calls = array();
+        $offset = 1;
+        $archive_key = zen_archive_cache_key();
+        delete_transient($archive_key);
+        zen_directory_render('page-archives.php', $page);
+        $rows = get_transient($archive_key);
+        zen_directory_check(array_column($rows, 'id') === array($ids[2], $ids[1]) && ($calls[500] ?? null) === array(1), 'fixed-offset archive renders the native result once without repeating the batch');
+        $tags = zen_directory_render('page-tags.php', $page);
+        zen_directory_check(str_contains($tags, 'Zen filtered preview 2') && !str_contains($tags, 'Zen filtered preview skipped') && ($calls[100] ?? null) === array(1), 'fixed-offset tags use the native window without repeating or restarting it');
+    } finally {
+        remove_filter('get_terms_args', $limit_tags, 10);
+        remove_action('pre_get_posts', $filter);
+        delete_transient($archive_key);
+    }
+}
 function zen_directory_equal_dates() {
     $page = zen_directory_post(array('post_type'=>'page'));
     $ids = array();
@@ -708,6 +778,7 @@ try {
     if (in_array($zen_directory_slice, array('all', 'discovery'), true)) zen_directory_discovery();
     if (in_array($zen_directory_slice, array('all', 'password'), true)) zen_directory_password();
     if (in_array($zen_directory_slice, array('all', 'author'), true)) zen_directory_author();
+    if (in_array($zen_directory_slice, array('all', 'batch-size'), true)) zen_directory_filtered_batch_size();
     if (in_array($zen_directory_slice, array('all', 'lifecycle'), true)) {
         zen_directory_archive_overlap();
         zen_directory_nested_link();

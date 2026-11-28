@@ -195,6 +195,27 @@ test('paused audio reflects corrected duration without waiting for playback', as
     assert.equal(document.activeElement, document.querySelector('.zen-audio-btn'));
 });
 
+test('short audio supports incremental keyboard seeks and ignores a zero-width seek track', async t => {
+    const window = await page(t, '<audio controls></audio>', w => {
+        Object.defineProperty(w.document.querySelector('audio'), 'duration', { value: 2 });
+    });
+    const audio = window.document.querySelector('audio');
+    const slider = window.document.querySelector('[role="slider"]');
+    const press = key => slider.dispatchEvent(new window.KeyboardEvent('keydown', { key, cancelable: true }));
+    assert.equal(press('End'), false);
+    assert.equal(audio.currentTime, 2);
+    assert.equal(press('Home'), false);
+    assert.equal(audio.currentTime, 0);
+    assert.equal(press('ArrowRight'), false);
+    assert.ok(audio.currentTime > 0 && audio.currentTime < 2, 'one arrow key must not skip the entire clip');
+    const seek = audio.currentTime;
+    slider.getBoundingClientRect = () => ({ left: 10, width: 0 });
+    slider.dispatchEvent(new window.MouseEvent('click', { clientX: 11 }));
+    assert.equal(audio.currentTime, seek, 'a track without a usable width cannot seek');
+    assert.equal(press('ArrowLeft'), false);
+    assert.equal(audio.currentTime, 0);
+});
+
 for (const activation of ['click', 'touchstart']) test(`successful native cancel restores reply focus after ${activation}`, async t => {
     const window = await page(t, `<section id="comments"><a class="comment-reply-link" data-commentid="42" href="?replytocom=42">Reply</a>
         <a id="cancel-comment-reply-link" href="#respond">Cancel</a><input type="hidden" id="comment_parent" value="0"></section>`, w => {
